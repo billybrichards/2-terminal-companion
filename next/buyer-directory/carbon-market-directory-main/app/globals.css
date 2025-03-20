@@ -1,0 +1,79 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+
+    /* British flag inspired colors */
+    --primary: 222 100% 25%; /* Navy blue */
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 210 20% 84%; /* Light blue */
+    --secondary-foreground: 222 100% 25%;
+
+    --destructive: 354 70% 45%; /* British red */
+    --destructive-foreground: 0 0% 100%;
+
+    --muted: 210 20% 84%; /* Light blue */
+    --muted-foreground: 215.4 16.3% 46.9%;
+
+    --accent: 210 20% 84%; /* Light blue */
+    --accent-foreground: 222 100% 25%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 222 100% 25%; /* Navy blue */
+
+    --radius: 0.5rem;
+  }
+
+  .dark {
+    --background: 222 47% 11%;
+    --foreground: 210 40% 98%;
+
+    /* British flag inspired colors - dark mode */
+    --primary: 222 100% 25%; /* Navy blue */
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 217 33% 17%;
+    --secondary-foreground: 210 40% 98%;
+
+    --destructive: 354 70% 45%; /* British red */
+    --destructive-foreground: 0 0% 100%;
+
+    --muted: 217 33% 17%;
+    --muted-foreground: 215 20.2% 65.1%;
+
+    --accent: 217 33% 17%;
+    --accent-foreground: 210 40% 98%;
+
+    --popover: 222 47% 11%;
+    --popover-foreground: 210 40% 98%;
+
+    --card: 222 47% 11%;
+    --card-foreground: 210 40% 98%;
+
+    --border: 217 33% 17%;
+    --input: 217 33% 17%;
+    --ring: 212.7 26.8% 83.9%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
