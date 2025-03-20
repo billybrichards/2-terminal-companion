@@ -1,8 +1,9 @@
-import './globals.css';
+import { Auth0Provider } from '../components/Auth0Provider';
+import '../styles/globals.css'; // adjust path as needed
 
 export const metadata = {
   title: 'Carbon Market Directory',
-  description: 'Directory of carbon market buyers and projects',
+  description: 'Access to the carbon market directory',
 };
 
 export default function RootLayout({
@@ -13,7 +14,9 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
-        {children}
+        <Auth0Provider>
+          {children}
+        </Auth0Provider>
       </body>
     </html>
   );

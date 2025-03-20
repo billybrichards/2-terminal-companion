@@ -1,14 +1,18 @@
-import { NextResponse } from "next/server";
-import type { NextRequest } from "next/server";
+import { withMiddlewareAuthRequired } from '@auth0/nextjs-auth0/edge';
 
-// Simple middleware that doesn't do any authentication
-export default async function middleware(request: NextRequest) {
-  // Just pass through all requests now that we removed authentication
-  return NextResponse.next();
-}
+export default withMiddlewareAuthRequired();
 
+// Make sure environment variables are available to middleware
 export const config = {
-  matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|sitemap.xml|robots.txt).*)",
+  matcher: ['/directory/:path*', '/buyer-directory/:path*', '/buyer-directory'],
+  runtime: 'edge',
+  env: [
+    'AUTH0_SECRET', 
+    'AUTH0_BASE_URL', 
+    'AUTH0_ISSUER_BASE_URL', 
+    'AUTH0_CLIENT_ID', 
+    'AUTH0_CLIENT_SECRET',
+    'AUTH0_AUDIENCE',
+    'AUTH0_SCOPE'
   ],
 };
