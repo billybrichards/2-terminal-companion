@@ -5,7 +5,6 @@ export default withMiddlewareAuthRequired();
 // Make sure environment variables are available to middleware
 export const config = {
   matcher: ['/directory/:path*', '/buyer-directory/:path*', '/buyer-directory'],
-  runtime: 'edge',
   env: [
     'AUTH0_SECRET', 
     'AUTH0_BASE_URL', 
