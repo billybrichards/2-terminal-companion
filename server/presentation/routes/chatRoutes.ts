@@ -115,35 +115,51 @@ chatRouter.post('/', optionalAuthMiddleware, async (req, res) => {
     const userId = req.user?.sub;
     const storeLocally = body.storeLocally || false;
 
-    // Check message limit for free users
+    // Check message limit for free users (resets weekly)
     if (userId) {
       const user = await db.query.users.findFirst({
         where: eq(users.id, userId),
       });
 
       if (user && (user as any).subscriptionStatus !== 'subscribed') {
-        // Count user's messages
+        // Calculate start of current week (Monday)
+        const now = new Date();
+        const dayOfWeek = now.getDay();
+        const diffToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+        const weekStart = new Date(now);
+        weekStart.setDate(now.getDate() - diffToMonday);
+        weekStart.setHours(0, 0, 0, 0);
+        
+        // Calculate next week reset date
+        const nextReset = new Date(weekStart);
+        nextReset.setDate(weekStart.getDate() + 7);
+
+        // Count user's messages from this week only
         const userConversations = await db.query.conversations.findMany({
           where: eq(conversations.userId, userId),
         });
         
         let totalMessages = 0;
         for (const conv of userConversations) {
-          const msgCount = await db.select({ count: count() })
-            .from(messages)
-            .where(and(
+          const convMessages = await db.query.messages.findMany({
+            where: and(
               eq(messages.conversationId, conv.id),
               eq(messages.role, 'user')
-            ));
-          totalMessages += msgCount[0]?.count || 0;
+            ),
+          });
+          // Count only messages from this week
+          totalMessages += convMessages.filter((m: any) => 
+            new Date(m.createdAt) >= weekStart
+          ).length;
         }
 
         if (totalMessages >= FREE_MESSAGE_LIMIT) {
           return res.status(403).json({
             error: 'Message limit reached',
-            message: `Free users can only send ${FREE_MESSAGE_LIMIT} messages. Please upgrade to continue.`,
+            message: 'All used up, please subscribe for unlimited messages and audio. Your limit will reset next week.',
             limit: FREE_MESSAGE_LIMIT,
             used: totalMessages,
+            resetsAt: nextReset.toISOString(),
           });
         }
       }
