@@ -64,13 +64,13 @@ export class JWTAdapter {
     const accessToken = jwt.sign(
       { sub: userId, email, isAdmin, type: 'access' } as TokenPayload,
       JWT_SECRET,
-      { expiresIn: ACCESS_EXPIRES }
+      { expiresIn: accessExpiresIn }
     );
 
     const refreshToken = jwt.sign(
       { sub: userId, email, isAdmin, type: 'refresh' } as TokenPayload,
       JWT_SECRET,
-      { expiresIn: REFRESH_EXPIRES }
+      { expiresIn: refreshExpiresIn }
     );
 
     return {

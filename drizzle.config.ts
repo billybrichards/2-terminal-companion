@@ -1,10 +1,25 @@
 import { defineConfig } from 'drizzle-kit';
+import 'dotenv/config';
 
-export default defineConfig({
-  schema: './shared/schema.ts',
-  out: './drizzle',
-  dialect: 'sqlite',
-  dbCredentials: {
-    url: './data/companion.db',
-  },
-});
+const DATABASE_URL = process.env.DATABASE_URL || 'file:./data/companion.db';
+const isPostgres = DATABASE_URL.startsWith('postgres');
+
+export default defineConfig(
+  isPostgres
+    ? {
+        schema: './shared/schema.postgres.ts',
+        out: './drizzle',
+        dialect: 'postgresql',
+        dbCredentials: {
+          url: DATABASE_URL,
+        },
+      }
+    : {
+        schema: './shared/schema.sqlite.ts',
+        out: './drizzle',
+        dialect: 'sqlite',
+        dbCredentials: {
+          url: './data/companion.db',
+        },
+      }
+);

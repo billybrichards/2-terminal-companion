@@ -89,7 +89,7 @@ export class OllamaGateway {
       throw new Error(`Ollama API error: ${response.status} - ${error}`);
     }
 
-    const data = await response.json();
+    const data = await response.json() as { response: string };
     return data.response;
   }
 
@@ -172,8 +172,8 @@ export class OllamaGateway {
         return { success: false, error: `HTTP ${response.status}` };
       }
 
-      const data = await response.json();
-      const models = data.models?.map((m: { name: string }) => m.name) || [];
+      const data = await response.json() as { models?: Array<{ name: string }> };
+      const models = data.models?.map((m) => m.name) || [];
       return { success: true, models };
     } catch (error) {
       return { success: false, error: String(error) };
@@ -194,8 +194,8 @@ export class OllamaGateway {
       throw new Error(`Failed to get models: ${response.status}`);
     }
 
-    const data = await response.json();
-    return data.models?.map((m: { name: string }) => m.name) || [];
+    const data = await response.json() as { models?: Array<{ name: string }> };
+    return data.models?.map((m) => m.name) || [];
   }
 
   /**

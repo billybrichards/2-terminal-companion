@@ -213,7 +213,7 @@ adminRouter.get('/users', async (req, res) => {
     });
 
     // Remove sensitive data
-    const safeUsers = allUsers.map(user => ({
+    const safeUsers = allUsers.map((user: typeof allUsers[number]) => ({
       id: user.id,
       email: user.email,
       displayName: user.displayName,
@@ -348,8 +348,8 @@ adminRouter.get('/stats', async (req, res) => {
         totalMessages: allMessages.length,
         totalFeedback: allFeedback.length,
         feedbackByType: {
-          feedback: allFeedback.filter(f => f.type === 'feedback').length,
-          feature: allFeedback.filter(f => f.type === 'feature').length,
+          feedback: allFeedback.filter((f: typeof allFeedback[number]) => f.type === 'feedback').length,
+          feature: allFeedback.filter((f: typeof allFeedback[number]) => f.type === 'feature').length,
         },
       },
     });

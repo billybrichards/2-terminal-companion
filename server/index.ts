@@ -59,13 +59,14 @@ app.use((err: Error, req: express.Request, res: express.Response, next: express.
 async function start() {
   try {
     // Initialize database
-    initializeDatabase();
+    await initializeDatabase();
 
     // Start server
     app.listen(PORT, () => {
+      const isPostgres = process.env.DATABASE_URL?.startsWith('postgres');
       console.log(`\n🚀 Terminal Companion API running on http://localhost:${PORT}`);
       console.log(`📦 Environment: ${process.env.NODE_ENV || 'development'}`);
-      console.log(`🗄️  Database: SQLite (./data/companion.db)`);
+      console.log(`🗄️  Database: ${isPostgres ? 'PostgreSQL' : 'SQLite (./data/companion.db)'}`);
       console.log(`🤖 Ollama: ${process.env.OLLAMA_BASE_URL}`);
       console.log(`\n📡 Endpoints:`);
       console.log(`   POST /api/auth/register`);
