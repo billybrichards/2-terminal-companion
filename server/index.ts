@@ -17,13 +17,16 @@ import { healthRouter } from './presentation/routes/healthRoutes.js';
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-// Middleware
-app.use(helmet({
-  contentSecurityPolicy: false, // Disable for API
-}));
+// Middleware - CORS must be first to handle preflight requests
 app.use(cors({
   origin: true,
   credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+}));
+app.use(helmet({
+  contentSecurityPolicy: false,
+  crossOriginResourcePolicy: false,
 }));
 app.use(express.json({ limit: '10mb' }));
 
