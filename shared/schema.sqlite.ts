@@ -11,6 +11,8 @@ export const users = sqliteTable('users', {
   createdAt: text('created_at').default('CURRENT_TIMESTAMP'),
   updatedAt: text('updated_at').default('CURRENT_TIMESTAMP'),
   isAdmin: integer('is_admin', { mode: 'boolean' }).default(false),
+  subscriptionStatus: text('subscription_status').default('not_subscribed'), // 'subscribed' | 'not_subscribed'
+  credits: integer('credits').default(0),
 });
 
 // Companion config (single row - admin configured)

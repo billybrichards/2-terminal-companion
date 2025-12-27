@@ -296,6 +296,80 @@ const apiDocs = {
         }
       }
     },
+    '/api/admin/users/{id}/subscription': {
+      put: {
+        tags: ['Admin'],
+        summary: 'Update user subscription status',
+        description: 'Set user subscription to subscribed or not_subscribed.',
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          { name: 'id', in: 'path', required: true, schema: { type: 'string' }, description: 'User ID' }
+        ],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['subscriptionStatus'],
+                properties: {
+                  subscriptionStatus: { type: 'string', enum: ['subscribed', 'not_subscribed'], example: 'subscribed' }
+                }
+              }
+            }
+          }
+        },
+        responses: {
+          '200': { description: 'Subscription status updated' },
+          '404': { description: 'User not found' }
+        }
+      }
+    },
+    '/api/admin/users/{id}/credits': {
+      put: {
+        tags: ['Admin'],
+        summary: 'Update user credits',
+        description: 'Set, add, or subtract credits for a user.',
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          { name: 'id', in: 'path', required: true, schema: { type: 'string' }, description: 'User ID' }
+        ],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['credits'],
+                properties: {
+                  credits: { type: 'integer', example: 100, description: 'Number of credits' },
+                  operation: { type: 'string', enum: ['set', 'add', 'subtract'], default: 'set', description: 'Operation to perform' }
+                }
+              }
+            }
+          }
+        },
+        responses: {
+          '200': { description: 'Credits updated with previous and new values' },
+          '404': { description: 'User not found' }
+        }
+      }
+    },
+    '/api/admin/users/{id}/billing': {
+      get: {
+        tags: ['Admin'],
+        summary: 'Get user billing info',
+        description: 'Get subscription status and credits for a user.',
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          { name: 'id', in: 'path', required: true, schema: { type: 'string' }, description: 'User ID' }
+        ],
+        responses: {
+          '200': { description: 'User billing info (subscription + credits)' },
+          '404': { description: 'User not found' }
+        }
+      }
+    },
     '/api/admin/ollama/test': {
       post: {
         tags: ['Admin'],

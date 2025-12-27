@@ -11,6 +11,8 @@ export const users = pgTable('users', {
   createdAt: text('created_at').default('CURRENT_TIMESTAMP'),
   updatedAt: text('updated_at').default('CURRENT_TIMESTAMP'),
   isAdmin: boolean('is_admin').default(false),
+  subscriptionStatus: text('subscription_status').default('not_subscribed'), // 'subscribed' | 'not_subscribed'
+  credits: integer('credits').default(0),
 });
 
 // Companion config (single row - admin configured)

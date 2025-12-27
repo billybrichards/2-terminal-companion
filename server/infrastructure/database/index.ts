@@ -36,8 +36,17 @@ async function initializeDatabase(): Promise<void> {
         storage_preference TEXT DEFAULT 'cloud',
         created_at TEXT DEFAULT CURRENT_TIMESTAMP,
         updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
-        is_admin BOOLEAN DEFAULT FALSE
+        is_admin BOOLEAN DEFAULT FALSE,
+        subscription_status TEXT DEFAULT 'not_subscribed',
+        credits INTEGER DEFAULT 0
       );
+      
+      -- Add new columns if they don't exist (for existing databases)
+      DO $$ BEGIN
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS subscription_status TEXT DEFAULT 'not_subscribed';
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS credits INTEGER DEFAULT 0;
+      EXCEPTION WHEN OTHERS THEN NULL;
+      END $$;
 
       CREATE TABLE IF NOT EXISTS companion_config (
         id TEXT PRIMARY KEY DEFAULT 'default',
@@ -181,7 +190,9 @@ Adapt your responses to match these preferences while maintaining your empatheti
         storage_preference TEXT DEFAULT 'cloud',
         created_at TEXT DEFAULT CURRENT_TIMESTAMP,
         updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
-        is_admin INTEGER DEFAULT 0
+        is_admin INTEGER DEFAULT 0,
+        subscription_status TEXT DEFAULT 'not_subscribed',
+        credits INTEGER DEFAULT 0
       );
 
       CREATE TABLE IF NOT EXISTS companion_config (

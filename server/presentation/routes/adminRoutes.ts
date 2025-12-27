@@ -219,6 +219,8 @@ adminRouter.get('/users', async (req, res) => {
       displayName: user.displayName,
       storagePreference: user.storagePreference,
       isAdmin: user.isAdmin,
+      subscriptionStatus: (user as any).subscriptionStatus || 'not_subscribed',
+      credits: (user as any).credits || 0,
       createdAt: user.createdAt,
     }));
 
@@ -434,5 +436,128 @@ adminRouter.get('/models', async (req, res) => {
   } catch (error) {
     console.error('List models error:', error);
     res.status(500).json({ error: 'Failed to list models' });
+  }
+});
+
+// Validation schemas for subscription and credits
+const subscriptionSchema = z.object({
+  subscriptionStatus: z.enum(['subscribed', 'not_subscribed']),
+});
+
+const creditsSchema = z.object({
+  credits: z.number().int(),
+  operation: z.enum(['set', 'add', 'subtract']).default('set'),
+});
+
+// PUT /api/admin/users/:id/subscription - Update user subscription status
+adminRouter.put('/users/:id/subscription', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const body = subscriptionSchema.parse(req.body);
+
+    const user = await db.query.users.findFirst({
+      where: eq(users.id, id),
+    });
+
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    await db.update(users)
+      .set({
+        subscriptionStatus: body.subscriptionStatus,
+        updatedAt: new Date().toISOString(),
+      })
+      .where(eq(users.id, id));
+
+    res.json({
+      message: 'Subscription status updated',
+      userId: id,
+      subscriptionStatus: body.subscriptionStatus,
+    });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({ error: 'Validation error', details: error.errors });
+    }
+    console.error('Update subscription error:', error);
+    res.status(500).json({ error: 'Failed to update subscription status' });
+  }
+});
+
+// PUT /api/admin/users/:id/credits - Update user credits
+adminRouter.put('/users/:id/credits', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const body = creditsSchema.parse(req.body);
+
+    const user = await db.query.users.findFirst({
+      where: eq(users.id, id),
+    });
+
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    let newCredits: number;
+    const currentCredits = (user as any).credits || 0;
+
+    switch (body.operation) {
+      case 'add':
+        newCredits = currentCredits + body.credits;
+        break;
+      case 'subtract':
+        newCredits = Math.max(0, currentCredits - body.credits);
+        break;
+      case 'set':
+      default:
+        newCredits = body.credits;
+        break;
+    }
+
+    await db.update(users)
+      .set({
+        credits: newCredits,
+        updatedAt: new Date().toISOString(),
+      } as any)
+      .where(eq(users.id, id));
+
+    res.json({
+      message: 'Credits updated',
+      userId: id,
+      previousCredits: currentCredits,
+      newCredits,
+      operation: body.operation,
+    });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({ error: 'Validation error', details: error.errors });
+    }
+    console.error('Update credits error:', error);
+    res.status(500).json({ error: 'Failed to update credits' });
+  }
+});
+
+// GET /api/admin/users/:id/billing - Get user billing info (subscription + credits)
+adminRouter.get('/users/:id/billing', async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const user = await db.query.users.findFirst({
+      where: eq(users.id, id),
+    });
+
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    res.json({
+      userId: id,
+      email: user.email,
+      subscriptionStatus: (user as any).subscriptionStatus || 'not_subscribed',
+      credits: (user as any).credits || 0,
+    });
+  } catch (error) {
+    console.error('Get billing error:', error);
+    res.status(500).json({ error: 'Failed to get billing info' });
   }
 });
