@@ -16,6 +16,7 @@ OLLAMA_API_KEY = "8517d018120a07c44c5063e0e57a98db180bd121196d6f67bd86b7bd7310a8
 OLLAMA_BASE_URL = "https://jobs-nursing-passage-blake.trycloudflare.com"
 OLLAMA_GENERAL_MODEL = "darkplanet-general:latest"
 OLLAMA_LONGFORM_MODEL = "dolphin-mixtral:latest"
+ADMIN_UI_PASSWORD = "jwSSFkVSDQsew7ne"
 
 [workflows]
 runButton = "Project"

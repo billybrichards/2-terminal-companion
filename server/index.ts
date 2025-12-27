@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
+import cookieParser from 'cookie-parser';
 import { config } from 'dotenv';
 
 // Load environment variables
@@ -12,9 +13,11 @@ import { chatRouter } from './presentation/routes/chatRoutes.js';
 import { conversationRouter } from './presentation/routes/conversationRoutes.js';
 import { settingsRouter } from './presentation/routes/settingsRoutes.js';
 import { adminRouter } from './presentation/routes/adminRoutes.js';
+import { adminUiRouter } from './presentation/routes/adminUiRoutes.js';
 import { healthRouter } from './presentation/routes/healthRoutes.js';
 import { docsRouter } from './presentation/routes/docsRoutes.js';
 import { webhookRouter } from './presentation/routes/webhookRoutes.js';
+import { apiKeyMiddleware, optionalApiKeyMiddleware } from './presentation/middleware/apiKeyMiddleware.js';
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -24,13 +27,15 @@ app.use(cors({
   origin: true,
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Webhook-Secret'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Webhook-Secret', 'X-API-Key'],
 }));
 app.use(helmet({
   contentSecurityPolicy: false,
   crossOriginResourcePolicy: false,
 }));
+app.use(cookieParser());
 app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true }));
 
 // Routes
 app.use('/api/auth', authRouter);
@@ -41,6 +46,7 @@ app.use('/api/admin', adminRouter);
 app.use('/api/health', healthRouter);
 app.use('/api/webhooks', webhookRouter);
 app.use('/docs', docsRouter);
+app.use('/admin', adminUiRouter);
 
 // Root endpoint
 app.get('/', (req, res) => {
