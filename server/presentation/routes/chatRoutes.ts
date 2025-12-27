@@ -1,11 +1,13 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { db } from '../../infrastructure/database/index.js';
-import { companionConfig, conversations, messages, userPreferences } from '../../../shared/schema.js';
+import { companionConfig, conversations, messages, userPreferences, users } from '../../../shared/schema.js';
 import { getOllamaGateway, ChatMessage } from '../../infrastructure/adapters/OllamaGateway.js';
 import { authMiddleware, optionalAuthMiddleware } from '../middleware/authMiddleware.js';
 import { jwtAdapter } from '../../infrastructure/auth/JWTAdapter.js';
-import { eq, desc } from 'drizzle-orm';
+import { eq, desc, count, and } from 'drizzle-orm';
+
+const FREE_MESSAGE_LIMIT = 3;
 
 export const chatRouter = Router();
 
@@ -112,6 +114,40 @@ chatRouter.post('/', optionalAuthMiddleware, async (req, res) => {
     const body = chatSchema.parse(req.body);
     const userId = req.user?.sub;
     const storeLocally = body.storeLocally || false;
+
+    // Check message limit for free users
+    if (userId) {
+      const user = await db.query.users.findFirst({
+        where: eq(users.id, userId),
+      });
+
+      if (user && (user as any).subscriptionStatus !== 'subscribed') {
+        // Count user's messages
+        const userConversations = await db.query.conversations.findMany({
+          where: eq(conversations.userId, userId),
+        });
+        
+        let totalMessages = 0;
+        for (const conv of userConversations) {
+          const msgCount = await db.select({ count: count() })
+            .from(messages)
+            .where(and(
+              eq(messages.conversationId, conv.id),
+              eq(messages.role, 'user')
+            ));
+          totalMessages += msgCount[0]?.count || 0;
+        }
+
+        if (totalMessages >= FREE_MESSAGE_LIMIT) {
+          return res.status(403).json({
+            error: 'Message limit reached',
+            message: `Free users can only send ${FREE_MESSAGE_LIMIT} messages. Please upgrade to continue.`,
+            limit: FREE_MESSAGE_LIMIT,
+            used: totalMessages,
+          });
+        }
+      }
+    }
 
     // Get companion config
     const config = await db.query.companionConfig.findFirst({
