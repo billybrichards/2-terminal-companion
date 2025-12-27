@@ -142,6 +142,18 @@ export const userFeedback = sqliteTable('user_feedback', {
   createdAt: text('created_at').default('CURRENT_TIMESTAMP'),
 });
 
+// API Keys for external access
+export const apiKeys = sqliteTable('api_keys', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull(),
+  keyHash: text('key_hash').notNull(),
+  keyPrefix: text('key_prefix').notNull(), // First 8 chars for identification
+  createdBy: text('created_by').references(() => users.id),
+  isActive: integer('is_active', { mode: 'boolean' }).default(true),
+  lastUsedAt: text('last_used_at'),
+  createdAt: text('created_at').default('CURRENT_TIMESTAMP'),
+});
+
 // Relations
 export const usersRelations = relations(users, ({ many, one }) => ({
   conversations: many(conversations),
@@ -174,3 +186,4 @@ export type Conversation = typeof conversations.$inferSelect;
 export type Message = typeof messages.$inferSelect;
 export type UserPreferences = typeof userPreferences.$inferSelect;
 export type UserFeedback = typeof userFeedback.$inferSelect;
+export type ApiKey = typeof apiKeys.$inferSelect;

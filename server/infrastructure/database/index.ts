@@ -126,10 +126,22 @@ async function initializeDatabase(): Promise<void> {
         created_at TEXT DEFAULT CURRENT_TIMESTAMP
       );
 
+      CREATE TABLE IF NOT EXISTS api_keys (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        key_hash TEXT NOT NULL,
+        key_prefix TEXT NOT NULL,
+        created_by TEXT REFERENCES users(id),
+        is_active BOOLEAN DEFAULT TRUE,
+        last_used_at TEXT,
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP
+      );
+
       -- Create indexes
       CREATE INDEX IF NOT EXISTS idx_conversations_user ON conversations(user_id);
       CREATE INDEX IF NOT EXISTS idx_messages_conversation ON messages(conversation_id);
       CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id);
+      CREATE INDEX IF NOT EXISTS idx_api_keys_prefix ON api_keys(key_prefix);
     `);
 
     // Insert default companion config if not exists
@@ -273,10 +285,22 @@ Adapt your responses to match these preferences while maintaining your empatheti
         created_at TEXT DEFAULT CURRENT_TIMESTAMP
       );
 
+      CREATE TABLE IF NOT EXISTS api_keys (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        key_hash TEXT NOT NULL,
+        key_prefix TEXT NOT NULL,
+        created_by TEXT REFERENCES users(id),
+        is_active INTEGER DEFAULT 1,
+        last_used_at TEXT,
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP
+      );
+
       -- Create indexes
       CREATE INDEX IF NOT EXISTS idx_conversations_user ON conversations(user_id);
       CREATE INDEX IF NOT EXISTS idx_messages_conversation ON messages(conversation_id);
       CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id);
+      CREATE INDEX IF NOT EXISTS idx_api_keys_prefix ON api_keys(key_prefix);
     `);
 
     // Insert default companion config if not exists
