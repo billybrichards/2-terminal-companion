@@ -13,6 +13,7 @@ import { conversationRouter } from './presentation/routes/conversationRoutes.js'
 import { settingsRouter } from './presentation/routes/settingsRoutes.js';
 import { adminRouter } from './presentation/routes/adminRoutes.js';
 import { healthRouter } from './presentation/routes/healthRoutes.js';
+import { docsRouter } from './presentation/routes/docsRoutes.js';
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -37,6 +38,7 @@ app.use('/api/conversations', conversationRouter);
 app.use('/api/settings', settingsRouter);
 app.use('/api/admin', adminRouter);
 app.use('/api/health', healthRouter);
+app.use('/docs', docsRouter);
 
 // Root endpoint
 app.get('/', (req, res) => {
