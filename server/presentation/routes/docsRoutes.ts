@@ -415,6 +415,79 @@ const apiDocs = {
           '200': { description: 'All system checks' }
         }
       }
+    },
+    '/api/webhooks/subscription': {
+      post: {
+        tags: ['Webhooks'],
+        summary: 'Update subscription via webhook',
+        description: 'Webhook endpoint to update user subscription status. Requires X-Webhook-Secret header.',
+        parameters: [
+          { name: 'X-Webhook-Secret', in: 'header', required: true, schema: { type: 'string' }, description: 'Webhook authentication secret' }
+        ],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['userId', 'subscriptionStatus'],
+                properties: {
+                  userId: { type: 'string', format: 'uuid', description: 'User ID' },
+                  subscriptionStatus: { type: 'string', enum: ['subscribed', 'not_subscribed'] },
+                  eventType: { type: 'string', description: 'Optional event type identifier' }
+                }
+              }
+            }
+          }
+        },
+        responses: {
+          '200': { description: 'Subscription status updated' },
+          '401': { description: 'Unauthorized - invalid webhook secret' },
+          '404': { description: 'User not found' }
+        }
+      }
+    },
+    '/api/webhooks/credits': {
+      post: {
+        tags: ['Webhooks'],
+        summary: 'Update credits via webhook',
+        description: 'Webhook endpoint to update user credits. Requires X-Webhook-Secret header.',
+        parameters: [
+          { name: 'X-Webhook-Secret', in: 'header', required: true, schema: { type: 'string' }, description: 'Webhook authentication secret' }
+        ],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['userId', 'credits'],
+                properties: {
+                  userId: { type: 'string', format: 'uuid', description: 'User ID' },
+                  credits: { type: 'integer', description: 'Number of credits' },
+                  operation: { type: 'string', enum: ['set', 'add', 'subtract'], default: 'set' },
+                  eventType: { type: 'string', description: 'Optional event type identifier' }
+                }
+              }
+            }
+          }
+        },
+        responses: {
+          '200': { description: 'Credits updated' },
+          '401': { description: 'Unauthorized - invalid webhook secret' },
+          '404': { description: 'User not found' }
+        }
+      }
+    },
+    '/api/webhooks/health': {
+      get: {
+        tags: ['Webhooks'],
+        summary: 'Webhook health check',
+        description: 'Check if webhook endpoint is configured and ready.',
+        responses: {
+          '200': { description: 'Webhook configuration status' }
+        }
+      }
     }
   },
   components: {

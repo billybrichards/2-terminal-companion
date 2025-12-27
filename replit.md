@@ -35,8 +35,10 @@ npm run start            # Run compiled server
 - `/api/chat` - Send message (SSE streaming), get config
 - `/api/conversations/*` - CRUD for conversation history
 - `/api/settings/*` - User preferences (storage, gender, response style, theme)
-- `/api/admin/*` - Companion config, user management, Ollama testing (admin only)
+- `/api/admin/*` - Companion config, user management, billing (subscription/credits), Ollama testing (admin only)
+- `/api/webhooks/*` - External webhook endpoints for subscription and credits updates (X-Webhook-Secret auth)
 - `/api/health/*` - Server, database, Ollama connection checks
+- `/docs` - Swagger UI API documentation
 
 ## Database
 Uses PostgreSQL with Drizzle ORM (falls back to SQLite if DATABASE_URL not set).
@@ -45,7 +47,8 @@ Key tables: `users`, `companion_config`, `conversations`, `messages`, `sessions`
 
 ## Environment Variables
 Required secrets:
-- `JWT_SECRET` - Secret for signing tokens (set this in secrets)
+- `JWT_SECRET` - Secret for signing tokens
+- `WEBHOOK_SECRET` - Secret for authenticating webhook requests (X-Webhook-Secret header)
 - `OLLAMA_BASE_URL` - Ollama API endpoint (optional for basic auth functionality)
 - `OLLAMA_API_KEY` - API key for Ollama (optional)
 
@@ -53,5 +56,15 @@ Auto-configured:
 - `DATABASE_URL` - PostgreSQL connection string (Replit managed)
 - `PORT` - Server port (set to 5000)
 
+## Webhook Integration
+External services (like Stripe) can update user billing via webhooks:
+- `POST /api/webhooks/subscription` - Update subscription status
+- `POST /api/webhooks/credits` - Update credits (set/add/subtract)
+
+All webhook requests require the `X-Webhook-Secret` header with the configured WEBHOOK_SECRET value.
+
 ## Recent Changes
+- 2025-12-27: Added webhook endpoints for subscription/credits with X-Webhook-Secret authentication
+- 2025-12-27: Added admin billing endpoints (subscription status, credits management)
+- 2025-12-27: Added Swagger UI documentation at /docs
 - 2025-12-27: Initial Replit setup, configured to use port 5000, connected to Replit PostgreSQL database

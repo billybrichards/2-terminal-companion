@@ -14,6 +14,7 @@ import { settingsRouter } from './presentation/routes/settingsRoutes.js';
 import { adminRouter } from './presentation/routes/adminRoutes.js';
 import { healthRouter } from './presentation/routes/healthRoutes.js';
 import { docsRouter } from './presentation/routes/docsRoutes.js';
+import { webhookRouter } from './presentation/routes/webhookRoutes.js';
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -23,7 +24,7 @@ app.use(cors({
   origin: true,
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Webhook-Secret'],
 }));
 app.use(helmet({
   contentSecurityPolicy: false,
@@ -38,6 +39,7 @@ app.use('/api/conversations', conversationRouter);
 app.use('/api/settings', settingsRouter);
 app.use('/api/admin', adminRouter);
 app.use('/api/health', healthRouter);
+app.use('/api/webhooks', webhookRouter);
 app.use('/docs', docsRouter);
 
 // Root endpoint
