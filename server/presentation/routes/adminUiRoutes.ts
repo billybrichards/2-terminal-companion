@@ -10,15 +10,66 @@ export const adminUiRouter = Router();
 
 const ADMIN_PASSWORD = process.env.ADMIN_UI_PASSWORD || '';
 const COOKIE_NAME = 'admin_session';
+const SESSION_SECRET = process.env.JWT_SECRET || crypto.randomBytes(32).toString('hex');
 
-function hashSession(password: string): string {
-  return crypto.createHash('sha256').update(password + '_admin_session').digest('hex');
+const activeSessions = new Map<string, { expiresAt: number }>();
+
+const loginAttempts = new Map<string, { count: number; lastAttempt: number }>();
+const MAX_ATTEMPTS = 5;
+const LOCKOUT_DURATION = 15 * 60 * 1000;
+
+function isRateLimited(ip: string): boolean {
+  const attempt = loginAttempts.get(ip);
+  if (!attempt) return false;
+  if (Date.now() - attempt.lastAttempt > LOCKOUT_DURATION) {
+    loginAttempts.delete(ip);
+    return false;
+  }
+  return attempt.count >= MAX_ATTEMPTS;
+}
+
+function recordLoginAttempt(ip: string, success: boolean) {
+  if (success) {
+    loginAttempts.delete(ip);
+    return;
+  }
+  const attempt = loginAttempts.get(ip) || { count: 0, lastAttempt: 0 };
+  attempt.count++;
+  attempt.lastAttempt = Date.now();
+  loginAttempts.set(ip, attempt);
+}
+
+function generateSessionToken(): string {
+  const randomBytes = crypto.randomBytes(32).toString('hex');
+  const timestamp = Date.now().toString();
+  const signature = crypto.createHmac('sha256', SESSION_SECRET)
+    .update(randomBytes + timestamp)
+    .digest('hex');
+  return `${randomBytes}.${timestamp}.${signature}`;
+}
+
+function validateSessionToken(token: string): boolean {
+  const parts = token.split('.');
+  if (parts.length !== 3) return false;
+  const [randomBytes, timestamp, signature] = parts;
+  const expectedSignature = crypto.createHmac('sha256', SESSION_SECRET)
+    .update(randomBytes + timestamp)
+    .digest('hex');
+  if (!crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expectedSignature))) {
+    return false;
+  }
+  const session = activeSessions.get(token);
+  if (!session || session.expiresAt < Date.now()) {
+    activeSessions.delete(token);
+    return false;
+  }
+  return true;
 }
 
 function isAuthenticated(req: Request): boolean {
-  const sessionHash = req.cookies?.[COOKIE_NAME];
-  if (!sessionHash || !ADMIN_PASSWORD) return false;
-  return sessionHash === hashSession(ADMIN_PASSWORD);
+  const sessionToken = req.cookies?.[COOKIE_NAME];
+  if (!sessionToken || !ADMIN_PASSWORD) return false;
+  return validateSessionToken(sessionToken);
 }
 
 function requireAuth(req: Request, res: Response): boolean {
@@ -149,11 +200,28 @@ adminUiRouter.get('/', (req: Request, res: Response) => {
   res.send(html);
 });
 
+function getClientIp(req: Request): string {
+  const forwarded = req.headers['x-forwarded-for'];
+  if (forwarded) {
+    return (typeof forwarded === 'string' ? forwarded : forwarded[0]).split(',')[0].trim();
+  }
+  return req.socket.remoteAddress || 'unknown';
+}
+
 adminUiRouter.post('/login', (req: Request, res: Response) => {
   const { password } = req.body;
+  const clientIp = getClientIp(req);
+
+  if (isRateLimited(clientIp)) {
+    return res.redirect('/admin?error=rate_limited');
+  }
 
   if (password === ADMIN_PASSWORD) {
-    res.cookie(COOKIE_NAME, hashSession(ADMIN_PASSWORD), {
+    recordLoginAttempt(clientIp, true);
+    const sessionToken = generateSessionToken();
+    activeSessions.set(sessionToken, { expiresAt: Date.now() + 24 * 60 * 60 * 1000 });
+    
+    res.cookie(COOKIE_NAME, sessionToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'strict',
@@ -162,10 +230,15 @@ adminUiRouter.post('/login', (req: Request, res: Response) => {
     return res.redirect('/admin/dashboard');
   }
 
+  recordLoginAttempt(clientIp, false);
   res.redirect('/admin?error=1');
 });
 
 adminUiRouter.get('/logout', (req: Request, res: Response) => {
+  const sessionToken = req.cookies?.[COOKIE_NAME];
+  if (sessionToken) {
+    activeSessions.delete(sessionToken);
+  }
   res.clearCookie(COOKIE_NAME);
   res.redirect('/admin');
 });
