@@ -15,7 +15,7 @@ import { adminRouter } from './presentation/routes/adminRoutes.js';
 import { healthRouter } from './presentation/routes/healthRoutes.js';
 
 const app = express();
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.PORT || 5000;
 
 // Middleware - CORS must be first to handle preflight requests
 app.use(cors({
