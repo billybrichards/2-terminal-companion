@@ -155,7 +155,7 @@ chatRouter.post('/', optionalAuthMiddleware, async (req, res) => {
         limit: 10,
       });
 
-      conversationHistory = recentMessages.reverse().map(m => ({
+      conversationHistory = recentMessages.reverse().map((m: typeof recentMessages[number]) => ({
         role: m.role as 'user' | 'assistant' | 'system',
         content: m.content,
       }));
