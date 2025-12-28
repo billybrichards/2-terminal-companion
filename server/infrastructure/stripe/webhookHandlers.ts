@@ -56,6 +56,7 @@ export class WebhookHandlers {
     const session = event.data.object;
     const customerId = session.customer as string;
     const subscriptionId = session.subscription as string | null;
+    const customerDetails = session.customer_details;
 
     if (!customerId) {
       console.error('No customer ID in checkout session');
@@ -69,13 +70,21 @@ export class WebhookHandlers {
       return;
     }
 
+    const customerName = customerDetails?.name as string | undefined;
+    const updateData: any = { 
+      subscriptionStatus: 'subscribed',
+      stripeSubscriptionId: subscriptionId,
+      credits: -1,
+      accountSource: 'api',
+      updatedAt: new Date().toISOString()
+    };
+
+    if (customerName && !user.displayName) {
+      updateData.displayName = customerName;
+    }
+
     await db.update(users)
-      .set({ 
-        subscriptionStatus: 'subscribed',
-        stripeSubscriptionId: subscriptionId,
-        credits: -1,
-        updatedAt: new Date().toISOString()
-      })
+      .set(updateData)
       .where(eq(users.id, user.id));
 
     const { key, keyHash, keyPrefix } = await generateApiKey();
@@ -91,7 +100,7 @@ export class WebhookHandlers {
       createdAt: new Date().toISOString()
     });
 
-    console.log(`User ${user.id} subscribed. Subscription ID: ${subscriptionId}. API key generated with prefix: ${keyPrefix}`);
+    console.log(`User ${user.id} subscribed (API). Subscription ID: ${subscriptionId}. API key generated with prefix: ${keyPrefix}`);
   }
 
   static async handleSubscriptionDeleted(event: any): Promise<void> {

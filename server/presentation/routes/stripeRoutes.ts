@@ -115,7 +115,12 @@ router.post('/checkout', authMiddleware, async (req: Request, res: Response) => 
       customerId,
       finalPriceId,
       successUrl,
-      cancelUrl
+      cancelUrl,
+      {
+        customerEmail: user.email,
+        customerCreation: 'always',
+        billingAddressCollection: 'required',
+      }
     );
     
     res.json({ url: session.url });

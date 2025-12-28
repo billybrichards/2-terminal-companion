@@ -15,6 +15,7 @@ export const users = pgTable('users', {
   credits: integer('credits').default(0),
   stripeCustomerId: text('stripe_customer_id'),
   stripeSubscriptionId: text('stripe_subscription_id'),
+  accountSource: text('account_source').default('frontend'), // 'frontend' | 'api'
 });
 
 // Companion config (single row - admin configured)
