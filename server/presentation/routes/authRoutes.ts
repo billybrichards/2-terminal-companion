@@ -6,6 +6,7 @@ import { users, sessions, userPreferences, passwordResetTokens } from '../../../
 import { jwtAdapter } from '../../infrastructure/auth/JWTAdapter.js';
 import { authMiddleware } from '../middleware/authMiddleware.js';
 import { authRateLimiter, registrationRateLimiter } from '../middleware/rateLimitMiddleware.js';
+import { emailService } from '../../infrastructure/email/resendService.js';
 import { eq, and, isNull, gt } from 'drizzle-orm';
 
 export const authRouter = Router();
@@ -96,12 +97,18 @@ authRouter.post('/register', registrationRateLimiter, async (req, res) => {
       expiresAt: jwtAdapter.getRefreshExpiryDate().toISOString(),
     });
 
+    // Send welcome email (don't block the response)
+    const displayName = body.displayName || body.email.split('@')[0];
+    emailService.sendWelcomeEmail(body.email, displayName).catch(err => {
+      console.error('Failed to send welcome email:', err);
+    });
+
     res.status(201).json({
       message: 'Registration successful',
       user: {
         id: userId,
         email: body.email,
-        displayName: body.displayName || body.email.split('@')[0],
+        displayName,
         isAdmin,
       },
       ...tokens,
@@ -311,10 +318,13 @@ authRouter.post('/forgot-password', authRateLimiter, async (req, res) => {
       expiresAt,
     });
 
-    // Return success with token (in production, this would be emailed)
+    // Send password reset email
+    emailService.sendPasswordResetEmail(body.email, token).catch(err => {
+      console.error('Failed to send password reset email:', err);
+    });
+
     res.json({
       message: successMessage,
-      token, // Only for development - remove in production
     });
   } catch (error) {
     if (error instanceof z.ZodError) {
