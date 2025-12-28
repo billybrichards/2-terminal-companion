@@ -13,6 +13,8 @@ export const users = sqliteTable('users', {
   isAdmin: integer('is_admin', { mode: 'boolean' }).default(false),
   subscriptionStatus: text('subscription_status').default('not_subscribed'), // 'subscribed' | 'not_subscribed'
   credits: integer('credits').default(0),
+  stripeCustomerId: text('stripe_customer_id'),
+  stripeSubscriptionId: text('stripe_subscription_id'),
 });
 
 // Companion config (single row - admin configured)
@@ -148,9 +150,35 @@ export const apiKeys = sqliteTable('api_keys', {
   name: text('name').notNull(),
   keyHash: text('key_hash').notNull(),
   keyPrefix: text('key_prefix').notNull(), // First 8 chars for identification
+  userId: text('user_id').references(() => users.id), // Owner of the API key
   createdBy: text('created_by').references(() => users.id),
   isActive: integer('is_active', { mode: 'boolean' }).default(true),
   lastUsedAt: text('last_used_at'),
+  createdAt: text('created_at').default('CURRENT_TIMESTAMP'),
+});
+
+// API Usage tracking
+export const apiUsage = sqliteTable('api_usage', {
+  id: text('id').primaryKey(),
+  apiKeyId: text('api_key_id').references(() => apiKeys.id),
+  userId: text('user_id').references(() => users.id),
+  endpoint: text('endpoint').notNull(),
+  method: text('method').notNull(),
+  tokensUsed: integer('tokens_used').default(0),
+  latencyMs: integer('latency_ms'),
+  statusCode: integer('status_code'),
+  createdAt: text('created_at').default('CURRENT_TIMESTAMP'),
+});
+
+// Daily aggregated API usage
+export const apiUsageDaily = sqliteTable('api_usage_daily', {
+  id: text('id').primaryKey(),
+  apiKeyId: text('api_key_id').references(() => apiKeys.id),
+  userId: text('user_id').references(() => users.id),
+  date: text('date').notNull(), // YYYY-MM-DD format
+  totalRequests: integer('total_requests').default(0),
+  totalTokens: integer('total_tokens').default(0),
+  avgLatencyMs: integer('avg_latency_ms'),
   createdAt: text('created_at').default('CURRENT_TIMESTAMP'),
 });
 
@@ -187,3 +215,5 @@ export type Message = typeof messages.$inferSelect;
 export type UserPreferences = typeof userPreferences.$inferSelect;
 export type UserFeedback = typeof userFeedback.$inferSelect;
 export type ApiKey = typeof apiKeys.$inferSelect;
+export type ApiUsage = typeof apiUsage.$inferSelect;
+export type ApiUsageDaily = typeof apiUsageDaily.$inferSelect;

@@ -45,6 +45,8 @@ async function initializeDatabase(): Promise<void> {
       DO $$ BEGIN
         ALTER TABLE users ADD COLUMN IF NOT EXISTS subscription_status TEXT DEFAULT 'not_subscribed';
         ALTER TABLE users ADD COLUMN IF NOT EXISTS credits INTEGER DEFAULT 0;
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS stripe_customer_id TEXT;
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS stripe_subscription_id TEXT;
       EXCEPTION WHEN OTHERS THEN NULL;
       END $$;
 

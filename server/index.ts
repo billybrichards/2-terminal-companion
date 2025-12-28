@@ -7,7 +7,10 @@ import { config } from 'dotenv';
 // Load environment variables
 config();
 
+import { runMigrations } from 'stripe-replit-sync';
 import { db, initializeDatabase } from './infrastructure/database/index.js';
+import { getStripeSync } from './infrastructure/stripe/stripeClient.js';
+import { WebhookHandlers } from './infrastructure/stripe/webhookHandlers.js';
 import { authRouter } from './presentation/routes/authRoutes.js';
 import { chatRouter } from './presentation/routes/chatRoutes.js';
 import { conversationRouter } from './presentation/routes/conversationRoutes.js';
@@ -18,7 +21,10 @@ import { healthRouter } from './presentation/routes/healthRoutes.js';
 import { docsRouter } from './presentation/routes/docsRoutes.js';
 import { webhookRouter } from './presentation/routes/webhookRoutes.js';
 import { releaseNotesRouter } from './presentation/routes/releaseNotesRoutes.js';
+import { landingRouter } from './presentation/routes/landingRoutes.js';
+import { stripeRouter } from './presentation/routes/stripeRoutes.js';
 import { apiKeyMiddleware, optionalApiKeyMiddleware } from './presentation/middleware/apiKeyMiddleware.js';
+import { usageTrackingMiddleware } from './presentation/middleware/usageTrackingMiddleware.js';
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -34,17 +40,17 @@ app.use(cors({
   ].filter(Boolean) as (string | RegExp)[],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Webhook-Secret', 'X-API-Key'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Webhook-Secret', 'X-API-Key', 'stripe-signature'],
 }));
 app.use(helmet({
   contentSecurityPolicy: {
     directives: {
       defaultSrc: ["'self'"],
-      scriptSrc: ["'self'", "'unsafe-inline'"],
-      styleSrc: ["'self'", "'unsafe-inline'"],
+      scriptSrc: ["'self'", "'unsafe-inline'", "https://unpkg.com"],
+      styleSrc: ["'self'", "'unsafe-inline'", "https://unpkg.com"],
       imgSrc: ["'self'", "data:", "https:"],
       connectSrc: ["'self'", process.env.OLLAMA_BASE_URL || ''].filter(Boolean),
-      fontSrc: ["'self'"],
+      fontSrc: ["'self'", "https://unpkg.com"],
       objectSrc: ["'none'"],
       frameAncestors: ["'self'"],
     },
@@ -52,29 +58,55 @@ app.use(helmet({
   crossOriginResourcePolicy: { policy: "cross-origin" },
 }));
 app.use(cookieParser());
+
+// CRITICAL: Stripe webhook route MUST be registered BEFORE express.json()
+// Webhook needs raw Buffer, not parsed JSON
+app.post(
+  '/api/stripe/webhook',
+  express.raw({ type: 'application/json' }),
+  async (req, res) => {
+    const signature = req.headers['stripe-signature'];
+
+    if (!signature) {
+      return res.status(400).json({ error: 'Missing stripe-signature' });
+    }
+
+    try {
+      const sig = Array.isArray(signature) ? signature[0] : signature;
+
+      if (!Buffer.isBuffer(req.body)) {
+        console.error('STRIPE WEBHOOK ERROR: req.body is not a Buffer');
+        return res.status(500).json({ error: 'Webhook processing error' });
+      }
+
+      await WebhookHandlers.processWebhook(req.body as Buffer, sig);
+      res.status(200).json({ received: true });
+    } catch (error: any) {
+      console.error('Webhook error:', error.message);
+      res.status(400).json({ error: 'Webhook processing error' });
+    }
+  }
+);
+
+// Now apply JSON middleware for all other routes
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
 // Routes
 app.use('/api/auth', authRouter);
-app.use('/api/chat', chatRouter);
+app.use('/api/chat', usageTrackingMiddleware, chatRouter);
 app.use('/api/conversations', conversationRouter);
 app.use('/api/settings', settingsRouter);
 app.use('/api/admin', adminRouter);
 app.use('/api/health', healthRouter);
 app.use('/api/webhooks', webhookRouter);
+app.use('/api/stripe', stripeRouter);
 app.use('/docs', docsRouter);
 app.use('/admin', adminUiRouter);
 app.use('/release-notes', releaseNotesRouter);
 
-// Root endpoint
-app.get('/', (req, res) => {
-  res.json({
-    name: 'Terminal Companion API',
-    version: '0.1.0',
-    status: 'running',
-  });
-});
+// Landing page
+app.use('/', landingRouter);
 
 // Error handling middleware
 app.use((err: Error, req: express.Request, res: express.Response, next: express.NextFunction) => {
@@ -85,11 +117,52 @@ app.use((err: Error, req: express.Request, res: express.Response, next: express.
   });
 });
 
+async function initStripe() {
+  const databaseUrl = process.env.DATABASE_URL;
+
+  if (!databaseUrl) {
+    console.log('DATABASE_URL not set, skipping Stripe initialization');
+    return;
+  }
+
+  try {
+    console.log('Initializing Stripe schema...');
+    await runMigrations({ databaseUrl });
+    console.log('Stripe schema ready');
+
+    const stripeSync = await getStripeSync();
+
+    console.log('Setting up managed webhook...');
+    const webhookBaseUrl = `https://${process.env.REPLIT_DOMAINS?.split(',')[0]}`;
+    const webhookUrl = `${webhookBaseUrl}/api/stripe/webhook`;
+    const result = await stripeSync.findOrCreateManagedWebhook(webhookUrl);
+    if (result?.webhook) {
+      console.log(`Webhook configured: ${result.webhook.url}`);
+    } else {
+      console.log(`Webhook endpoint registered: ${webhookUrl}`);
+    }
+
+    console.log('Syncing Stripe data...');
+    stripeSync.syncBackfill()
+      .then(() => {
+        console.log('Stripe data synced');
+      })
+      .catch((err: Error) => {
+        console.error('Error syncing Stripe data:', err);
+      });
+  } catch (error) {
+    console.error('Failed to initialize Stripe:', error);
+  }
+}
+
 // Initialize database and start server
 async function start() {
   try {
     // Initialize database
     await initializeDatabase();
+
+    // Initialize Stripe (after database is ready)
+    await initStripe();
 
     // Start server
     app.listen(PORT, () => {
@@ -103,6 +176,7 @@ async function start() {
       console.log(`   POST /api/auth/login`);
       console.log(`   POST /api/chat`);
       console.log(`   GET  /api/health`);
+      console.log(`   POST /api/stripe/webhook`);
       console.log('');
     });
   } catch (error) {

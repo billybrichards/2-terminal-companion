@@ -5,19 +5,114 @@ export const docsRouter = Router();
 const apiDocs = {
   openapi: '3.0.0',
   info: {
-    title: 'Terminal Companion API',
-    version: '0.1.0',
-    description: 'AI chat backend API with user authentication, conversation management, and admin-configurable AI companion settings.',
+    title: 'Abionti Unrestricted API',
+    version: '1.0.0',
+    description: `# Unrestricted AI Companion API
+
+Build immersive adult AI experiences without limitations.
+
+## Authentication
+
+This API supports two authentication methods:
+
+### 1. API Key Authentication (Recommended for Server-to-Server)
+Include your API key in the \`X-API-Key\` header:
+\`\`\`
+X-API-Key: your-api-key-here
+\`\`\`
+
+**How to get an API key:**
+- Subscribe to a paid plan via the dashboard
+- Navigate to Settings → API Keys
+- Generate a new API key
+
+### 2. JWT Bearer Token (Recommended for User Sessions)
+Include the JWT token in the Authorization header:
+\`\`\`
+Authorization: Bearer your-jwt-token
+\`\`\`
+
+Obtain tokens via the \`/api/auth/login\` endpoint.
+
+## Rate Limits
+
+| Tier | Limit | Reset |
+|------|-------|-------|
+| Free | 50 calls/month | Monthly |
+| Unlimited | No limits | - |
+
+## Quick Start Examples
+
+### Chat with AI (curl)
+\`\`\`bash
+curl -X POST "https://api.abionti.com/api/chat" \\
+  -H "Content-Type: application/json" \\
+  -H "X-API-Key: your-api-key" \\
+  -d '{"message": "Hello, how are you?"}'
+\`\`\`
+
+### Chat with AI (Node.js)
+\`\`\`javascript
+const response = await fetch('https://api.abionti.com/api/chat', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    'X-API-Key': 'your-api-key'
+  },
+  body: JSON.stringify({ message: 'Hello, how are you?' })
+});
+
+const reader = response.body.getReader();
+const decoder = new TextDecoder();
+
+while (true) {
+  const { done, value } = await reader.read();
+  if (done) break;
+  console.log(decoder.decode(value));
+}
+\`\`\`
+`,
   },
   servers: [
     { url: '/', description: 'Current server' }
+  ],
+  tags: [
+    { name: 'Authentication', description: 'User registration, login, and session management' },
+    { name: 'Chat', description: 'AI companion chat endpoints' },
+    { name: 'Conversations', description: 'Conversation history management' },
+    { name: 'Settings', description: 'User preferences and settings' },
+    { name: 'Admin', description: 'Administrative endpoints (requires admin role)' },
+    { name: 'Health', description: 'System health checks' },
+    { name: 'Webhooks', description: 'External webhook integrations' }
   ],
   paths: {
     '/api/auth/register': {
       post: {
         tags: ['Authentication'],
         summary: 'Register a new user',
-        description: 'Create a new user account. First user becomes admin.',
+        description: `Create a new user account. First user becomes admin.
+
+**Example (curl):**
+\`\`\`bash
+curl -X POST "https://api.abionti.com/api/auth/register" \\
+  -H "Content-Type: application/json" \\
+  -d '{"email": "user@example.com", "password": "securepass123", "displayName": "John Doe"}'
+\`\`\`
+
+**Example (Node.js):**
+\`\`\`javascript
+const response = await fetch('https://api.abionti.com/api/auth/register', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    email: 'user@example.com',
+    password: 'securepass123',
+    displayName: 'John Doe'
+  })
+});
+const data = await response.json();
+console.log(data.accessToken);
+\`\`\``,
         requestBody: {
           required: true,
           content: {
@@ -35,8 +130,43 @@ const apiDocs = {
           }
         },
         responses: {
-          '201': { description: 'Registration successful, returns user and tokens' },
-          '400': { description: 'Validation error or email already registered' }
+          '201': {
+            description: 'Registration successful',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    message: { type: 'string', example: 'Registration successful' },
+                    user: {
+                      type: 'object',
+                      properties: {
+                        id: { type: 'string', example: 'uuid-here' },
+                        email: { type: 'string', example: 'user@example.com' },
+                        displayName: { type: 'string', example: 'John Doe' },
+                        isAdmin: { type: 'boolean', example: false }
+                      }
+                    },
+                    accessToken: { type: 'string', example: 'eyJhbGciOiJIUzI1NiIs...' },
+                    refreshToken: { type: 'string', example: 'eyJhbGciOiJIUzI1NiIs...' }
+                  }
+                }
+              }
+            }
+          },
+          '400': {
+            description: 'Validation error or email already registered',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    error: { type: 'string', example: 'Email already registered' }
+                  }
+                }
+              }
+            }
+          }
         }
       }
     },
@@ -44,7 +174,27 @@ const apiDocs = {
       post: {
         tags: ['Authentication'],
         summary: 'Login user',
-        description: 'Authenticate with email and password.',
+        description: `Authenticate with email and password to receive JWT tokens.
+
+**Example (curl):**
+\`\`\`bash
+curl -X POST "https://api.abionti.com/api/auth/login" \\
+  -H "Content-Type: application/json" \\
+  -d '{"email": "user@example.com", "password": "password123"}'
+\`\`\`
+
+**Example (Node.js):**
+\`\`\`javascript
+const response = await fetch('https://api.abionti.com/api/auth/login', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    email: 'user@example.com',
+    password: 'password123'
+  })
+});
+const { accessToken, refreshToken } = await response.json();
+\`\`\``,
         requestBody: {
           required: true,
           content: {
@@ -61,8 +211,43 @@ const apiDocs = {
           }
         },
         responses: {
-          '200': { description: 'Login successful, returns user and tokens' },
-          '401': { description: 'Invalid email or password' }
+          '200': {
+            description: 'Login successful',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    message: { type: 'string', example: 'Login successful' },
+                    user: {
+                      type: 'object',
+                      properties: {
+                        id: { type: 'string', example: 'uuid-here' },
+                        email: { type: 'string', example: 'user@example.com' },
+                        displayName: { type: 'string', example: 'John Doe' },
+                        isAdmin: { type: 'boolean', example: false }
+                      }
+                    },
+                    accessToken: { type: 'string', example: 'eyJhbGciOiJIUzI1NiIs...' },
+                    refreshToken: { type: 'string', example: 'eyJhbGciOiJIUzI1NiIs...' }
+                  }
+                }
+              }
+            }
+          },
+          '401': {
+            description: 'Invalid credentials',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    error: { type: 'string', example: 'Invalid email or password' }
+                  }
+                }
+              }
+            }
+          }
         }
       }
     },
@@ -70,6 +255,7 @@ const apiDocs = {
       post: {
         tags: ['Authentication'],
         summary: 'Refresh access token',
+        description: 'Exchange a valid refresh token for a new access token pair.',
         requestBody: {
           required: true,
           content: {
@@ -78,14 +264,28 @@ const apiDocs = {
                 type: 'object',
                 required: ['refreshToken'],
                 properties: {
-                  refreshToken: { type: 'string' }
+                  refreshToken: { type: 'string', example: 'eyJhbGciOiJIUzI1NiIs...' }
                 }
               }
             }
           }
         },
         responses: {
-          '200': { description: 'New tokens returned' },
+          '200': {
+            description: 'New tokens returned',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    message: { type: 'string', example: 'Token refreshed' },
+                    accessToken: { type: 'string', example: 'eyJhbGciOiJIUzI1NiIs...' },
+                    refreshToken: { type: 'string', example: 'eyJhbGciOiJIUzI1NiIs...' }
+                  }
+                }
+              }
+            }
+          },
           '401': { description: 'Invalid or expired refresh token' }
         }
       }
@@ -94,7 +294,8 @@ const apiDocs = {
       post: {
         tags: ['Authentication'],
         summary: 'Logout user',
-        security: [{ bearerAuth: [] }],
+        description: 'Invalidate the current session or all sessions.',
+        security: [{ bearerAuth: [] }, { apiKey: [] }],
         requestBody: {
           content: {
             'application/json': {
@@ -108,7 +309,19 @@ const apiDocs = {
           }
         },
         responses: {
-          '200': { description: 'Logged out successfully' }
+          '200': {
+            description: 'Logged out successfully',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    message: { type: 'string', example: 'Logged out successfully' }
+                  }
+                }
+              }
+            }
+          }
         }
       }
     },
@@ -116,9 +329,40 @@ const apiDocs = {
       get: {
         tags: ['Authentication'],
         summary: 'Get current user',
-        security: [{ bearerAuth: [] }],
+        description: 'Retrieve the authenticated user\'s profile and preferences.',
+        security: [{ bearerAuth: [] }, { apiKey: [] }],
         responses: {
-          '200': { description: 'Returns user info and preferences' },
+          '200': {
+            description: 'User info and preferences',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    user: {
+                      type: 'object',
+                      properties: {
+                        id: { type: 'string', example: 'uuid-here' },
+                        email: { type: 'string', example: 'user@example.com' },
+                        displayName: { type: 'string', example: 'John Doe' },
+                        isAdmin: { type: 'boolean', example: false },
+                        storagePreference: { type: 'string', example: 'server' }
+                      }
+                    },
+                    preferences: {
+                      type: 'object',
+                      nullable: true,
+                      properties: {
+                        gender: { type: 'string', example: 'female' },
+                        preferredLength: { type: 'string', example: 'moderate' },
+                        preferredStyle: { type: 'string', example: 'thoughtful' }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
           '401': { description: 'Not authenticated' }
         }
       }
@@ -127,8 +371,53 @@ const apiDocs = {
       post: {
         tags: ['Chat'],
         summary: 'Send message (streaming)',
-        description: 'Send a message and receive streaming SSE response from AI companion.',
-        security: [{ bearerAuth: [] }],
+        description: `Send a message and receive a streaming SSE response from the AI companion.
+
+**Rate Limits:**
+- Free tier: 50 calls/month
+- Unlimited tier: No limits
+
+**Example (curl):**
+\`\`\`bash
+curl -X POST "https://api.abionti.com/api/chat" \\
+  -H "Content-Type: application/json" \\
+  -H "X-API-Key: your-api-key" \\
+  -d '{"message": "Hello, how are you?", "preferences": {"length": "moderate", "style": "casual"}}'
+\`\`\`
+
+**Example (Node.js with streaming):**
+\`\`\`javascript
+const response = await fetch('https://api.abionti.com/api/chat', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    'X-API-Key': 'your-api-key'
+  },
+  body: JSON.stringify({
+    message: 'Hello, how are you?',
+    preferences: { length: 'moderate', style: 'casual' }
+  })
+});
+
+const reader = response.body.getReader();
+const decoder = new TextDecoder();
+
+while (true) {
+  const { done, value } = await reader.read();
+  if (done) break;
+  
+  const lines = decoder.decode(value).split('\\n');
+  for (const line of lines) {
+    if (line.startsWith('data: ')) {
+      const data = JSON.parse(line.slice(6));
+      if (data.type === 'text') {
+        process.stdout.write(data.content);
+      }
+    }
+  }
+}
+\`\`\``,
+        security: [{ bearerAuth: [] }, { apiKey: [] }],
         requestBody: {
           required: true,
           content: {
@@ -142,18 +431,45 @@ const apiDocs = {
                   preferences: {
                     type: 'object',
                     properties: {
-                      length: { type: 'string', enum: ['brief', 'moderate', 'detailed'] },
-                      style: { type: 'string', enum: ['casual', 'thoughtful', 'creative'] }
+                      length: { type: 'string', enum: ['brief', 'moderate', 'detailed'], description: 'Response length preference' },
+                      style: { type: 'string', enum: ['casual', 'thoughtful', 'creative'], description: 'Response style preference' }
                     }
                   },
-                  storeLocally: { type: 'boolean', default: false }
+                  storeLocally: { type: 'boolean', default: false, description: 'If true, conversation is not stored on server' }
                 }
               }
             }
           }
         },
         responses: {
-          '200': { description: 'SSE stream with text chunks and done event' }
+          '200': {
+            description: 'SSE stream with text chunks',
+            content: {
+              'text/event-stream': {
+                schema: {
+                  type: 'string',
+                  example: 'data: {"type":"text","content":"Hello"}\n\ndata: {"type":"text","content":"!"}\n\ndata: {"type":"done","conversationId":"uuid"}\n\n'
+                }
+              }
+            }
+          },
+          '403': {
+            description: 'Rate limit exceeded',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    error: { type: 'string', example: 'Message limit reached' },
+                    message: { type: 'string', example: 'All used up, please subscribe for unlimited messages.' },
+                    limit: { type: 'integer', example: 50 },
+                    used: { type: 'integer', example: 50 },
+                    resetsAt: { type: 'string', format: 'date-time' }
+                  }
+                }
+              }
+            }
+          }
         }
       }
     },
@@ -161,8 +477,8 @@ const apiDocs = {
       post: {
         tags: ['Chat'],
         summary: 'Send message (non-streaming)',
-        description: 'Send a message and receive full response.',
-        security: [{ bearerAuth: [] }],
+        description: 'Send a message and receive the complete response in a single JSON payload.',
+        security: [{ bearerAuth: [] }, { apiKey: [] }],
         requestBody: {
           required: true,
           content: {
@@ -171,7 +487,7 @@ const apiDocs = {
                 type: 'object',
                 required: ['message'],
                 properties: {
-                  message: { type: 'string', maxLength: 10000 },
+                  message: { type: 'string', maxLength: 10000, example: 'Tell me a joke' },
                   preferences: {
                     type: 'object',
                     properties: {
@@ -185,7 +501,22 @@ const apiDocs = {
           }
         },
         responses: {
-          '200': { description: 'Full response with model info' }
+          '200': {
+            description: 'Complete response',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    response: { type: 'string', example: 'Why did the AI go to therapy? Because it had too many deep learning issues!' },
+                    model: { type: 'string', example: 'llama3.2' },
+                    length: { type: 'string', example: 'moderate' },
+                    style: { type: 'string', example: 'casual' }
+                  }
+                }
+              }
+            }
+          }
         }
       }
     },
@@ -193,8 +524,26 @@ const apiDocs = {
       get: {
         tags: ['Chat'],
         summary: 'Get companion config',
+        description: 'Retrieve the AI companion configuration including name, defaults, and welcome message.',
         responses: {
-          '200': { description: 'Companion name, defaults, and welcome message' }
+          '200': {
+            description: 'Companion configuration',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    name: { type: 'string', example: 'Aura' },
+                    defaultGender: { type: 'string', example: 'female' },
+                    defaultLength: { type: 'string', example: 'moderate' },
+                    defaultStyle: { type: 'string', example: 'thoughtful' },
+                    welcomeTitle: { type: 'string', example: 'Welcome' },
+                    welcomeMessage: { type: 'string', example: 'Hello! I\'m here to chat.' }
+                  }
+                }
+              }
+            }
+          }
         }
       }
     },
@@ -202,9 +551,46 @@ const apiDocs = {
       get: {
         tags: ['Conversations'],
         summary: 'List conversations',
-        security: [{ bearerAuth: [] }],
+        description: `Retrieve all conversations for the authenticated user.
+
+**Example (curl):**
+\`\`\`bash
+curl -X GET "https://api.abionti.com/api/conversations" \\
+  -H "Authorization: Bearer your-jwt-token"
+\`\`\`
+
+**Example (Node.js):**
+\`\`\`javascript
+const response = await fetch('https://api.abionti.com/api/conversations', {
+  headers: {
+    'Authorization': 'Bearer ' + accessToken
+  }
+});
+const conversations = await response.json();
+console.log(conversations);
+\`\`\``,
+        security: [{ bearerAuth: [] }, { apiKey: [] }],
         responses: {
-          '200': { description: 'Array of user conversations' }
+          '200': {
+            description: 'Array of conversations',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'array',
+                  items: {
+                    type: 'object',
+                    properties: {
+                      id: { type: 'string', example: 'conv-uuid-here' },
+                      userId: { type: 'string', example: 'user-uuid-here' },
+                      title: { type: 'string', example: 'Hello, how are you?' },
+                      createdAt: { type: 'string', format: 'date-time' },
+                      updatedAt: { type: 'string', format: 'date-time' }
+                    }
+                  }
+                }
+              }
+            }
+          }
         }
       }
     },
@@ -212,24 +598,69 @@ const apiDocs = {
       get: {
         tags: ['Conversations'],
         summary: 'Get conversation with messages',
-        security: [{ bearerAuth: [] }],
+        description: 'Retrieve a specific conversation including all its messages.',
+        security: [{ bearerAuth: [] }, { apiKey: [] }],
         parameters: [
-          { name: 'id', in: 'path', required: true, schema: { type: 'string' } }
+          { name: 'id', in: 'path', required: true, schema: { type: 'string' }, description: 'Conversation ID' }
         ],
         responses: {
-          '200': { description: 'Conversation with messages' },
+          '200': {
+            description: 'Conversation with messages',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    conversation: {
+                      type: 'object',
+                      properties: {
+                        id: { type: 'string' },
+                        title: { type: 'string' },
+                        createdAt: { type: 'string', format: 'date-time' }
+                      }
+                    },
+                    messages: {
+                      type: 'array',
+                      items: {
+                        type: 'object',
+                        properties: {
+                          id: { type: 'string' },
+                          role: { type: 'string', enum: ['user', 'assistant'] },
+                          content: { type: 'string' },
+                          createdAt: { type: 'string', format: 'date-time' }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
           '404': { description: 'Conversation not found' }
         }
       },
       delete: {
         tags: ['Conversations'],
         summary: 'Delete conversation',
-        security: [{ bearerAuth: [] }],
+        description: 'Permanently delete a conversation and all its messages.',
+        security: [{ bearerAuth: [] }, { apiKey: [] }],
         parameters: [
-          { name: 'id', in: 'path', required: true, schema: { type: 'string' } }
+          { name: 'id', in: 'path', required: true, schema: { type: 'string' }, description: 'Conversation ID' }
         ],
         responses: {
-          '200': { description: 'Deleted successfully' }
+          '200': {
+            description: 'Deleted successfully',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    message: { type: 'string', example: 'Conversation deleted' }
+                  }
+                }
+              }
+            }
+          }
         }
       }
     },
@@ -237,15 +668,32 @@ const apiDocs = {
       get: {
         tags: ['Settings'],
         summary: 'Get user preferences',
-        security: [{ bearerAuth: [] }],
+        security: [{ bearerAuth: [] }, { apiKey: [] }],
         responses: {
-          '200': { description: 'User preferences' }
+          '200': {
+            description: 'User preferences',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    gender: { type: 'string', example: 'female' },
+                    customGender: { type: 'string', nullable: true },
+                    preferredLength: { type: 'string', example: 'moderate' },
+                    preferredStyle: { type: 'string', example: 'thoughtful' },
+                    themeHue: { type: 'integer', example: 200 },
+                    useOrangeAccent: { type: 'boolean', example: false }
+                  }
+                }
+              }
+            }
+          }
         }
       },
       put: {
         tags: ['Settings'],
         summary: 'Update user preferences',
-        security: [{ bearerAuth: [] }],
+        security: [{ bearerAuth: [] }, { apiKey: [] }],
         requestBody: {
           content: {
             'application/json': {
@@ -385,7 +833,20 @@ const apiDocs = {
         tags: ['Health'],
         summary: 'Basic health check',
         responses: {
-          '200': { description: 'Server status' }
+          '200': {
+            description: 'Server status',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    status: { type: 'string', example: 'ok' },
+                    timestamp: { type: 'string', format: 'date-time' }
+                  }
+                }
+              }
+            }
+          }
         }
       }
     },
@@ -495,7 +956,14 @@ const apiDocs = {
       bearerAuth: {
         type: 'http',
         scheme: 'bearer',
-        bearerFormat: 'JWT'
+        bearerFormat: 'JWT',
+        description: 'JWT Bearer token obtained from /api/auth/login'
+      },
+      apiKey: {
+        type: 'apiKey',
+        in: 'header',
+        name: 'X-API-Key',
+        description: 'API key obtained from dashboard after subscribing'
       }
     }
   }
@@ -506,13 +974,124 @@ const swaggerHtml = `<!DOCTYPE html>
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Terminal Companion API - Documentation</title>
+  <title>Abionti Unrestricted API - Documentation</title>
   <link rel="stylesheet" href="https://unpkg.com/swagger-ui-dist@5.9.0/swagger-ui.css">
   <style>
-    body { margin: 0; padding: 0; }
+    body { 
+      margin: 0; 
+      padding: 0; 
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+      min-height: 100vh;
+    }
     .swagger-ui .topbar { display: none; }
-    .swagger-ui .info { margin: 20px 0; }
-    .swagger-ui .info .title { color: #3b4151; }
+    .swagger-ui .info { margin: 30px 0; }
+    .swagger-ui .info .title { 
+      color: #e94560; 
+      font-size: 2.5rem;
+      font-weight: 700;
+    }
+    .swagger-ui .info .description { 
+      color: #eaeaea;
+    }
+    .swagger-ui .info .description p { 
+      color: #b8b8b8;
+      line-height: 1.6;
+    }
+    .swagger-ui .info .description h1,
+    .swagger-ui .info .description h2,
+    .swagger-ui .info .description h3 { 
+      color: #e94560;
+      border-bottom: 1px solid #e94560;
+      padding-bottom: 8px;
+    }
+    .swagger-ui .info .description code { 
+      background: #1a1a2e;
+      color: #00d9ff;
+      padding: 2px 6px;
+      border-radius: 4px;
+    }
+    .swagger-ui .info .description pre { 
+      background: #1a1a2e;
+      border: 1px solid #333;
+      border-radius: 8px;
+      padding: 16px;
+    }
+    .swagger-ui .info .description pre code { 
+      background: transparent;
+      color: #00ff88;
+    }
+    .swagger-ui .info .description table {
+      border-collapse: collapse;
+      width: 100%;
+      margin: 16px 0;
+    }
+    .swagger-ui .info .description th,
+    .swagger-ui .info .description td {
+      border: 1px solid #444;
+      padding: 12px;
+      text-align: left;
+    }
+    .swagger-ui .info .description th {
+      background: #e94560;
+      color: white;
+    }
+    .swagger-ui .info .description td {
+      background: #1a1a2e;
+    }
+    .swagger-ui .scheme-container { 
+      background: #16213e; 
+      box-shadow: none;
+    }
+    .swagger-ui .opblock-tag { 
+      color: #eaeaea;
+      border-bottom: 1px solid #333;
+    }
+    .swagger-ui .opblock { 
+      background: #16213e;
+      border-color: #333;
+    }
+    .swagger-ui .opblock .opblock-summary { 
+      border-color: #333;
+    }
+    .swagger-ui .opblock .opblock-summary-description { 
+      color: #b8b8b8;
+    }
+    .swagger-ui .opblock.opblock-post { 
+      border-color: #49cc90;
+      background: rgba(73, 204, 144, 0.1);
+    }
+    .swagger-ui .opblock.opblock-get { 
+      border-color: #61affe;
+      background: rgba(97, 175, 254, 0.1);
+    }
+    .swagger-ui .opblock.opblock-delete { 
+      border-color: #f93e3e;
+      background: rgba(249, 62, 62, 0.1);
+    }
+    .swagger-ui .opblock.opblock-put { 
+      border-color: #fca130;
+      background: rgba(252, 161, 48, 0.1);
+    }
+    .swagger-ui .btn { 
+      border-radius: 4px;
+    }
+    .swagger-ui .btn.authorize { 
+      background: #e94560;
+      border-color: #e94560;
+      color: white;
+    }
+    .swagger-ui .btn.authorize:hover { 
+      background: #c73a52;
+    }
+    .swagger-ui section.models { 
+      border-color: #333;
+    }
+    .swagger-ui .model-container { 
+      background: #16213e;
+    }
+    .swagger-ui .wrapper { 
+      max-width: 1400px;
+    }
   </style>
 </head>
 <body>
@@ -530,7 +1109,13 @@ const swaggerHtml = `<!DOCTYPE html>
         layout: "BaseLayout",
         deepLinking: true,
         showExtensions: true,
-        showCommonExtensions: true
+        showCommonExtensions: true,
+        defaultModelsExpandDepth: 1,
+        defaultModelExpandDepth: 1,
+        docExpansion: 'list',
+        filter: true,
+        tagsSorter: 'alpha',
+        operationsSorter: 'alpha'
       });
     };
   </script>
