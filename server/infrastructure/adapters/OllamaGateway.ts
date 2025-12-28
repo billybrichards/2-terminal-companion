@@ -217,8 +217,8 @@ export function getOllamaGateway(): OllamaGateway {
     ollamaGateway = new OllamaGateway({
       baseUrl: process.env.OLLAMA_BASE_URL || 'http://localhost:11434',
       apiKey: process.env.OLLAMA_API_KEY || '',
-      generalModel: process.env.OLLAMA_GENERAL_MODEL || 'darkplanet-general:latest',
-      longFormModel: process.env.OLLAMA_LONGFORM_MODEL || 'dolphin-mixtral:latest',
+      generalModel: process.env.OLLAMA_GENERAL_MODEL || 'darkplanet',
+      longFormModel: process.env.OLLAMA_LONGFORM_MODEL || 'darkplanet',
     });
   }
   return ollamaGateway;
