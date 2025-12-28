@@ -10,6 +10,24 @@ import { eq, and, isNull, gt } from 'drizzle-orm';
 
 export const authRouter = Router();
 
+// Helper for POST-only endpoints - return helpful message for GET requests
+const postOnlyHandler = (endpoint: string) => (_req: any, res: any) => {
+  res.status(405).json({
+    error: 'Method Not Allowed',
+    message: `${endpoint} requires a POST request`,
+    method: 'POST',
+    contentType: 'application/json',
+  });
+};
+
+// GET handlers for POST-only endpoints (helpful error messages)
+authRouter.get('/register', postOnlyHandler('/api/auth/register'));
+authRouter.get('/login', postOnlyHandler('/api/auth/login'));
+authRouter.get('/forgot-password', postOnlyHandler('/api/auth/forgot-password'));
+authRouter.get('/reset-password', postOnlyHandler('/api/auth/reset-password'));
+authRouter.get('/refresh', postOnlyHandler('/api/auth/refresh'));
+authRouter.get('/logout', postOnlyHandler('/api/auth/logout'));
+
 // Validation schemas
 const registerSchema = z.object({
   email: z.string().email(),
