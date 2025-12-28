@@ -37,6 +37,7 @@ app.use(cors({
     /\.repl\.co$/,
     'http://localhost:5000',
     'http://localhost:3000',
+    'https://anplexa.com',
   ].filter(Boolean) as (string | RegExp)[],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
