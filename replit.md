@@ -59,16 +59,22 @@ npm run start            # Run compiled server
 
 ## API Endpoints
 
-### Public
+### Public Pages
 - `GET /` - Landing page with pricing and features
+- `GET /signup` - User registration page
+- `GET /login` - User login page
+- `GET /forgot-password` - Password reset request page
+- `GET /dashboard` - User dashboard (API keys, subscription, usage)
 - `GET /docs` - Swagger UI API documentation
 - `GET /release-notes` - Release notes
 
-### Authentication
+### Authentication API
 - `POST /api/auth/register` - Create new account
 - `POST /api/auth/login` - Login and get tokens
 - `POST /api/auth/refresh` - Refresh access token
 - `POST /api/auth/logout` - Logout
+- `POST /api/auth/forgot-password` - Request password reset
+- `POST /api/auth/reset-password` - Complete password reset
 - `GET /api/auth/me` - Current user info
 
 ### Chat (API key or JWT required)

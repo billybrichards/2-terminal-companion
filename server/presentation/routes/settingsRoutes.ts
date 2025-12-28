@@ -1,10 +1,11 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { db } from '../../infrastructure/database/index.js';
-import { users, userPreferences, userFeedback } from '../../../shared/schema.js';
+import { users, userPreferences, userFeedback, apiKeys, apiUsage } from '../../../shared/schema.js';
 import { authMiddleware } from '../middleware/authMiddleware.js';
-import { eq } from 'drizzle-orm';
+import { eq, and, gte, sql } from 'drizzle-orm';
 import { jwtAdapter } from '../../infrastructure/auth/JWTAdapter.js';
+import { generateApiKey } from '../../infrastructure/auth/ApiKeyGenerator.js';
 
 export const settingsRouter = Router();
 
@@ -273,5 +274,118 @@ settingsRouter.post('/feedback', async (req, res) => {
     }
     console.error('Submit feedback error:', error);
     res.status(500).json({ error: 'Failed to submit feedback' });
+  }
+});
+
+// GET /api/settings/api-key - Get user's API key (prefix only)
+settingsRouter.get('/api-key', async (req, res) => {
+  try {
+    const userId = req.user!.sub;
+
+    const existingKey = await db.query.apiKeys.findFirst({
+      where: and(
+        eq(apiKeys.userId, userId),
+        eq(apiKeys.isActive, true)
+      ),
+    });
+
+    if (!existingKey) {
+      return res.json({ apiKey: null });
+    }
+
+    res.json({
+      apiKey: {
+        id: existingKey.id,
+        name: existingKey.name,
+        keyPrefix: existingKey.keyPrefix,
+        createdAt: existingKey.createdAt,
+        lastUsedAt: existingKey.lastUsedAt,
+      },
+    });
+  } catch (error) {
+    console.error('Get API key error:', error);
+    res.status(500).json({ error: 'Failed to get API key' });
+  }
+});
+
+// POST /api/settings/api-key - Create or regenerate API key
+settingsRouter.post('/api-key', async (req, res) => {
+  try {
+    const userId = req.user!.sub;
+
+    await db.update(apiKeys)
+      .set({ isActive: false })
+      .where(eq(apiKeys.userId, userId));
+
+    const generated = await generateApiKey();
+
+    await db.insert(apiKeys).values({
+      id: jwtAdapter.generateId(),
+      name: 'Default API Key',
+      keyHash: generated.keyHash,
+      keyPrefix: generated.keyPrefix,
+      userId,
+      createdBy: userId,
+      isActive: true,
+    });
+
+    res.status(201).json({
+      message: 'API key created',
+      apiKey: {
+        key: generated.key,
+        keyPrefix: generated.keyPrefix,
+      },
+    });
+  } catch (error) {
+    console.error('Create API key error:', error);
+    res.status(500).json({ error: 'Failed to create API key' });
+  }
+});
+
+// DELETE /api/settings/api-key - Revoke API key
+settingsRouter.delete('/api-key', async (req, res) => {
+  try {
+    const userId = req.user!.sub;
+
+    await db.update(apiKeys)
+      .set({ isActive: false })
+      .where(eq(apiKeys.userId, userId));
+
+    res.json({ message: 'API key revoked' });
+  } catch (error) {
+    console.error('Delete API key error:', error);
+    res.status(500).json({ error: 'Failed to revoke API key' });
+  }
+});
+
+// GET /api/settings/usage - Get API usage for current month
+settingsRouter.get('/usage', async (req, res) => {
+  try {
+    const userId = req.user!.sub;
+
+    const startOfMonth = new Date();
+    startOfMonth.setDate(1);
+    startOfMonth.setHours(0, 0, 0, 0);
+
+    const usageResult = await db.select({
+      count: sql<number>`count(*)`,
+    })
+      .from(apiUsage)
+      .where(
+        and(
+          eq(apiUsage.userId, userId),
+          gte(apiUsage.createdAt, startOfMonth.toISOString())
+        )
+      );
+
+    const callsThisMonth = usageResult[0]?.count || 0;
+
+    res.json({
+      callsThisMonth,
+      monthStart: startOfMonth.toISOString(),
+    });
+  } catch (error) {
+    console.error('Get usage error:', error);
+    res.status(500).json({ error: 'Failed to get usage' });
   }
 });
