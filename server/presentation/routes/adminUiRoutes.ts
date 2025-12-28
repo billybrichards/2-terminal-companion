@@ -149,6 +149,18 @@ const darkThemeStyles = `
   .badge-success { background: #28a745; color: white; }
   .badge-warning { background: #ffc107; color: #000; }
   .badge-secondary { background: #6c757d; color: white; }
+  .badge-api { background: #ff6b35; color: white; }
+  .filter-tabs { margin-bottom: 20px; display: flex; gap: 10px; }
+  .filter-tab { 
+    padding: 8px 16px; 
+    background: #1a1a1a; 
+    border: 1px solid #333; 
+    border-radius: 4px; 
+    color: #e0e0e0;
+    text-decoration: none;
+  }
+  .filter-tab:hover { border-color: #ff6b35; text-decoration: none; }
+  .filter-tab.active { background: #ff6b35; color: #0a0a0a; border-color: #ff6b35; }
 `;
 
 function layout(title: string, content: string, showNav: boolean = true): string {
@@ -252,12 +264,35 @@ adminUiRouter.get('/dashboard', async (req: Request, res: Response) => {
     const allConversations = await db.query.conversations.findMany();
     const allApiKeys = await db.query.apiKeys.findMany();
 
+    const frontendUsers = allUsers.filter((u: any) => u.accountSource !== 'api').length;
+    const apiUsers = allUsers.filter((u: any) => u.accountSource === 'api').length;
+
     const html = layout('Dashboard', `
       <h1>Dashboard</h1>
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin: 20px 0;">
+        <div class="card" style="text-align: center;">
+          <div style="font-size: 36px; color: #ff6b35; font-weight: bold;">${allUsers.length}</div>
+          <div style="color: #888; margin-top: 5px;">Total Users</div>
+        </div>
+        <div class="card" style="text-align: center;">
+          <div style="font-size: 36px; color: #6c757d; font-weight: bold;">${frontendUsers}</div>
+          <div style="color: #888; margin-top: 5px;">Frontend Users</div>
+        </div>
+        <div class="card" style="text-align: center;">
+          <div style="font-size: 36px; color: #ff6b35; font-weight: bold;">${apiUsers}</div>
+          <div style="color: #888; margin-top: 5px;">API Users</div>
+        </div>
+        <div class="card" style="text-align: center;">
+          <div style="font-size: 36px; color: #ff6b35; font-weight: bold;">${allApiKeys.filter((k: any) => k.isActive).length}</div>
+          <div style="color: #888; margin-top: 5px;">Active API Keys</div>
+        </div>
+      </div>
       <div class="card">
         <h2>Statistics</h2>
         <table>
           <tr><td>Total Users</td><td>${allUsers.length}</td></tr>
+          <tr><td>Frontend Users</td><td><span class="badge badge-secondary">${frontendUsers}</span></td></tr>
+          <tr><td>API Users</td><td><span class="badge badge-api">${apiUsers}</span></td></tr>
           <tr><td>Total Conversations</td><td>${allConversations.length}</td></tr>
           <tr><td>Active API Keys</td><td>${allApiKeys.filter((k: any) => k.isActive).length}</td></tr>
         </table>
@@ -265,6 +300,8 @@ adminUiRouter.get('/dashboard', async (req: Request, res: Response) => {
       <div class="card">
         <h2>Quick Links</h2>
         <p><a href="/admin/users">Manage Users</a> - View and update user accounts</p>
+        <p><a href="/admin/users?source=frontend">Frontend Users</a> - View users registered via frontend</p>
+        <p><a href="/admin/users?source=api">API Users</a> - View users created via API</p>
         <p><a href="/admin/api-keys">API Keys</a> - Generate and manage API keys</p>
       </div>
     `);
@@ -280,17 +317,36 @@ adminUiRouter.get('/users', async (req: Request, res: Response) => {
   if (!requireAuth(req, res)) return;
 
   try {
-    const allUsers = await db.query.users.findMany({
+    const sourceFilter = req.query.source as string | undefined;
+    
+    let allUsers = await db.query.users.findMany({
       orderBy: [desc(users.createdAt)],
     });
+
+    const totalCount = allUsers.length;
+    const frontendCount = allUsers.filter((u: any) => u.accountSource !== 'api').length;
+    const apiCount = allUsers.filter((u: any) => u.accountSource === 'api').length;
+
+    if (sourceFilter === 'frontend') {
+      allUsers = allUsers.filter((u: any) => u.accountSource !== 'api');
+    } else if (sourceFilter === 'api') {
+      allUsers = allUsers.filter((u: any) => u.accountSource === 'api');
+    }
 
     const success = req.query.success ? '<div class="success">User updated successfully</div>' : '';
     const deleted = req.query.deleted ? '<div class="success">User deleted successfully</div>' : '';
 
-    const userRows = allUsers.map((user: any) => `
+    const userRows = allUsers.map((user: any) => {
+      const isApiUser = user.accountSource === 'api';
+      return `
       <tr>
         <td>${user.email}</td>
         <td>${user.displayName || '-'}</td>
+        <td>
+          <span class="badge ${isApiUser ? 'badge-api' : 'badge-secondary'}">
+            ${isApiUser ? 'API' : 'Frontend'}
+          </span>
+        </td>
         <td>
           <span class="badge ${user.subscriptionStatus === 'subscribed' ? 'badge-success' : 'badge-secondary'}">
             ${user.subscriptionStatus || 'not_subscribed'}
@@ -313,16 +369,22 @@ adminUiRouter.get('/users', async (req: Request, res: Response) => {
           </form>
         </td>
       </tr>
-    `).join('');
+    `}).join('');
 
     const html = layout('Users', `
       <h1>User Management</h1>
       ${success}${deleted}
+      <div class="filter-tabs">
+        <a href="/admin/users" class="filter-tab ${!sourceFilter ? 'active' : ''}">All (${totalCount})</a>
+        <a href="/admin/users?source=frontend" class="filter-tab ${sourceFilter === 'frontend' ? 'active' : ''}">Frontend (${frontendCount})</a>
+        <a href="/admin/users?source=api" class="filter-tab ${sourceFilter === 'api' ? 'active' : ''}">API (${apiCount})</a>
+      </div>
       <table>
         <thead>
           <tr>
             <th>Email</th>
             <th>Display Name</th>
+            <th>Account Type</th>
             <th>Subscription</th>
             <th>Credits</th>
             <th>Admin</th>
@@ -330,7 +392,7 @@ adminUiRouter.get('/users', async (req: Request, res: Response) => {
           </tr>
         </thead>
         <tbody>
-          ${userRows || '<tr><td colspan="6">No users found</td></tr>'}
+          ${userRows || '<tr><td colspan="7">No users found</td></tr>'}
         </tbody>
       </table>
     `);

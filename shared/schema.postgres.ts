@@ -116,6 +116,16 @@ export const sessions = pgTable('sessions', {
   createdAt: text('created_at').default('CURRENT_TIMESTAMP'),
 });
 
+// Password reset tokens
+export const passwordResetTokens = pgTable('password_reset_tokens', {
+  id: text('id').primaryKey(),
+  userId: text('user_id').references(() => users.id).notNull(),
+  tokenHash: text('token_hash').notNull(),
+  expiresAt: text('expires_at').notNull(),
+  usedAt: text('used_at'),
+  createdAt: text('created_at').default('CURRENT_TIMESTAMP'),
+});
+
 // User preferences (overrides companion defaults)
 export const userPreferences = pgTable('user_preferences', {
   id: text('id').primaryKey(),
@@ -218,3 +228,4 @@ export type UserFeedback = typeof userFeedback.$inferSelect;
 export type ApiKey = typeof apiKeys.$inferSelect;
 export type ApiUsage = typeof apiUsage.$inferSelect;
 export type ApiUsageDaily = typeof apiUsageDaily.$inferSelect;
+export type PasswordResetToken = typeof passwordResetTokens.$inferSelect;

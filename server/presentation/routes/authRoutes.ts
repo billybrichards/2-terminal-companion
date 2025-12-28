@@ -1,11 +1,12 @@
 import { Router } from 'express';
 import { z } from 'zod';
+import crypto from 'crypto';
 import { db } from '../../infrastructure/database/index.js';
-import { users, sessions, userPreferences } from '../../../shared/schema.js';
+import { users, sessions, userPreferences, passwordResetTokens } from '../../../shared/schema.js';
 import { jwtAdapter } from '../../infrastructure/auth/JWTAdapter.js';
 import { authMiddleware } from '../middleware/authMiddleware.js';
 import { authRateLimiter, registrationRateLimiter } from '../middleware/rateLimitMiddleware.js';
-import { eq } from 'drizzle-orm';
+import { eq, and, isNull, gt } from 'drizzle-orm';
 
 export const authRouter = Router();
 
@@ -19,6 +20,15 @@ const registerSchema = z.object({
 const loginSchema = z.object({
   email: z.string().email(),
   password: z.string(),
+});
+
+const forgotPasswordSchema = z.object({
+  email: z.string().email(),
+});
+
+const resetPasswordSchema = z.object({
+  token: z.string(),
+  newPassword: z.string().min(6),
 });
 
 // POST /api/auth/register
@@ -246,5 +256,109 @@ authRouter.get('/me', authMiddleware, async (req, res) => {
   } catch (error) {
     console.error('Get user error:', error);
     res.status(500).json({ error: 'Failed to get user' });
+  }
+});
+
+// POST /api/auth/forgot-password
+authRouter.post('/forgot-password', authRateLimiter, async (req, res) => {
+  try {
+    const body = forgotPasswordSchema.parse(req.body);
+
+    // Find user by email
+    const user = await db.query.users.findFirst({
+      where: eq(users.email, body.email),
+    });
+
+    // Always return success message to prevent email enumeration
+    const successMessage = 'If an account exists with this email, a password reset link has been sent';
+
+    if (!user) {
+      return res.json({ message: successMessage });
+    }
+
+    // Generate a secure random token
+    const token = crypto.randomBytes(32).toString('hex');
+
+    // Hash the token before storing
+    const tokenHash = await jwtAdapter.hashPassword(token);
+
+    // Set expiry to 1 hour from now
+    const expiresAt = new Date(Date.now() + 60 * 60 * 1000).toISOString();
+
+    // Store the token
+    await db.insert(passwordResetTokens).values({
+      id: jwtAdapter.generateId(),
+      userId: user.id,
+      tokenHash,
+      expiresAt,
+    });
+
+    // Return success with token (in production, this would be emailed)
+    res.json({
+      message: successMessage,
+      token, // Only for development - remove in production
+    });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({ error: 'Validation error', details: error.errors });
+    }
+    console.error('Forgot password error:', error);
+    res.status(500).json({ error: 'Password reset request failed' });
+  }
+});
+
+// POST /api/auth/reset-password
+authRouter.post('/reset-password', authRateLimiter, async (req, res) => {
+  try {
+    const body = resetPasswordSchema.parse(req.body);
+
+    // Find all non-expired, unused tokens
+    const now = new Date().toISOString();
+    const resetTokens = await db.select()
+      .from(passwordResetTokens)
+      .where(
+        and(
+          isNull(passwordResetTokens.usedAt),
+          gt(passwordResetTokens.expiresAt, now)
+        )
+      );
+
+    // Find matching token by verifying hash
+    let validToken = null;
+    for (const resetToken of resetTokens) {
+      const isMatch = await jwtAdapter.verifyPassword(body.token, resetToken.tokenHash);
+      if (isMatch) {
+        validToken = resetToken;
+        break;
+      }
+    }
+
+    if (!validToken) {
+      return res.status(400).json({ error: 'Invalid or expired reset token' });
+    }
+
+    // Hash the new password
+    const passwordHash = await jwtAdapter.hashPassword(body.newPassword);
+
+    // Update user's password
+    await db.update(users)
+      .set({ passwordHash, updatedAt: new Date().toISOString() })
+      .where(eq(users.id, validToken.userId));
+
+    // Mark token as used
+    await db.update(passwordResetTokens)
+      .set({ usedAt: new Date().toISOString() })
+      .where(eq(passwordResetTokens.id, validToken.id));
+
+    // Delete all user sessions (force re-login)
+    await db.delete(sessions).where(eq(sessions.userId, validToken.userId));
+
+    res.json({ message: 'Password reset successful' });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({ error: 'Validation error', details: error.errors });
+    }
+    console.error('Reset password error:', error);
+    res.status(500).json({ error: 'Password reset failed' });
   }
 });
