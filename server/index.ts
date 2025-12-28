@@ -17,6 +17,7 @@ import { adminUiRouter } from './presentation/routes/adminUiRoutes.js';
 import { healthRouter } from './presentation/routes/healthRoutes.js';
 import { docsRouter } from './presentation/routes/docsRoutes.js';
 import { webhookRouter } from './presentation/routes/webhookRoutes.js';
+import { releaseNotesRouter } from './presentation/routes/releaseNotesRoutes.js';
 import { apiKeyMiddleware, optionalApiKeyMiddleware } from './presentation/middleware/apiKeyMiddleware.js';
 
 const app = express();
@@ -24,14 +25,31 @@ const PORT = process.env.PORT || 5000;
 
 // Middleware - CORS must be first to handle preflight requests
 app.use(cors({
-  origin: true,
+  origin: [
+    process.env.FRONTEND_URL,
+    /\.replit\.dev$/,
+    /\.repl\.co$/,
+    'http://localhost:5000',
+    'http://localhost:3000',
+  ].filter(Boolean) as (string | RegExp)[],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Webhook-Secret', 'X-API-Key'],
 }));
 app.use(helmet({
-  contentSecurityPolicy: false,
-  crossOriginResourcePolicy: false,
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'", "'unsafe-inline'"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      imgSrc: ["'self'", "data:", "https:"],
+      connectSrc: ["'self'", process.env.OLLAMA_BASE_URL || ''].filter(Boolean),
+      fontSrc: ["'self'"],
+      objectSrc: ["'none'"],
+      frameAncestors: ["'self'"],
+    },
+  },
+  crossOriginResourcePolicy: { policy: "cross-origin" },
 }));
 app.use(cookieParser());
 app.use(express.json({ limit: '10mb' }));
@@ -47,6 +65,7 @@ app.use('/api/health', healthRouter);
 app.use('/api/webhooks', webhookRouter);
 app.use('/docs', docsRouter);
 app.use('/admin', adminUiRouter);
+app.use('/release-notes', releaseNotesRouter);
 
 // Root endpoint
 app.get('/', (req, res) => {

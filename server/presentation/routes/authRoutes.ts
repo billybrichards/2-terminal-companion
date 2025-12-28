@@ -4,6 +4,7 @@ import { db } from '../../infrastructure/database/index.js';
 import { users, sessions, userPreferences } from '../../../shared/schema.js';
 import { jwtAdapter } from '../../infrastructure/auth/JWTAdapter.js';
 import { authMiddleware } from '../middleware/authMiddleware.js';
+import { authRateLimiter, registrationRateLimiter } from '../middleware/rateLimitMiddleware.js';
 import { eq } from 'drizzle-orm';
 
 export const authRouter = Router();
@@ -21,7 +22,7 @@ const loginSchema = z.object({
 });
 
 // POST /api/auth/register
-authRouter.post('/register', async (req, res) => {
+authRouter.post('/register', registrationRateLimiter, async (req, res) => {
   try {
     const body = registerSchema.parse(req.body);
 
@@ -87,7 +88,7 @@ authRouter.post('/register', async (req, res) => {
 });
 
 // POST /api/auth/login
-authRouter.post('/login', async (req, res) => {
+authRouter.post('/login', authRateLimiter, async (req, res) => {
   try {
     const body = loginSchema.parse(req.body);
 

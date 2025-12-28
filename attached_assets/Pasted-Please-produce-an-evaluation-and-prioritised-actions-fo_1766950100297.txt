@@ -1,0 +1,575 @@
+Please produce an evaluation and prioritised actions for this repo Here's a detailed cybersecurity evaluation prompt tailored specifically for Replit projects:
+Comprehensive Replit Security Evaluation Prompt
+
+You are a senior application security engineer conducting a thorough security assessment of a Replit-hosted project. Evaluate all security dimensions specific to the Replit platform, the application code, and deployment configuration.
+
+Project Details:
+- Repl Name: [NAME]
+- Language/Framework: [e.g., Python/Flask, Node/Express, etc.]
+- Repl Visibility: [Public / Private]
+- Deployment Type: [Development only / Autoscale / Static / Reserved VM]
+- Database: [Replit DB / PostgreSQL / External / None]
+- Authentication: [Replit Auth / Custom / Third-party / None]
+- External Integrations: [List APIs, services, webhooks]
+- Team Size: [Solo / Team with X members]
+
+Conduct a systematic evaluation covering all security domains below. For each finding, provide:
+1. Severity (Critical / High / Medium / Low / Informational)
+2. Exploitation difficulty
+3. Business impact
+4. Specific remediation steps for Replit environment
+5. Code examples where applicable
+
+1. SECRETS & ENVIRONMENT CONFIGURATION
+
+Evaluate:
+
+Review all secret handling practices:
+
+□ Secrets Tool Usage
+  - Are ALL sensitive values stored in Replit Secrets (Tools → Secrets)?
+  - Are there hardcoded credentials in any files?
+  - Search patterns: API keys, passwords, tokens, connection strings
+  
+□ Files to Scan for Exposed Secrets
+  - .replit
+  - replit.nix
+  - .env files (should NOT exist - use Secrets tool instead)
+  - config.*, settings.*, constants.*
+  - Any JSON/YAML configuration files
+  - Database seed files
+  - Test files with real credentials
+  - Git history (if connected to GitHub)
+  
+□ Secret Patterns to Grep
+  - /[A-Za-z0-9_]{20,}/ (generic API keys)
+  - /sk[-_]live[-_][A-Za-z0-9]+/ (Stripe)
+  - /ghp_[A-Za-z0-9]{36}/ (GitHub PAT)
+  - /xox[baprs]-[A-Za-z0-9-]+/ (Slack)
+  - /mongodb\+srv:\/\/[^:]+:[^@]+@/ (MongoDB)
+  - /postgres:\/\/[^:]+:[^@]+@/ (PostgreSQL)
+  - /Bearer\s+[A-Za-z0-9\-._~+\/]+=*/ (JWT/Bearer tokens)
+  - /-----BEGIN (RSA |EC )?PRIVATE KEY-----/
+
+□ Environment Variable Hygiene
+  - Are secrets accessed via os.environ / process.env correctly?
+  - Is there fallback to insecure defaults if env var missing?
+  - Are secrets logged anywhere (console.log, print, logging)?
+
+Replit-Specific Risks:
+
+    Public repls expose ALL code - secrets in code are immediately compromised
+    Forked repls may retain secrets from original
+    Replit Secrets are not available during build phase (only runtime)
+    .env files are visible in public repls unlike Secrets tool
+
+Remediation Template:
+
+# BAD - Never do this
+API_KEY = "sk-live-abc123..."
+db_password = "supersecret"
+
+# GOOD - Use Replit Secrets
+import os
+API_KEY = os.environ.get('API_KEY')
+if not API_KEY:
+    raise EnvironmentError("API_KEY secret not configured")
+
+2. REPLIT CONFIGURATION SECURITY
+
+Evaluate .replit file:
+
+# Review these settings:
+
+[deployment]
+run = ["sh", "-c", "..."]  # Is the run command secure?
+deploymentTarget = "cloudrun"  # Appropriate deployment type?
+
+[[ports]]
+localPort = 3000
+externalPort = 80  # Is this intentionally exposed?
+
+[env]
+# Are there any secrets here? (SHOULD NOT BE)
+
+[nix]
+channel = "stable-23_11"  # Is this a recent stable channel?
+
+[auth]
+pageEnabled = true  # Is auth required? Should it be?
+buttonEnabled = true
+
+Security Checks:
+
+□ .replit file analysis
+  - No secrets in [env] section
+  - Run commands don't include hardcoded secrets
+  - Appropriate ports exposed (not unnecessary services)
+  - Build commands don't leak secrets to logs
+
+□ replit.nix analysis
+  - Dependencies from official nixpkgs only
+  - No curl/wget piping to shell in build
+  - Pinned to stable channel (not unstable unless required)
+  - No unnecessary system packages
+
+□ .replitignore usage
+  - Sensitive local files excluded
+  - Test data with real info excluded
+  - Local configuration overrides excluded
+
+3. AUTHENTICATION & AUTHORISATION
+
+If using Replit Auth:
+
+□ Replit Auth Implementation
+  - Is X-Replit-User-Id header validated server-side?
+  - Is X-Replit-User-Name used for display only (not auth)?
+  - Are headers checked on EVERY protected route?
+  - Is there protection against header injection?
+
+□ Header Validation Code Review
+  - Verify headers only trusted when request comes through Replit proxy
+  - Check for spoofing if app also accessible directly
+
+Security Check - Replit Auth:
+
+# VULNERABLE - Header can be spoofed if accessed directly
+@app.route('/admin')
+def admin():
+    user_id = request.headers.get('X-Replit-User-Id')
+    if user_id:
+        return "Welcome admin"  # No role check!
+
+# SECURE - Proper validation
+@app.route('/admin')
+def admin():
+    user_id = request.headers.get('X-Replit-User-Id')
+    user_roles = request.headers.get('X-Replit-User-Roles', '')
+    
+    if not user_id:
+        return redirect('/__repl_auth/login')
+    
+    # Verify request came through Replit proxy
+    if request.headers.get('X-Forwarded-Host') != 'your-app.repl.co':
+        abort(403)
+    
+    # Check actual authorisation
+    if 'admin' not in user_roles.split(','):
+        abort(403)
+    
+    return "Welcome admin"
+
+If using Custom Auth:
+
+□ Session Management
+  - Secure session configuration
+  - HttpOnly, Secure, SameSite cookie flags
+  - Session timeout implemented
+  - Session invalidation on logout
+
+□ Password Security
+  - Bcrypt/Argon2 hashing (not MD5/SHA1)
+  - Password complexity requirements
+  - Rate limiting on login attempts
+  - Account lockout policy
+
+□ JWT Security (if applicable)
+  - Strong secret (min 256 bits)
+  - Appropriate expiration
+  - Algorithm explicitly specified (not 'none')
+  - Token stored securely client-side
+
+4. DATABASE SECURITY
+
+Replit Database (Key-Value):
+
+□ Replit DB Security
+  - REPLIT_DB_URL not exposed in client-side code
+  - No sensitive data logged when debugging
+  - Data encryption for PII before storage
+  - Input validation before storage
+
+□ Data Exposure Risks
+  - Is database content visible if repl is public?
+  - Are there database dumps in the file system?
+  - Is there a backup strategy?
+
+Replit PostgreSQL:
+
+□ PostgreSQL Configuration
+  - DATABASE_URL in Secrets (not hardcoded)
+  - Using parameterised queries (no string concatenation)
+  - Connection pooling configured
+  - SSL mode enabled for connections
+
+□ SQL Injection Testing
+  - Test all user inputs that reach database
+  - Test ORDER BY, LIMIT clauses
+  - Test JSON/JSONB queries
+  - Test full-text search inputs
+
+Injection Test Payloads:
+
+' OR '1'='1
+'; DROP TABLE users;--
+' UNION SELECT username, password FROM users--
+${7*7}
+{{7*7}}
+
+Secure Query Example:
+
+# VULNERABLE
+query = f"SELECT * FROM users WHERE id = {user_input}"
+
+# SECURE - Parameterised
+cursor.execute("SELECT * FROM users WHERE id = %s", (user_input,))
+
+# SECURE - ORM
+User.query.filter_by(id=user_input).first()
+
+5. INPUT VALIDATION & OUTPUT ENCODING
+
+Evaluate:
+
+□ Input Validation
+  - All user inputs validated server-side
+  - Type checking (expecting int, getting string?)
+  - Length limits enforced
+  - Allowlist validation where possible
+  - File upload restrictions (type, size, content)
+
+□ Output Encoding
+  - HTML encoding for web output
+  - JSON encoding for API responses
+  - URL encoding for redirects
+  - SQL parameterisation (covered above)
+
+□ XSS Prevention
+  - Template engine auto-escaping enabled
+  - No dangerouslySetInnerHTML / |safe / {!!  !!} with user content
+  - Content-Security-Policy header set
+  - X-Content-Type-Options: nosniff
+
+□ Path Traversal
+  - User input not used directly in file paths
+  - No ../ sequences allowed
+  - Chroot or allowlist for file access
+
+Framework-Specific Checks:
+
+# Flask - Jinja2 auto-escaping
+# VULNERABLE
+return f"<h1>Hello {user_input}</h1>"
+
+# SECURE - Use templates (auto-escaped)
+return render_template('hello.html', name=user_input)
+
+# DANGEROUS - Disabling escaping
+{{ user_input | safe }}  # Only if you KNOW it's safe
+
+// Express/React
+// VULNERABLE
+element.innerHTML = userInput;
+<div dangerouslySetInnerHTML={{__html: userInput}} />
+
+// SECURE
+element.textContent = userInput;
+<div>{userInput}</div>  // React auto-escapes
+
+6. API SECURITY
+
+Evaluate:
+
+□ API Authentication
+  - All endpoints require authentication (unless intentionally public)
+  - API keys rotated regularly
+  - JWT validation on every request
+  - No sensitive data in URL parameters
+
+□ Rate Limiting
+  - Rate limiting implemented (Replit has some built-in)
+  - Per-user/per-IP limits
+  - Appropriate limits for different endpoints
+  - Graceful handling of limit exceeded
+
+□ CORS Configuration
+  - Specific origins allowed (not *)
+  - Credentials mode appropriate
+  - Preflight caching configured
+  - Exposed headers limited
+
+□ Request Validation
+  - Content-Type validation
+  - Request size limits
+  - Schema validation (JSON schema, Pydantic, Zod)
+  - Reject unexpected fields
+
+CORS Security Check:
+
+// VULNERABLE - Allows any origin
+app.use(cors());
+
+// VULNERABLE - Reflects origin (credential theft)
+app.use(cors({ origin: true, credentials: true }));
+
+// SECURE - Specific origins
+app.use(cors({
+  origin: ['https://your-frontend.repl.co'],
+  credentials: true,
+  methods: ['GET', 'POST'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
+
+7. DEPENDENCY & SUPPLY CHAIN SECURITY
+
+Evaluate:
+
+□ Dependency Audit
+  Run and analyse:
+  - npm audit / yarn audit (Node.js)
+  - pip-audit / safety check (Python)
+  - bundler-audit (Ruby)
+  
+□ Dependency Hygiene
+  - Lock files committed (package-lock.json, poetry.lock, etc.)
+  - No wildcard versions (^, ~, *)
+  - Dependencies from official registries only
+  - No typosquatting risks (check package names)
+
+□ Outdated Dependencies
+  - npm outdated / pip list --outdated
+  - Security patches applied
+  - EOL frameworks/runtimes identified
+
+□ Transitive Dependencies
+  - Review full dependency tree
+  - Check for known vulnerable transitive deps
+  - Evaluate dependency count (attack surface)
+
+Automated Check Commands:
+
+# Node.js
+npm audit --audit-level=moderate
+npx depcheck  # Find unused dependencies
+
+# Python
+pip install pip-audit
+pip-audit
+pip install safety
+safety check
+
+# Check for outdated
+npm outdated
+pip list --outdated
+
+8. REPLIT DEPLOYMENT SECURITY
+
+Evaluate Deployment Configuration:
+
+□ Deployment Type Assessment
+  - Autoscale: Appropriate for production?
+  - Reserved VM: Security hardening needed?
+  - Static: Any server-side logic exposed?
+
+□ Custom Domain Security
+  - SSL/TLS certificate valid
+  - HTTPS enforced (redirect HTTP)
+  - HSTS header configured
+  - Certificate expiration monitoring
+
+□ Network Exposure
+  - Only necessary ports exposed
+  - No debug endpoints in production
+  - Health check endpoints don't leak info
+  - Error pages don't expose stack traces
+
+□ Build & Deploy Pipeline
+  - No secrets in build logs
+  - Build artifacts don't contain secrets
+  - Deployment previews secured
+
+Security Headers Check:
+
+# Flask security headers
+from flask import Flask
+from flask_talisman import Talisman
+
+app = Flask(__name__)
+Talisman(app, 
+    force_https=True,
+    strict_transport_security=True,
+    content_security_policy={
+        'default-src': "'self'",
+        'script-src': "'self'",
+        'style-src': "'self' 'unsafe-inline'"
+    }
+)
+
+// Express security headers
+const helmet = require('helmet');
+app.use(helmet());
+app.use(helmet.contentSecurityPolicy({
+    directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: ["'self'"],
+        styleSrc: ["'self'", "'unsafe-inline'"]
+    }
+}));
+
+9. LOGGING & MONITORING
+
+Evaluate:
+
+□ Logging Practices
+  - No secrets/passwords in logs
+  - No full credit card numbers
+  - PII minimised or masked
+  - Structured logging format
+
+□ Security Events Logged
+  - Authentication attempts (success/failure)
+  - Authorisation failures
+  - Input validation failures
+  - Rate limit triggers
+  - Error conditions
+
+□ Log Security
+  - Logs not accessible to users
+  - Log injection prevented
+  - Retention policy defined
+
+Log Sanitisation Example:
+
+import re
+
+def sanitize_log(message):
+    # Mask potential secrets
+    patterns = [
+        (r'password["\']?\s*[:=]\s*["\']?[\w]+', 'password=***'),
+        (r'api[_-]?key["\']?\s*[:=]\s*["\']?[\w-]+', 'api_key=***'),
+        (r'\b\d{16}\b', '****-****-****-****'),  # Credit cards
+        (r'Bearer\s+[\w\.-]+', 'Bearer ***'),
+    ]
+    for pattern, replacement in patterns:
+        message = re.sub(pattern, replacement, message, flags=re.I)
+    return message
+
+10. REPLIT-SPECIFIC ATTACK SURFACE
+
+Unique Replit Risks:
+
+□ Public Repl Exposure
+  - Is repl public when it should be private?
+  - Code review for any sensitive business logic exposed
+  - Comments containing sensitive information
+  - TODO/FIXME notes with security implications
+
+□ Fork Security
+  - If forked, were secrets regenerated?
+  - Original repl secrets not in forked version?
+  - Forking creates independent secrets
+
+□ Collaboration Security
+  - Appropriate team member permissions
+  - Remove access when collaborators leave
+  - Audit who has edit vs view access
+
+□ Replit AI Features
+  - AI Assistant not trained on your secrets?
+  - Code suggestions reviewed for security
+  - No sensitive data in AI prompts/context
+
+□ Shell & Console Access
+  - History doesn't contain secrets
+  - No sensitive commands in .bash_history equivalent
+  - Console output doesn't leak secrets
+
+□ Multiplayer/Collaboration
+  - Real-time collaboration exposing sensitive edits?
+  - Screen sharing risks
+  - Chat history containing secrets
+
+11. SECURITY TESTING COMMANDS
+
+Run These Against Your Repl:
+
+# Secrets scanning
+grep -rn "password\|secret\|api_key\|token\|credential" --include="*.py" --include="*.js" --include="*.ts" --include="*.json" --include="*.yaml" --include="*.yml" --include="*.env"
+
+# Find hardcoded IPs/URLs
+grep -rn "http://\|https://\|[0-9]\{1,3\}\.[0-9]\{1,3\}\.[0-9]\{1,3\}\.[0-9]\{1,3\}" --include="*.py" --include="*.js"
+
+# Check for dangerous functions
+grep -rn "eval\|exec\|subprocess\|os.system\|child_process" --include="*.py" --include="*.js"
+
+# Find TODO/FIXME security notes
+grep -rn "TODO\|FIXME\|HACK\|XXX\|security\|vulnerable" --include="*.py" --include="*.js"
+
+HTTP Security Headers Test:
+
+curl -I https://your-app.repl.co | grep -i "strict-transport\|content-security\|x-frame\|x-content-type\|x-xss"
+
+12. EVALUATION OUTPUT FORMAT
+
+# Security Evaluation Report: [REPL NAME]
+Date: [DATE]
+Evaluator: [NAME]
+Repl URL: [URL]
+
+## Executive Summary
+- Critical Findings: X
+- High Findings: X
+- Medium Findings: X
+- Low Findings: X
+- Overall Risk Rating: [Critical/High/Medium/Low]
+
+## Critical Findings (Immediate Action Required)
+### [FINDING-001] [Title]
+- **Severity**: Critical
+- **Location**: [File:Line or Component]
+- **Description**: [What was found]
+- **Impact**: [What could happen if exploited]
+- **Evidence**: [Code snippet or proof]
+- **Remediation**: [Specific steps to fix]
+- **Replit-Specific Notes**: [Platform considerations]
+
+## High Findings
+[Same format]
+
+## Medium Findings
+[Same format]
+
+## Low Findings
+[Same format]
+
+## Recommendations Summary
+| Priority | Finding | Effort | Impact |
+|----------|---------|--------|--------|
+| 1 | [Title] | [Low/Med/High] | [Description] |
+
+## Appendix
+- Tools Used
+- Files Reviewed
+- Tests Performed
+
+QUICK REFERENCE CHECKLIST
+
+□ Secrets in Replit Secrets tool (not code)
+□ .replit and replit.nix reviewed
+□ Public/private visibility appropriate
+□ Replit Auth headers validated correctly
+□ Database queries parameterised
+□ Input validation on all user data
+□ Output encoding preventing XSS
+□ Dependencies audited and updated
+□ CORS configured restrictively
+□ Security headers implemented
+□ No secrets in logs
+□ Appropriate error handling (no stack traces)
+□ Rate limiting in place
+□ HTTPS enforced on custom domains
+□ Team permissions reviewed
+□ Fork security considered
+
+This prompt can be used with Claude or any AI assistant to perform a thorough review of your Replit project. Want me to create this as a downloadable document or adapt it for a specific framework you're using?

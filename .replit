@@ -11,12 +11,9 @@ channel = "stable-25_05"
 PORT = "5000"
 NODE_ENV = "development"
 FRONTEND_URL = "https://v0-ai-companion-prototype-main-production.up.railway.app"
-JWT_SECRET = "dev-secret-change-in-production-abc123xyz789"
-OLLAMA_API_KEY = "8517d018120a07c44c5063e0e57a98db180bd121196d6f67bd86b7bd7310a8df"
 OLLAMA_BASE_URL = "https://jobs-nursing-passage-blake.trycloudflare.com"
 OLLAMA_GENERAL_MODEL = "darkplanet-general:latest"
 OLLAMA_LONGFORM_MODEL = "dolphin-mixtral:latest"
-ADMIN_UI_PASSWORD = "jwSSFkVSDQsew7ne"
 
 [workflows]
 runButton = "Project"
