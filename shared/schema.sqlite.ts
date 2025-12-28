@@ -63,8 +63,8 @@ Current response preferences:
 Adapt your responses to match these preferences while maintaining your empathetic and supportive nature.`),
 
   // Model settings (different models for different response lengths)
-  generalModel: text('general_model').default('darkplanet-general:latest'),
-  longFormModel: text('long_form_model').default('dolphin-mixtral:latest'),
+  generalModel: text('general_model').default('darkplanet'),
+  longFormModel: text('long_form_model').default('darkplanet'),
   temperature: real('temperature').default(0.8),
 
   // Which lengths use long-form model

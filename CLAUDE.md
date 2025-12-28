@@ -74,7 +74,7 @@ Required in `.env`:
 
 Optional:
 - `PORT` (default: 3001)
-- `OLLAMA_GENERAL_MODEL` (default: darkplanet-general:latest)
-- `OLLAMA_LONGFORM_MODEL` (default: dolphin-mixtral:latest)
+- `OLLAMA_GENERAL_MODEL` (default: darkplanet)
+- `OLLAMA_LONGFORM_MODEL` (default: darkplanet)
 - `JWT_ACCESS_EXPIRES` (default: 15m)
 - `JWT_REFRESH_EXPIRES` (default: 7d)

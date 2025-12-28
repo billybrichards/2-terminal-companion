@@ -369,8 +369,8 @@ adminRouter.post('/test-ollama', async (req, res) => {
       where: eq(companionConfig.id, 'default'),
     });
 
-    const generalModel = config?.generalModel || process.env.OLLAMA_GENERAL_MODEL || 'darkplanet-general:latest';
-    const longFormModel = config?.longFormModel || process.env.OLLAMA_LONGFORM_MODEL || 'dolphin-mixtral:latest';
+    const generalModel = config?.generalModel || process.env.OLLAMA_GENERAL_MODEL || 'darkplanet';
+    const longFormModel = config?.longFormModel || process.env.OLLAMA_LONGFORM_MODEL || 'darkplanet';
 
     // Test with a simple prompt
     const testPrompt = 'Say "Hello, I am working!" in exactly 5 words.';

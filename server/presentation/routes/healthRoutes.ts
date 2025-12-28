@@ -31,7 +31,7 @@ healthRouter.get('/ollama', async (req, res) => {
       where: eq(companionConfig.id, 'default'),
     });
 
-    const generalModel = config?.generalModel || process.env.OLLAMA_GENERAL_MODEL || 'darkplanet-general:latest';
+    const generalModel = config?.generalModel || process.env.OLLAMA_GENERAL_MODEL || 'darkplanet';
 
     // Quick health check with minimal generation
     const startTime = Date.now();
@@ -101,7 +101,7 @@ healthRouter.get('/full', async (req, res) => {
   try {
     const ollama = getOllamaGateway();
     await ollama.generate({
-      model: process.env.OLLAMA_GENERAL_MODEL || 'darkplanet-general:latest',
+      model: process.env.OLLAMA_GENERAL_MODEL || 'darkplanet',
       messages: [{ role: 'user', content: 'Hi' }],
       maxTokens: 5,
     });
