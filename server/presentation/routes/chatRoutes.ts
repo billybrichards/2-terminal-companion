@@ -7,6 +7,7 @@ import { authMiddleware, optionalAuthMiddleware } from '../middleware/authMiddle
 import { jwtAdapter } from '../../infrastructure/auth/JWTAdapter.js';
 import { eq, desc, count, and } from 'drizzle-orm';
 import { ANPLEXA_DEFAULT_PROMPT, buildSystemPromptWithName } from '../../config/anplexaPrompt.js';
+import { PersonalityMode, buildPersonalityOverlay, isValidPersonalityMode, DEFAULT_PERSONALITY_MODE } from '../../config/personalityProfiles.js';
 
 const FREE_MESSAGE_LIMIT = 3;
 
@@ -32,6 +33,42 @@ async function getActiveSystemPrompt(userId?: string): Promise<string> {
   return basePrompt;
 }
 
+/**
+ * Build the complete system prompt with personality overlay
+ */
+async function buildCompleteSystemPrompt(
+  userId?: string,
+  personalityModeOverride?: PersonalityMode
+): Promise<string> {
+  const basePrompt = await getActiveSystemPrompt(userId);
+  
+  // Determine personality mode: override > user preference > default
+  let personalityMode: PersonalityMode = DEFAULT_PERSONALITY_MODE;
+  let userName: string | undefined;
+  
+  if (userId) {
+    const user = await db.query.users.findFirst({
+      where: eq(users.id, userId),
+    });
+    if (user) {
+      userName = user.chatName || undefined;
+      if (personalityModeOverride && isValidPersonalityMode(personalityModeOverride)) {
+        personalityMode = personalityModeOverride;
+      } else if ((user as any).personalityMode && isValidPersonalityMode((user as any).personalityMode)) {
+        personalityMode = (user as any).personalityMode as PersonalityMode;
+      }
+    }
+  } else if (personalityModeOverride && isValidPersonalityMode(personalityModeOverride)) {
+    personalityMode = personalityModeOverride;
+  }
+  
+  // Build the personality overlay
+  const overlay = buildPersonalityOverlay(personalityMode, userName);
+  
+  // Combine base prompt with personality overlay
+  return `${basePrompt}\n\n${overlay}`;
+}
+
 export const chatRouter = Router();
 
 // Validation schemas
@@ -42,6 +79,7 @@ const chatSchema = z.object({
     length: z.enum(['brief', 'moderate', 'detailed']).optional(),
     style: z.enum(['casual', 'thoughtful', 'creative']).optional(),
   }).optional(),
+  personalityMode: z.enum(['nurturing', 'playful', 'dominant']).optional(),
   storeLocally: z.boolean().optional(),
 });
 
@@ -236,8 +274,11 @@ chatRouter.post('/', optionalAuthMiddleware, async (req, res) => {
       }));
     }
 
-    // Get the active system prompt with user's name injected
-    const systemPrompt = await getActiveSystemPrompt(userId);
+    // Get the complete system prompt with personality overlay
+    const systemPrompt = await buildCompleteSystemPrompt(
+      userId,
+      body.personalityMode as PersonalityMode | undefined
+    );
 
     // Build messages array
     const chatMessages: ChatMessage[] = [
@@ -356,8 +397,8 @@ chatRouter.post('/non-streaming', optionalAuthMiddleware, async (req, res) => {
     const length = body.preferences?.length || userPrefs?.preferredLength || config.defaultLength || 'moderate';
     const style = body.preferences?.style || userPrefs?.preferredStyle || config.defaultStyle || 'thoughtful';
 
-    // Get the active system prompt with user's name injected
-    const systemPrompt = await getActiveSystemPrompt(userId);
+    // Get the complete system prompt with personality overlay
+    const systemPrompt = await buildCompleteSystemPrompt(userId);
 
     // Build messages array
     const chatMessages: ChatMessage[] = [

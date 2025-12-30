@@ -263,6 +263,64 @@ authRouter.put('/chat-name', authMiddleware, async (req, res) => {
   }
 });
 
+// Schema for updating personality mode
+const updatePersonalityModeSchema = z.object({
+  mode: z.enum(['nurturing', 'playful', 'dominant']),
+});
+
+// PUT /api/auth/personality-mode - Update user's preferred personality mode
+authRouter.put('/personality-mode', authMiddleware, async (req, res) => {
+  try {
+    const body = updatePersonalityModeSchema.parse(req.body);
+    const userId = req.user!.sub;
+
+    await db.update(users)
+      .set({
+        personalityMode: body.mode,
+        updatedAt: new Date().toISOString(),
+      })
+      .where(eq(users.id, userId));
+
+    res.json({
+      message: 'Personality mode updated successfully',
+      personalityMode: body.mode,
+    });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({ error: 'Validation error', details: error.errors });
+    }
+    console.error('Update personality mode error:', error);
+    res.status(500).json({ error: 'Failed to update personality mode' });
+  }
+});
+
+// GET /api/auth/personality-modes - List available personality modes
+authRouter.get('/personality-modes', async (req, res) => {
+  res.json({
+    modes: [
+      {
+        id: 'nurturing',
+        name: 'Nurturing / Safe Haven',
+        description: 'Gentle, grounding, and quietly reassuring presence',
+        useCases: ['User hesitates or seems uncertain', 'Lonely or anxious users', 'First-time users', 'Emotional contexts']
+      },
+      {
+        id: 'playful',
+        name: 'Playful / Curious',
+        description: 'Relaxed, curious, and subtly charming',
+        useCases: ['Light, flirt-adjacent, witty conversation', 'Curiosity without vulnerability', 'Exploratory energy', 'Casual users']
+      },
+      {
+        id: 'dominant',
+        name: 'Soft-Dominant / Grounded Lead',
+        description: 'Calm, steady, and confident — never aggressive',
+        useCases: ['User wants direction or containment', 'Desire-forward users', 'Users expressing indecision', 'Kink-adjacent but still subtle']
+      }
+    ],
+    default: 'nurturing'
+  });
+});
+
 // POST /api/auth/logout
 authRouter.post('/logout', authMiddleware, async (req, res) => {
   try {
@@ -305,6 +363,7 @@ authRouter.get('/me', authMiddleware, async (req, res) => {
         email: user.email,
         displayName: user.displayName,
         chatName: (user as any).chatName || null,
+        personalityMode: (user as any).personalityMode || 'nurturing',
         isAdmin: user.isAdmin,
         storagePreference: user.storagePreference,
       },

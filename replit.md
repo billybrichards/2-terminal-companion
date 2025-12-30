@@ -82,6 +82,8 @@ npm run start            # Run compiled server
 - `POST /api/auth/reset-password` - Complete password reset
 - `GET /api/auth/me` - Current user info
 - `PUT /api/auth/chat-name` - Update user's chat name for AI personalization
+- `PUT /api/auth/personality-mode` - Update user's preferred AI personality mode
+- `GET /api/auth/personality-modes` - List available personality modes
 
 ### Chat (API key or JWT required)
 - `POST /api/chat` - Send message (SSE streaming)
@@ -122,7 +124,7 @@ npm run start            # Run compiled server
 Uses PostgreSQL with Drizzle ORM (falls back to SQLite if DATABASE_URL not set).
 
 **Key tables:**
-- `users` - User accounts with stripe_customer_id, stripe_subscription_id, chatName
+- `users` - User accounts with stripe_customer_id, stripe_subscription_id, chatName, personalityMode
 - `api_keys` - API keys with tc_ prefix, hashed storage
 - `api_usage` - Per-request usage tracking
 - `api_usage_daily` - Daily aggregated usage
@@ -165,6 +167,7 @@ Uses PostgreSQL with Drizzle ORM (falls back to SQLite if DATABASE_URL not set).
 - Responsive, mobile-friendly
 
 ## Recent Changes
+- 2025-12-30: Added dynamic personality mode system (nurturing/playful/dominant) with per-request or persistent user preference
 - 2025-12-30: Added system prompt management with version control (admin UI at /admin/system-prompts)
 - 2025-12-30: Added chatName field for personalized AI addressing (PUT /api/auth/chat-name)
 - 2025-12-30: Anplexa identity system prompt now prepended to all chat requests

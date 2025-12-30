@@ -347,7 +347,8 @@ const { accessToken, refreshToken } = await response.json();
                         displayName: { type: 'string', example: 'John Doe' },
                         isAdmin: { type: 'boolean', example: false },
                         storagePreference: { type: 'string', example: 'server' },
-                        chatName: { type: 'string', example: 'Alex', nullable: true }
+                        chatName: { type: 'string', example: 'Alex', nullable: true },
+                        personalityMode: { type: 'string', enum: ['nurturing', 'playful', 'dominant'], example: 'nurturing' }
                       }
                     },
                     preferences: {
@@ -430,6 +431,93 @@ console.log(data.chatName); // "Alex"
         }
       }
     },
+    '/api/auth/personality-mode': {
+      put: {
+        tags: ['Authentication'],
+        summary: 'Update personality mode',
+        description: `Update the user's preferred AI personality mode. This affects how the AI companion responds to the user.
+
+**Available Modes:**
+- \`nurturing\`: Gentle, grounding, and quietly reassuring. Best for hesitant, lonely, or anxious users.
+- \`playful\`: Relaxed, curious, and subtly charming. Best for witty, exploratory conversations.
+- \`dominant\`: Calm, steady, and confident leadership. Best for users wanting direction.
+
+**Example (curl):**
+\`\`\`bash
+curl -X PUT "https://api.abionti.com/api/auth/personality-mode" \\
+  -H "Content-Type: application/json" \\
+  -H "Authorization: Bearer your-jwt-token" \\
+  -d '{"mode": "playful"}'
+\`\`\``,
+        security: [{ bearerAuth: [] }, { apiKey: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['mode'],
+                properties: {
+                  mode: { type: 'string', enum: ['nurturing', 'playful', 'dominant'], example: 'playful', description: 'The AI personality mode' }
+                }
+              }
+            }
+          }
+        },
+        responses: {
+          '200': {
+            description: 'Personality mode updated successfully',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    message: { type: 'string', example: 'Personality mode updated successfully' },
+                    personalityMode: { type: 'string', example: 'playful' }
+                  }
+                }
+              }
+            }
+          },
+          '400': { description: 'Invalid mode provided' },
+          '401': { description: 'Not authenticated' }
+        }
+      }
+    },
+    '/api/auth/personality-modes': {
+      get: {
+        tags: ['Authentication'],
+        summary: 'List personality modes',
+        description: 'Get all available AI personality modes with descriptions and use cases.',
+        responses: {
+          '200': {
+            description: 'List of available personality modes',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    modes: {
+                      type: 'array',
+                      items: {
+                        type: 'object',
+                        properties: {
+                          id: { type: 'string', example: 'nurturing' },
+                          name: { type: 'string', example: 'Nurturing / Safe Haven' },
+                          description: { type: 'string', example: 'Gentle, grounding, and quietly reassuring presence' },
+                          useCases: { type: 'array', items: { type: 'string' }, example: ['First-time users', 'Emotional contexts'] }
+                        }
+                      }
+                    },
+                    default: { type: 'string', example: 'nurturing' }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     '/api/chat': {
       post: {
         tags: ['Chat'],
@@ -498,6 +586,7 @@ while (true) {
                       style: { type: 'string', enum: ['casual', 'thoughtful', 'creative'], description: 'Response style preference' }
                     }
                   },
+                  personalityMode: { type: 'string', enum: ['nurturing', 'playful', 'dominant'], description: 'AI personality mode for this request. Overrides user preference if specified.' },
                   storeLocally: { type: 'boolean', default: false, description: 'If true, conversation is not stored on server' }
                 }
               }

@@ -8,6 +8,7 @@ export const users = pgTable('users', {
   passwordHash: text('password_hash').notNull(),
   displayName: text('display_name'),
   chatName: text('chat_name'), // User's preferred name for AI to address them
+  personalityMode: text('personality_mode').default('nurturing'), // 'nurturing' | 'playful' | 'dominant'
   storagePreference: text('storage_preference').default('cloud'), // 'local' | 'cloud'
   createdAt: text('created_at').default('CURRENT_TIMESTAMP'),
   updatedAt: text('updated_at').default('CURRENT_TIMESTAMP'),
