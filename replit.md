@@ -14,11 +14,15 @@ Abionti Unrestricted API is an adult AI companion API that connects to Ollama fo
 ```
 server/
 ├── index.ts                           # Express app entry, middleware setup
+├── config/
+│   └── anplexaPrompt.ts              # Anplexa identity system prompt default
 ├── infrastructure/
 │   ├── adapters/OllamaGateway.ts     # Ollama API client (streaming + non-streaming)
 │   ├── auth/
 │   │   ├── JWTAdapter.ts             # JWT token generation/verification
 │   │   └── ApiKeyGenerator.ts        # API key generation with tc_ prefix
+│   ├── email/
+│   │   └── resendService.ts          # Resend email service (welcome, reset)
 │   ├── stripe/
 │   │   ├── stripeClient.ts           # Stripe SDK client (Replit connector)
 │   │   ├── stripeService.ts          # Stripe API operations
@@ -32,11 +36,12 @@ server/
     │   ├── rateLimitMiddleware.ts    # IP-based rate limiting
     │   └── usageTrackingMiddleware.ts # API usage tracking
     └── routes/
-        ├── authRoutes.ts             # Registration, login, tokens
-        ├── chatRoutes.ts             # AI chat (SSE streaming)
+        ├── authRoutes.ts             # Registration, login, tokens, chat-name
+        ├── chatRoutes.ts             # AI chat (SSE streaming with system prompt)
+        ├── adminRoutes.ts            # Admin API (users, prompts, stats)
         ├── stripeRoutes.ts           # Checkout, portal, subscription
         ├── landingRoutes.ts          # Marketing landing page
-        ├── adminUiRoutes.ts          # Admin dashboard with usage analytics
+        ├── adminUiRoutes.ts          # Admin dashboard UI (users, usage, prompts)
         └── docsRoutes.ts             # Swagger UI API documentation
 shared/
 ├── schema.ts                          # Schema switcher
@@ -76,6 +81,7 @@ npm run start            # Run compiled server
 - `POST /api/auth/forgot-password` - Request password reset
 - `POST /api/auth/reset-password` - Complete password reset
 - `GET /api/auth/me` - Current user info
+- `PUT /api/auth/chat-name` - Update user's chat name for AI personalization
 
 ### Chat (API key or JWT required)
 - `POST /api/chat` - Send message (SSE streaming)
@@ -99,7 +105,15 @@ npm run start            # Run compiled server
 - `GET /admin/dashboard` - Admin dashboard
 - `GET /admin/dashboard/usage` - Usage analytics
 - `GET /admin/dashboard/usage/export` - Export usage CSV
+- `GET /admin/system-prompts` - System prompt management UI
 - `/api/admin/*` - Admin API endpoints
+
+### System Prompts Admin API
+- `GET /api/admin/system-prompts` - List all prompts with versions
+- `GET /api/admin/system-prompts/:id` - Get specific prompt
+- `POST /api/admin/system-prompts` - Create new prompt version
+- `PUT /api/admin/system-prompts/:id/activate` - Activate a prompt
+- `DELETE /api/admin/system-prompts/:id` - Delete a prompt
 
 ### Health
 - `GET /api/health` - Server health check
@@ -108,12 +122,13 @@ npm run start            # Run compiled server
 Uses PostgreSQL with Drizzle ORM (falls back to SQLite if DATABASE_URL not set).
 
 **Key tables:**
-- `users` - User accounts with stripe_customer_id, stripe_subscription_id
+- `users` - User accounts with stripe_customer_id, stripe_subscription_id, chatName
 - `api_keys` - API keys with tc_ prefix, hashed storage
 - `api_usage` - Per-request usage tracking
 - `api_usage_daily` - Daily aggregated usage
 - `companion_config` - AI companion settings
 - `conversations`, `messages` - Chat history
+- `system_prompts` - AI system prompts with version control
 - `stripe.*` - Stripe data (managed by stripe-replit-sync)
 
 ## Environment Variables
@@ -150,6 +165,10 @@ Uses PostgreSQL with Drizzle ORM (falls back to SQLite if DATABASE_URL not set).
 - Responsive, mobile-friendly
 
 ## Recent Changes
+- 2025-12-30: Added system prompt management with version control (admin UI at /admin/system-prompts)
+- 2025-12-30: Added chatName field for personalized AI addressing (PUT /api/auth/chat-name)
+- 2025-12-30: Anplexa identity system prompt now prepended to all chat requests
+- 2025-12-30: Added Resend email integration (welcome, password reset)
 - 2025-12-28: Added Stripe integration with checkout flow and subscriptions
 - 2025-12-28: Created Abionti landing page with pricing
 - 2025-12-28: Added API usage tracking and analytics dashboard
