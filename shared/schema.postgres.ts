@@ -1,4 +1,4 @@
-import { pgTable, text, integer, doublePrecision, boolean } from 'drizzle-orm/pg-core';
+import { pgTable, text, integer, doublePrecision, boolean, timestamp } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
 
 // Users table
@@ -20,6 +20,21 @@ export const users = pgTable('users', {
   stripeCustomerId: text('stripe_customer_id'),
   stripeSubscriptionId: text('stripe_subscription_id'),
   accountSource: text('account_source').default('frontend'), // 'frontend' | 'api'
+  
+  // CRM fields for email sequences
+  funnelType: text('funnel_type').default('direct'), // 'waitlist' | 'direct'
+  persona: text('persona'), // 'lonely' | 'curious' | 'privacy'
+  stage: text('stage').default('new'), // 'new' | 'waitlist' | 'invited' | 'converted' | 'dormant'
+  entrySource: text('entry_source'), // 'instagram' | 'tiktok' | 'reddit' | 'search' | 'retargeting' | 'organic'
+  usedFreeMessages: integer('used_free_messages').default(0),
+  emailOpened1: boolean('email_opened_1').default(false),
+  emailOpened2: boolean('email_opened_2').default(false),
+  emailOpened3: boolean('email_opened_3').default(false),
+  clickedUseApp: boolean('clicked_use_app').default(false),
+  feedbackSubmitted: boolean('feedback_submitted').default(false),
+  refundRequested: boolean('refund_requested').default(false),
+  refundProcessed: boolean('refund_processed').default(false),
+  lastActivityAt: text('last_activity_at'),
 });
 
 // Companion config (single row - admin configured)
@@ -233,6 +248,31 @@ export const systemPrompts = pgTable('system_prompts', {
   notes: text('notes'), // Optional notes about this version
 });
 
+// Email queue for scheduled sends
+export const emailQueue = pgTable('email_queue', {
+  id: text('id').primaryKey(),
+  userId: text('user_id').references(() => users.id).notNull(),
+  emailTemplate: text('email_template').notNull(), // 'W1' | 'W2' | 'W3' | 'W4' | 'W5' | 'D1' | 'D2' | 'D3' | 'D4' | 'refund_thanks'
+  scheduledAt: text('scheduled_at').notNull(),
+  sentAt: text('sent_at'),
+  status: text('status').default('pending'), // 'pending' | 'sent' | 'failed' | 'cancelled'
+  errorMessage: text('error_message'),
+  createdAt: text('created_at').default('CURRENT_TIMESTAMP'),
+});
+
+// Email logs for tracking sent emails
+export const emailLogs = pgTable('email_logs', {
+  id: text('id').primaryKey(),
+  userId: text('user_id').references(() => users.id).notNull(),
+  emailTemplate: text('email_template').notNull(),
+  subject: text('subject'),
+  sentAt: text('sent_at').notNull(),
+  openedAt: text('opened_at'),
+  clickedAt: text('clicked_at'),
+  clickSource: text('click_source'), // Which link/button was clicked
+  createdAt: text('created_at').default('CURRENT_TIMESTAMP'),
+});
+
 // Types
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
@@ -246,3 +286,5 @@ export type ApiUsage = typeof apiUsage.$inferSelect;
 export type ApiUsageDaily = typeof apiUsageDaily.$inferSelect;
 export type PasswordResetToken = typeof passwordResetTokens.$inferSelect;
 export type SystemPrompt = typeof systemPrompts.$inferSelect;
+export type EmailQueue = typeof emailQueue.$inferSelect;
+export type EmailLog = typeof emailLogs.$inferSelect;

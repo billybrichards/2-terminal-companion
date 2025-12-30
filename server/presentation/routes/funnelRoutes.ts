@@ -8,6 +8,7 @@ import { jwtAdapter } from '../../infrastructure/auth/JWTAdapter.js';
 import { generateApiKey } from '../../infrastructure/auth/ApiKeyGenerator.js';
 import { stripeService } from '../../infrastructure/stripe/stripeService.js';
 import { emailService } from '../../infrastructure/email/resendService.js';
+import { emailScheduler } from '../../infrastructure/email/emailScheduler.js';
 
 export const funnelRouter = Router();
 
@@ -39,6 +40,9 @@ const createUserSchema = z.object({
   password: z.string().min(6),
   displayName: z.string().optional(),
   chatName: z.string().max(50).optional(),
+  funnelType: z.enum(['waitlist', 'direct']).optional().default('direct'),
+  persona: z.enum(['lonely', 'curious', 'privacy']).optional(),
+  entrySource: z.enum(['instagram', 'tiktok', 'reddit', 'search', 'retargeting', 'organic']).optional(),
 });
 
 const checkoutSchema = z.object({
@@ -77,6 +81,10 @@ funnelRouter.post('/users', funnelAuthMiddleware, async (req: Request, res: Resp
       displayName: body.displayName || body.email.split('@')[0],
       chatName: body.chatName || null,
       accountSource: 'api',
+      funnelType: body.funnelType,
+      persona: body.persona || null,
+      entrySource: body.entrySource || null,
+      stage: body.funnelType === 'waitlist' ? 'waitlist' : 'new',
     });
 
     const apiKeyData = await generateApiKey();
@@ -97,9 +105,15 @@ funnelRouter.post('/users', funnelAuthMiddleware, async (req: Request, res: Resp
       expiresAt: jwtAdapter.getRefreshExpiryDate().toISOString(),
     });
 
-    emailService.sendWelcomeEmail(body.email, body.displayName || body.email.split('@')[0]).catch(err => {
-      console.error('Failed to send welcome email:', err);
-    });
+    if (body.funnelType === 'waitlist') {
+      emailScheduler.scheduleWaitlistSequence(userId).catch(err => {
+        console.error('Failed to schedule waitlist emails:', err);
+      });
+    } else {
+      emailScheduler.scheduleDirectSequence(userId).catch(err => {
+        console.error('Failed to schedule direct emails:', err);
+      });
+    }
 
     res.status(201).json({
       message: 'User created successfully',

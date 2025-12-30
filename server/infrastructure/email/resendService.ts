@@ -213,4 +213,23 @@ export const emailService = {
       return false;
     }
   },
+
+  async sendRawEmail(to: string, subject: string, html: string): Promise<boolean> {
+    try {
+      const { client, fromEmail } = await getResendClient();
+      
+      await client.emails.send({
+        from: fromEmail || 'Anplexa <noreply@updates.anplexa.com>',
+        to,
+        subject,
+        html,
+      });
+      
+      console.log(`Email sent to ${to}: ${subject}`);
+      return true;
+    } catch (error) {
+      console.error('Failed to send email:', error);
+      return false;
+    }
+  },
 };

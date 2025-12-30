@@ -24,8 +24,10 @@ import { releaseNotesRouter } from './presentation/routes/releaseNotesRoutes.js'
 import { landingRouter } from './presentation/routes/landingRoutes.js';
 import { stripeRouter } from './presentation/routes/stripeRoutes.js';
 import { funnelRouter } from './presentation/routes/funnelRoutes.js';
+import { crmRouter } from './presentation/routes/crmRoutes.js';
 import { apiKeyMiddleware, optionalApiKeyMiddleware } from './presentation/middleware/apiKeyMiddleware.js';
 import { usageTrackingMiddleware } from './presentation/middleware/usageTrackingMiddleware.js';
+import { startEmailProcessor } from './infrastructure/email/emailScheduler.js';
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -82,10 +84,10 @@ app.use(helmet({
     directives: {
       defaultSrc: ["'self'"],
       scriptSrc: ["'self'", "'unsafe-inline'", "https://unpkg.com"],
-      styleSrc: ["'self'", "'unsafe-inline'", "https://unpkg.com"],
+      styleSrc: ["'self'", "'unsafe-inline'", "https://unpkg.com", "https://fonts.googleapis.com"],
       imgSrc: ["'self'", "data:", "https:"],
       connectSrc: ["'self'", process.env.OLLAMA_BASE_URL || ''].filter(Boolean),
-      fontSrc: ["'self'", "https://unpkg.com"],
+      fontSrc: ["'self'", "https://unpkg.com", "https://fonts.gstatic.com"],
       objectSrc: ["'none'"],
       frameAncestors: ["'self'"],
     },
@@ -139,6 +141,7 @@ app.use('/api/stripe', stripeRouter);
 app.use('/api/funnel', funnelRouter);
 app.use('/docs', docsRouter);
 app.use('/admin', adminUiRouter);
+app.use('/admin/crm', crmRouter);
 app.use('/release-notes', releaseNotesRouter);
 
 // Landing page
@@ -199,6 +202,9 @@ async function start() {
 
     // Initialize Stripe (after database is ready)
     await initStripe();
+
+    // Start email processor for scheduled emails
+    startEmailProcessor(5);
 
     // Start server
     app.listen(PORT, () => {

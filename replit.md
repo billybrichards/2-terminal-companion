@@ -177,6 +177,12 @@ Uses PostgreSQL with Drizzle ORM (falls back to SQLite if DATABASE_URL not set).
 - Responsive, mobile-friendly
 
 ## Recent Changes
+- 2025-12-30: Added CRM system with email retention sequences (9 templates: W1-W5 waitlist, D1-D4 direct) styled in Anplexa purple (#7B2CBF)
+- 2025-12-30: Added Admin CRM dashboard at /admin/crm with user management, email queue, template preview, and funnel analytics
+- 2025-12-30: Added email scheduler with automatic sequence delivery (every 5 minutes processing)
+- 2025-12-30: Added persona-aware email content (lonely/curious/privacy) for W3 template
+- 2025-12-30: Added email tracking (open/click) with query strings (src=email&campaign=X&uid=Y)
+- 2025-12-30: Extended funnel API to accept funnelType (waitlist/direct), persona, and entrySource for CRM tagging
 - 2025-12-30: Added Funnel API for external integrations - create users, generate Stripe checkout URLs, manage subscriptions (no Stripe credentials needed on funnel side)
 - 2025-12-30: Added AI companion gender preference (male/female/non-binary/custom) with PUT /api/auth/gender endpoint
 - 2025-12-30: Added dynamic personality mode system (nurturing/playful/dominant) with per-request or persistent user preference
