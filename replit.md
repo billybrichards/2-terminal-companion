@@ -87,6 +87,14 @@ npm run start            # Run compiled server
 - `PUT /api/auth/gender` - Update user's preferred AI companion gender
 - `GET /api/auth/genders` - List available gender options
 
+### Funnel API (FUNNEL_API_SECRET required)
+- `POST /api/funnel/users` - Create user from external funnel, returns API key + tokens
+- `POST /api/funnel/checkout` - Generate Stripe checkout URL for a user
+- `GET /api/funnel/subscription/:userId` - Check user subscription status
+- `PUT /api/funnel/subscription` - Update user subscription status manually
+- `GET /api/funnel/users/:userId` - Get user details
+- `POST /api/funnel/users/:userId/api-key` - Generate new API key for user
+
 ### Chat (API key or JWT required)
 - `POST /api/chat` - Send message (SSE streaming)
 - `GET /api/chat/config` - Get companion config
@@ -169,6 +177,7 @@ Uses PostgreSQL with Drizzle ORM (falls back to SQLite if DATABASE_URL not set).
 - Responsive, mobile-friendly
 
 ## Recent Changes
+- 2025-12-30: Added Funnel API for external integrations - create users, generate Stripe checkout URLs, manage subscriptions (no Stripe credentials needed on funnel side)
 - 2025-12-30: Added AI companion gender preference (male/female/non-binary/custom) with PUT /api/auth/gender endpoint
 - 2025-12-30: Added dynamic personality mode system (nurturing/playful/dominant) with per-request or persistent user preference
 - 2025-12-30: Added system prompt management with version control (admin UI at /admin/system-prompts)

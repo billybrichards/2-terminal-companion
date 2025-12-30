@@ -81,6 +81,7 @@ while (true) {
     { name: 'Chat', description: 'AI companion chat endpoints' },
     { name: 'Conversations', description: 'Conversation history management' },
     { name: 'Settings', description: 'User preferences and settings' },
+    { name: 'Funnel', description: 'External funnel integration endpoints - create users, manage subscriptions' },
     { name: 'Admin', description: 'Administrative endpoints (requires admin role)' },
     { name: 'Health', description: 'System health checks' },
     { name: 'Webhooks', description: 'External webhook integrations' }
@@ -1385,6 +1386,313 @@ console.log(conversations);
         description: 'Check if webhook endpoint is configured and ready.',
         responses: {
           '200': { description: 'Webhook configuration status' }
+        }
+      }
+    },
+    '/api/funnel/users': {
+      post: {
+        tags: ['Funnel'],
+        summary: 'Create user from funnel',
+        description: `Create a new user account from an external funnel application. Returns user details, API key, and authentication tokens.
+
+**Authentication:** Requires \`FUNNEL_API_SECRET\` in Authorization header.
+
+**Flow:**
+1. Funnel app calls this endpoint to create user
+2. Returns userId, apiKey, and tokens
+3. Funnel can then call /api/funnel/checkout to get Stripe payment URL
+4. After payment, Stripe webhooks automatically update subscription status
+
+**Example (curl):**
+\`\`\`bash
+curl -X POST "https://api.abionti.com/api/funnel/users" \\
+  -H "Content-Type: application/json" \\
+  -H "Authorization: Bearer YOUR_FUNNEL_API_SECRET" \\
+  -d '{"email": "user@example.com", "password": "securepass123", "displayName": "John"}'
+\`\`\`
+
+**Note:** Your funnel app does NOT need Stripe credentials - all Stripe operations are handled by Abionti API.`,
+        security: [{ funnelAuth: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['email', 'password'],
+                properties: {
+                  email: { type: 'string', format: 'email', example: 'user@example.com' },
+                  password: { type: 'string', minLength: 6, example: 'securepass123' },
+                  displayName: { type: 'string', example: 'John Doe' },
+                  chatName: { type: 'string', maxLength: 50, example: 'Johnny', description: 'Name for AI to address user' }
+                }
+              }
+            }
+          }
+        },
+        responses: {
+          '201': {
+            description: 'User created successfully',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    message: { type: 'string', example: 'User created successfully' },
+                    user: {
+                      type: 'object',
+                      properties: {
+                        id: { type: 'string', example: 'uuid-here' },
+                        email: { type: 'string', example: 'user@example.com' },
+                        displayName: { type: 'string', example: 'John Doe' }
+                      }
+                    },
+                    apiKey: { type: 'string', example: 'tc_abc123...', description: 'API key for chat endpoints' },
+                    accessToken: { type: 'string', example: 'eyJ...' },
+                    refreshToken: { type: 'string', example: 'eyJ...' }
+                  }
+                }
+              }
+            }
+          },
+          '400': { description: 'Validation error or email already registered' },
+          '401': { description: 'Missing authorization header' },
+          '403': { description: 'Invalid funnel API secret' }
+        }
+      }
+    },
+    '/api/funnel/checkout': {
+      post: {
+        tags: ['Funnel'],
+        summary: 'Create Stripe checkout for user',
+        description: `Generate a Stripe checkout URL for a user. Redirect the user to this URL to complete payment.
+
+**Authentication:** Requires \`FUNNEL_API_SECRET\` in Authorization header.
+
+**Flow:**
+1. Call this endpoint with userId
+2. Redirect user to the returned checkoutUrl
+3. User completes payment on Stripe
+4. Stripe webhooks automatically update subscription status
+5. Check status via /api/funnel/subscription/:userId
+
+**Example (curl):**
+\`\`\`bash
+curl -X POST "https://api.abionti.com/api/funnel/checkout" \\
+  -H "Content-Type: application/json" \\
+  -H "Authorization: Bearer YOUR_FUNNEL_API_SECRET" \\
+  -d '{"userId": "user-uuid-here"}'
+\`\`\``,
+        security: [{ funnelAuth: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['userId'],
+                properties: {
+                  userId: { type: 'string', example: 'user-uuid-here' },
+                  plan: { type: 'string', enum: ['unlimited'], default: 'unlimited' },
+                  successUrl: { type: 'string', format: 'uri', description: 'Custom success redirect URL' },
+                  cancelUrl: { type: 'string', format: 'uri', description: 'Custom cancel redirect URL' }
+                }
+              }
+            }
+          }
+        },
+        responses: {
+          '200': {
+            description: 'Checkout session created',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    checkoutUrl: { type: 'string', example: 'https://checkout.stripe.com/...' },
+                    sessionId: { type: 'string', example: 'cs_...' }
+                  }
+                }
+              }
+            }
+          },
+          '404': { description: 'User not found or Unlimited plan not configured' },
+          '401': { description: 'Missing authorization header' },
+          '403': { description: 'Invalid funnel API secret' }
+        }
+      }
+    },
+    '/api/funnel/subscription/{userId}': {
+      get: {
+        tags: ['Funnel'],
+        summary: 'Get user subscription status',
+        description: `Check a user's current subscription status.
+
+**Example (curl):**
+\`\`\`bash
+curl -X GET "https://api.abionti.com/api/funnel/subscription/user-uuid-here" \\
+  -H "Authorization: Bearer YOUR_FUNNEL_API_SECRET"
+\`\`\``,
+        security: [{ funnelAuth: [] }],
+        parameters: [
+          { name: 'userId', in: 'path', required: true, schema: { type: 'string' }, description: 'User ID' }
+        ],
+        responses: {
+          '200': {
+            description: 'Subscription status',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    userId: { type: 'string' },
+                    email: { type: 'string' },
+                    subscriptionStatus: { type: 'string', enum: ['subscribed', 'not_subscribed'] },
+                    isSubscribed: { type: 'boolean' },
+                    stripeCustomerId: { type: 'string', nullable: true },
+                    stripeSubscriptionId: { type: 'string', nullable: true }
+                  }
+                }
+              }
+            }
+          },
+          '404': { description: 'User not found' },
+          '401': { description: 'Missing authorization header' },
+          '403': { description: 'Invalid funnel API secret' }
+        }
+      }
+    },
+    '/api/funnel/subscription': {
+      put: {
+        tags: ['Funnel'],
+        summary: 'Update user subscription status',
+        description: `Manually update a user's subscription status. Use this for manual overrides or integrations that bypass Stripe webhooks.
+
+**Example (curl):**
+\`\`\`bash
+curl -X PUT "https://api.abionti.com/api/funnel/subscription" \\
+  -H "Content-Type: application/json" \\
+  -H "Authorization: Bearer YOUR_FUNNEL_API_SECRET" \\
+  -d '{"userId": "user-uuid-here", "subscriptionStatus": "subscribed"}'
+\`\`\``,
+        security: [{ funnelAuth: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['userId', 'subscriptionStatus'],
+                properties: {
+                  userId: { type: 'string', example: 'user-uuid-here' },
+                  subscriptionStatus: { type: 'string', enum: ['subscribed', 'not_subscribed'] },
+                  stripeCustomerId: { type: 'string', description: 'Optional Stripe customer ID' },
+                  stripeSubscriptionId: { type: 'string', description: 'Optional Stripe subscription ID' }
+                }
+              }
+            }
+          }
+        },
+        responses: {
+          '200': {
+            description: 'Subscription updated',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    message: { type: 'string', example: 'Subscription updated successfully' },
+                    userId: { type: 'string' },
+                    subscriptionStatus: { type: 'string' }
+                  }
+                }
+              }
+            }
+          },
+          '404': { description: 'User not found' },
+          '401': { description: 'Missing authorization header' },
+          '403': { description: 'Invalid funnel API secret' }
+        }
+      }
+    },
+    '/api/funnel/users/{userId}': {
+      get: {
+        tags: ['Funnel'],
+        summary: 'Get user details',
+        description: 'Retrieve full user profile including subscription status and preferences.',
+        security: [{ funnelAuth: [] }],
+        parameters: [
+          { name: 'userId', in: 'path', required: true, schema: { type: 'string' }, description: 'User ID' }
+        ],
+        responses: {
+          '200': {
+            description: 'User details',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    user: {
+                      type: 'object',
+                      properties: {
+                        id: { type: 'string' },
+                        email: { type: 'string' },
+                        displayName: { type: 'string' },
+                        chatName: { type: 'string', nullable: true },
+                        personalityMode: { type: 'string' },
+                        preferredGender: { type: 'string' },
+                        subscriptionStatus: { type: 'string' },
+                        isSubscribed: { type: 'boolean' },
+                        createdAt: { type: 'string' }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          '404': { description: 'User not found' }
+        }
+      }
+    },
+    '/api/funnel/users/{userId}/api-key': {
+      post: {
+        tags: ['Funnel'],
+        summary: 'Generate new API key for user',
+        description: 'Create an additional API key for a user.',
+        security: [{ funnelAuth: [] }],
+        parameters: [
+          { name: 'userId', in: 'path', required: true, schema: { type: 'string' }, description: 'User ID' }
+        ],
+        requestBody: {
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  name: { type: 'string', example: 'Mobile App Key', description: 'Optional name for the API key' }
+                }
+              }
+            }
+          }
+        },
+        responses: {
+          '201': {
+            description: 'API key created',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    message: { type: 'string', example: 'API key created successfully' },
+                    apiKey: { type: 'string', example: 'tc_abc123...' },
+                    keyPrefix: { type: 'string', example: 'tc_abc12' }
+                  }
+                }
+              }
+            }
+          },
+          '404': { description: 'User not found' }
         }
       }
     }
