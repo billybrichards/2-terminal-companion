@@ -1397,18 +1397,33 @@ console.log(conversations);
 
 **Authentication:** Requires \`FUNNEL_API_SECRET\` in Authorization header.
 
+**CRM Integration:**
+When creating users, you can pass additional CRM fields to segment them for email retention sequences:
+- \`funnelType\`: "waitlist" triggers W1-W5 sequence, "direct" triggers D1-D4 sequence
+- \`persona\`: User segment for personalized emails (lonely/curious/privacy)
+- \`entrySource\`: Track where user came from (e.g., "landing_page", "referral")
+
 **Flow:**
 1. Funnel app calls this endpoint to create user
 2. Returns userId, apiKey, and tokens
-3. Funnel can then call /api/funnel/checkout to get Stripe payment URL
-4. After payment, Stripe webhooks automatically update subscription status
+3. CRM automatically schedules email retention sequence based on funnelType
+4. Funnel can then call /api/funnel/checkout to get Stripe payment URL
+5. After payment, Stripe webhooks automatically update subscription status and cancel pending retention emails
 
-**Example (curl):**
+**Example (curl) - Waitlist user:**
 \`\`\`bash
 curl -X POST "https://api.abionti.com/api/funnel/users" \\
   -H "Content-Type: application/json" \\
   -H "Authorization: Bearer YOUR_FUNNEL_API_SECRET" \\
-  -d '{"email": "user@example.com", "password": "securepass123", "displayName": "John"}'
+  -d '{"email": "user@example.com", "password": "securepass123", "displayName": "John", "funnelType": "waitlist", "persona": "curious", "entrySource": "landing_page"}'
+\`\`\`
+
+**Example (curl) - Direct signup:**
+\`\`\`bash
+curl -X POST "https://api.abionti.com/api/funnel/users" \\
+  -H "Content-Type: application/json" \\
+  -H "Authorization: Bearer YOUR_FUNNEL_API_SECRET" \\
+  -d '{"email": "user@example.com", "password": "securepass123", "funnelType": "direct"}'
 \`\`\`
 
 **Note:** Your funnel app does NOT need Stripe credentials - all Stripe operations are handled by Abionti API.`,
@@ -1424,7 +1439,10 @@ curl -X POST "https://api.abionti.com/api/funnel/users" \\
                   email: { type: 'string', format: 'email', example: 'user@example.com' },
                   password: { type: 'string', minLength: 6, example: 'securepass123' },
                   displayName: { type: 'string', example: 'John Doe' },
-                  chatName: { type: 'string', maxLength: 50, example: 'Johnny', description: 'Name for AI to address user' }
+                  chatName: { type: 'string', maxLength: 50, example: 'Johnny', description: 'Name for AI to address user' },
+                  funnelType: { type: 'string', enum: ['waitlist', 'direct'], example: 'waitlist', description: 'Funnel type for CRM email sequences. "waitlist" = W1-W5 sequence, "direct" = D1-D4 sequence' },
+                  persona: { type: 'string', enum: ['lonely', 'curious', 'privacy'], example: 'curious', description: 'User persona for personalized email content' },
+                  entrySource: { type: 'string', example: 'landing_page', description: 'Track where user originated from' }
                 }
               }
             }
@@ -1444,12 +1462,17 @@ curl -X POST "https://api.abionti.com/api/funnel/users" \\
                       properties: {
                         id: { type: 'string', example: 'uuid-here' },
                         email: { type: 'string', example: 'user@example.com' },
-                        displayName: { type: 'string', example: 'John Doe' }
+                        displayName: { type: 'string', example: 'John Doe' },
+                        funnelType: { type: 'string', example: 'waitlist' },
+                        persona: { type: 'string', example: 'curious', nullable: true },
+                        entrySource: { type: 'string', example: 'landing_page', nullable: true },
+                        stage: { type: 'string', example: 'waitlist' }
                       }
                     },
                     apiKey: { type: 'string', example: 'tc_abc123...', description: 'API key for chat endpoints' },
                     accessToken: { type: 'string', example: 'eyJ...' },
-                    refreshToken: { type: 'string', example: 'eyJ...' }
+                    refreshToken: { type: 'string', example: 'eyJ...' },
+                    emailSequenceScheduled: { type: 'string', example: 'waitlist', description: 'Which email sequence was scheduled (waitlist/direct)' }
                   }
                 }
               }
