@@ -232,6 +232,37 @@ authRouter.post('/refresh', async (req, res) => {
   }
 });
 
+// Schema for updating chat name
+const updateChatNameSchema = z.object({
+  chatName: z.string().min(1).max(50),
+});
+
+// PUT /api/auth/chat-name - Update user's preferred chat name
+authRouter.put('/chat-name', authMiddleware, async (req, res) => {
+  try {
+    const body = updateChatNameSchema.parse(req.body);
+    const userId = req.user!.sub;
+
+    await db.update(users)
+      .set({
+        chatName: body.chatName,
+        updatedAt: new Date().toISOString(),
+      })
+      .where(eq(users.id, userId));
+
+    res.json({
+      message: 'Chat name updated successfully',
+      chatName: body.chatName,
+    });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({ error: 'Validation error', details: error.errors });
+    }
+    console.error('Update chat name error:', error);
+    res.status(500).json({ error: 'Failed to update chat name' });
+  }
+});
+
 // POST /api/auth/logout
 authRouter.post('/logout', authMiddleware, async (req, res) => {
   try {
@@ -273,6 +304,7 @@ authRouter.get('/me', authMiddleware, async (req, res) => {
         id: user.id,
         email: user.email,
         displayName: user.displayName,
+        chatName: (user as any).chatName || null,
         isAdmin: user.isAdmin,
         storagePreference: user.storagePreference,
       },

@@ -1,13 +1,36 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { db } from '../../infrastructure/database/index.js';
-import { companionConfig, conversations, messages, userPreferences, users } from '../../../shared/schema.js';
+import { companionConfig, conversations, messages, userPreferences, users, systemPrompts } from '../../../shared/schema.js';
 import { getOllamaGateway, ChatMessage } from '../../infrastructure/adapters/OllamaGateway.js';
 import { authMiddleware, optionalAuthMiddleware } from '../middleware/authMiddleware.js';
 import { jwtAdapter } from '../../infrastructure/auth/JWTAdapter.js';
 import { eq, desc, count, and } from 'drizzle-orm';
+import { ANPLEXA_DEFAULT_PROMPT, buildSystemPromptWithName } from '../../config/anplexaPrompt.js';
 
 const FREE_MESSAGE_LIMIT = 3;
+
+/**
+ * Get the active system prompt from the database, with user's name injected
+ */
+async function getActiveSystemPrompt(userId?: string): Promise<string> {
+  const activePrompt = await db.query.systemPrompts.findFirst({
+    where: eq(systemPrompts.isActive, true),
+  });
+  
+  let basePrompt = activePrompt?.content || ANPLEXA_DEFAULT_PROMPT;
+  
+  if (userId) {
+    const user = await db.query.users.findFirst({
+      where: eq(users.id, userId),
+    });
+    if (user?.chatName) {
+      basePrompt = buildSystemPromptWithName(basePrompt, user.chatName);
+    }
+  }
+  
+  return basePrompt;
+}
 
 export const chatRouter = Router();
 
@@ -213,14 +236,8 @@ chatRouter.post('/', optionalAuthMiddleware, async (req, res) => {
       }));
     }
 
-    // Build system prompt
-    const systemPrompt = await buildSystemPrompt(
-      config,
-      length as 'brief' | 'moderate' | 'detailed',
-      style as 'casual' | 'thoughtful' | 'creative',
-      userPrefs?.gender,
-      userPrefs?.customGender
-    );
+    // Get the active system prompt with user's name injected
+    const systemPrompt = await getActiveSystemPrompt(userId);
 
     // Build messages array
     const chatMessages: ChatMessage[] = [
@@ -339,14 +356,8 @@ chatRouter.post('/non-streaming', optionalAuthMiddleware, async (req, res) => {
     const length = body.preferences?.length || userPrefs?.preferredLength || config.defaultLength || 'moderate';
     const style = body.preferences?.style || userPrefs?.preferredStyle || config.defaultStyle || 'thoughtful';
 
-    // Build system prompt
-    const systemPrompt = await buildSystemPrompt(
-      config,
-      length as 'brief' | 'moderate' | 'detailed',
-      style as 'casual' | 'thoughtful' | 'creative',
-      userPrefs?.gender,
-      userPrefs?.customGender
-    );
+    // Get the active system prompt with user's name injected
+    const systemPrompt = await getActiveSystemPrompt(userId);
 
     // Build messages array
     const chatMessages: ChatMessage[] = [
