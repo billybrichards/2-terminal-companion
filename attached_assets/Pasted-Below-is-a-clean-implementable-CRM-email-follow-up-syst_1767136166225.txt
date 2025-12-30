@@ -1,0 +1,305 @@
+Below is a **clean, implementable CRM + email follow-up system** mapped **directly** from the funnels you designed.
+This is written so you can hand it to **growth / ops / no-code** and they can build it without interpretation.
+
+I’ll cover:
+
+1. CRM structure (fields + tags)
+2. Funnel → CRM mapping
+3. Email sequences (waitlist vs direct)
+4. Timing logic
+5. Refund + trust handling
+6. Why this improves feedback quality (important for you)
+
+No fluff. No “marketing automation” nonsense.
+
+---
+
+## 1. CRM STRUCTURE (SIMPLE, HUMAN)
+
+Use **one primary table**: `users_leads`
+
+### Core Fields
+
+* `email`
+* `funnel_type` → (`waitlist` | `direct`)
+* `persona` → (`lonely` | `curious` | `privacy`)
+* `entry_source` → (instagram, tiktok, reddit, search, retargeting)
+* `started_at`
+* `last_activity_at`
+* `converted_to_paid` (true/false)
+* `plan` → (`0.99_lifetime` | `2.99_monthly` | null)
+* `refund_requested` (true/false)
+* `refund_processed` (true/false)
+
+### Behavioral Flags (important)
+
+* `used_free_messages` (0–3)
+* `opened_email_1/2/3`
+* `clicked_use_app`
+* `feedback_submitted` (true/false)
+
+This is enough. Don’t over-engineer.
+
+---
+
+## 2. FUNNEL → CRM TAGGING LOGIC
+
+### On Funnel Completion
+
+When user finishes questions:
+
+**Apply tags:**
+
+* `persona:lonely` OR `persona:curious` OR `persona:privacy`
+* `funnel_type:waitlist` OR `funnel_type:direct`
+* `stage:new`
+
+This lets every email sound *relevant*, not generic.
+
+---
+
+## 3. EMAIL SEQUENCES
+
+### A) WAITLIST SEQUENCE (LOW PRESSURE, TRUST FIRST)
+
+**Goal:**
+Warm them up emotionally → invite when ready → avoid desperation.
+
+---
+
+### **Email W1 — Immediate**
+
+**Subject:** You’re on the list.
+
+**Body (short):**
+
+> Thanks for joining.
+>
+> We’re opening access slowly to keep the experience calm and private.
+>
+> You’ll hear from us when your spot opens.
+>
+> No noise. No pressure.
+
+**Tags:** `stage:waitlist`
+
+---
+
+### **Email W2 — +2 days**
+
+**Subject:** Why Amplexa isn’t free
+
+**Body:**
+
+> We charge a small amount because it changes how people use the app.
+>
+> Free-only access leads to spam, bad behaviour, and unhelpful feedback.
+>
+> £0.99 filters for people who actually want the experience to be good.
+>
+> And if it’s not right for you, we refund. No arguments.
+
+(Include refund@ email plainly.)
+
+---
+
+### **Email W3 — +4 days**
+
+**Subject:** What people use Amplexa for
+
+**Body (persona-aware):**
+
+* **Lonely:** “Mostly at night. When you don’t want to explain yourself.”
+* **Curious:** “Fantasy, roleplay, and conversations without censorship.”
+* **Privacy:** “Quiet, predictable conversation without social pressure.”
+
+End with:
+
+> You don’t need to decide yet.
+> We’ll invite you when it’s your turn.
+
+---
+
+### **Email W4 — INVITE**
+
+**Subject:** Your access is open
+
+**Body:**
+
+> You can try Amplexa now.
+>
+> Start with three messages.
+> Then choose:
+> – £2.99/month
+> – £0.99/month (locked in forever)
+
+CTA: **Use Amplexa**
+
+Tag: `stage:invited`
+
+---
+
+### **Email W5 — +48h (if no conversion)**
+
+**Subject:** No rush
+
+**Body:**
+
+> Just a reminder your access is open.
+>
+> If it’s not the right time, that’s okay.
+> Amplexa isn’t going anywhere.
+
+---
+
+## B) DIRECT-TO-APP SEQUENCE (CONVERSION-FOCUSED BUT ETHICAL)
+
+**Goal:**
+Turn first experience into paid use without coercion.
+
+---
+
+### **Email D1 — Immediate**
+
+**Subject:** You’re in.
+
+**Body:**
+
+> You can start immediately.
+>
+> You’ll get three messages to see if it feels right.
+>
+> After that:
+> – £2.99/month
+> – £0.99/month forever (early users)
+
+CTA: **Start now**
+
+---
+
+### **Email D2 — Triggered after 3 messages used**
+
+**Subject:** Want to keep going?
+
+**Body:**
+
+> We limit free messages on purpose.
+>
+> People who pay—even a small amount—use Amplexa more thoughtfully.
+> That makes the experience better for everyone.
+>
+> You’re not locked in.
+> You can leave anytime.
+
+CTA buttons:
+
+* Continue for £0.99/month
+* Continue for £2.99/month
+
+---
+
+### **Email D3 — +24h if not converted**
+
+**Subject:** Not sure yet?
+
+**Body:**
+
+> If Amplexa isn’t what you expected, that’s okay.
+>
+> If you try it and don’t like it, just email **[refund@amplexa.ai](mailto:refund@amplexa.ai)**.
+> A real person will handle it.
+
+This email *increases* conversions by removing fear.
+
+---
+
+### **Email D4 — +72h soft close**
+
+**Subject:** Last note
+
+**Body:**
+
+> We won’t keep emailing you.
+>
+> If you want to try again later, Amplexa will be here.
+
+Tag: `stage:dormant`
+
+---
+
+## 4. TIMING & AUTOMATION RULES
+
+**Critical rules:**
+
+* Never send more than **1 email per 48h**
+* No countdown timers
+* No “last chance” language
+* Silence is respected
+
+This matches the product’s emotional tone.
+
+---
+
+## 5. REFUNDS & TRUST LOOP (VERY IMPORTANT)
+
+### Refund Trigger
+
+When `refund_requested = true`:
+
+* Auto-reply:
+
+> We’ve received your request.
+> A human will review this shortly.
+
+* Internal Slack / inbox notification to ops
+* Refund processed → tag `refund_processed:true`
+
+### Follow-up Email (after refund)
+
+**Subject:** Thanks for trying Amplexa
+
+> No hard feelings.
+>
+> If you ever want to try again, you’re welcome back.
+
+This preserves goodwill + future return.
+
+---
+
+## 6. WHY THIS SYSTEM IMPROVES FEEDBACK QUALITY
+
+You asked to **explain this clearly**, so here it is:
+
+* Paying users behave differently
+* They give clearer feedback
+* They stay longer
+* They treat the experience with respect
+
+The funnel + CRM ensures:
+
+* No trolls
+* No drive-by abuse
+* Fewer “this sucks” comments with no context
+* More usable product insight
+
+That’s why £0.99 is not a discount — it’s a **filter**.
+
+---
+
+## FINAL NOTE
+
+This system:
+
+* Feels human
+* Respects autonomy
+* Converts without pressure
+* Protects brand trust
+
+If you want next, I can:
+
+* translate this into **HubSpot / Klaviyo / Customer.io**
+* write **persona-specific email variants**
+* design **in-app message equivalents**
+* or build a **refund handling SOP** for ops
+
+You’ve designed something unusually ethical for this space — this CRM setup protects that.
