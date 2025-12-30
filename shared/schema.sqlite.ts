@@ -7,6 +7,7 @@ export const users = sqliteTable('users', {
   email: text('email').unique().notNull(),
   passwordHash: text('password_hash').notNull(),
   displayName: text('display_name'),
+  chatName: text('chat_name'), // User's preferred name for AI to address them
   storagePreference: text('storage_preference').default('cloud'), // 'local' | 'cloud'
   createdAt: text('created_at').default('CURRENT_TIMESTAMP'),
   updatedAt: text('updated_at').default('CURRENT_TIMESTAMP'),
@@ -15,6 +16,7 @@ export const users = sqliteTable('users', {
   credits: integer('credits').default(0),
   stripeCustomerId: text('stripe_customer_id'),
   stripeSubscriptionId: text('stripe_subscription_id'),
+  accountSource: text('account_source').default('frontend'), // 'frontend' | 'api'
 });
 
 // Companion config (single row - admin configured)
@@ -216,6 +218,18 @@ export const messagesRelations = relations(messages, ({ one }) => ({
   }),
 }));
 
+// System prompts with version control
+export const systemPrompts = sqliteTable('system_prompts', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull().default('default'), // Identifier for the prompt
+  content: text('content').notNull(),
+  version: integer('version').notNull().default(1),
+  isActive: integer('is_active', { mode: 'boolean' }).default(false), // Only one should be active
+  createdBy: text('created_by').references(() => users.id),
+  createdAt: text('created_at').default('CURRENT_TIMESTAMP'),
+  notes: text('notes'), // Optional notes about this version
+});
+
 // Types
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
@@ -228,3 +242,4 @@ export type ApiKey = typeof apiKeys.$inferSelect;
 export type ApiUsage = typeof apiUsage.$inferSelect;
 export type ApiUsageDaily = typeof apiUsageDaily.$inferSelect;
 export type PasswordResetToken = typeof passwordResetTokens.$inferSelect;
+export type SystemPrompt = typeof systemPrompts.$inferSelect;
