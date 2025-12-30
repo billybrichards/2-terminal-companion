@@ -84,6 +84,8 @@ npm run start            # Run compiled server
 - `PUT /api/auth/chat-name` - Update user's chat name for AI personalization
 - `PUT /api/auth/personality-mode` - Update user's preferred AI personality mode
 - `GET /api/auth/personality-modes` - List available personality modes
+- `PUT /api/auth/gender` - Update user's preferred AI companion gender
+- `GET /api/auth/genders` - List available gender options
 
 ### Chat (API key or JWT required)
 - `POST /api/chat` - Send message (SSE streaming)
@@ -124,7 +126,7 @@ npm run start            # Run compiled server
 Uses PostgreSQL with Drizzle ORM (falls back to SQLite if DATABASE_URL not set).
 
 **Key tables:**
-- `users` - User accounts with stripe_customer_id, stripe_subscription_id, chatName, personalityMode
+- `users` - User accounts with stripe_customer_id, stripe_subscription_id, chatName, personalityMode, preferredGender
 - `api_keys` - API keys with tc_ prefix, hashed storage
 - `api_usage` - Per-request usage tracking
 - `api_usage_daily` - Daily aggregated usage
@@ -167,6 +169,7 @@ Uses PostgreSQL with Drizzle ORM (falls back to SQLite if DATABASE_URL not set).
 - Responsive, mobile-friendly
 
 ## Recent Changes
+- 2025-12-30: Added AI companion gender preference (male/female/non-binary/custom) with PUT /api/auth/gender endpoint
 - 2025-12-30: Added dynamic personality mode system (nurturing/playful/dominant) with per-request or persistent user preference
 - 2025-12-30: Added system prompt management with version control (admin UI at /admin/system-prompts)
 - 2025-12-30: Added chatName field for personalized AI addressing (PUT /api/auth/chat-name)

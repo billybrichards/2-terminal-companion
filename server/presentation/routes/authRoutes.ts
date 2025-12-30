@@ -268,6 +268,12 @@ const updatePersonalityModeSchema = z.object({
   mode: z.enum(['nurturing', 'playful', 'dominant']),
 });
 
+// Schema for updating gender preference
+const updateGenderSchema = z.object({
+  gender: z.enum(['male', 'female', 'non-binary', 'custom']),
+  customGender: z.string().max(100).optional(),
+});
+
 // PUT /api/auth/personality-mode - Update user's preferred personality mode
 authRouter.put('/personality-mode', authMiddleware, async (req, res) => {
   try {
@@ -321,6 +327,68 @@ authRouter.get('/personality-modes', async (req, res) => {
   });
 });
 
+// PUT /api/auth/gender - Update user's preferred AI companion gender
+authRouter.put('/gender', authMiddleware, async (req, res) => {
+  try {
+    const body = updateGenderSchema.parse(req.body);
+    const userId = req.user!.sub;
+
+    // Validate custom gender is provided if gender is 'custom'
+    if (body.gender === 'custom' && !body.customGender) {
+      return res.status(400).json({ error: 'customGender is required when gender is custom' });
+    }
+
+    await db.update(users)
+      .set({
+        preferredGender: body.gender,
+        customGender: body.gender === 'custom' ? body.customGender : null,
+        updatedAt: new Date().toISOString(),
+      })
+      .where(eq(users.id, userId));
+
+    res.json({
+      message: 'Gender preference updated successfully',
+      gender: body.gender,
+      customGender: body.gender === 'custom' ? body.customGender : null,
+    });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({ error: 'Validation error', details: error.errors });
+    }
+    console.error('Update gender error:', error);
+    res.status(500).json({ error: 'Failed to update gender preference' });
+  }
+});
+
+// GET /api/auth/genders - List available gender options
+authRouter.get('/genders', async (req, res) => {
+  res.json({
+    genders: [
+      {
+        id: 'female',
+        name: 'Female',
+        description: 'The AI companion identifies as female with she/her pronouns'
+      },
+      {
+        id: 'male',
+        name: 'Male',
+        description: 'The AI companion identifies as male with he/him pronouns'
+      },
+      {
+        id: 'non-binary',
+        name: 'Non-Binary',
+        description: 'The AI companion identifies as non-binary with they/them pronouns'
+      },
+      {
+        id: 'custom',
+        name: 'Custom',
+        description: 'Define a custom gender identity for the AI companion'
+      }
+    ],
+    default: 'female'
+  });
+});
+
 // POST /api/auth/logout
 authRouter.post('/logout', authMiddleware, async (req, res) => {
   try {
@@ -364,6 +432,8 @@ authRouter.get('/me', authMiddleware, async (req, res) => {
         displayName: user.displayName,
         chatName: (user as any).chatName || null,
         personalityMode: (user as any).personalityMode || 'nurturing',
+        preferredGender: (user as any).preferredGender || 'female',
+        customGender: (user as any).customGender || null,
         isAdmin: user.isAdmin,
         storagePreference: user.storagePreference,
       },

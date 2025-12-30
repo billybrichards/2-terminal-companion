@@ -348,7 +348,9 @@ const { accessToken, refreshToken } = await response.json();
                         isAdmin: { type: 'boolean', example: false },
                         storagePreference: { type: 'string', example: 'server' },
                         chatName: { type: 'string', example: 'Alex', nullable: true },
-                        personalityMode: { type: 'string', enum: ['nurturing', 'playful', 'dominant'], example: 'nurturing' }
+                        personalityMode: { type: 'string', enum: ['nurturing', 'playful', 'dominant'], example: 'nurturing' },
+                        preferredGender: { type: 'string', enum: ['male', 'female', 'non-binary', 'custom'], example: 'female' },
+                        customGender: { type: 'string', nullable: true, example: null }
                       }
                     },
                     preferences: {
@@ -510,6 +512,103 @@ curl -X PUT "https://api.abionti.com/api/auth/personality-mode" \\
                       }
                     },
                     default: { type: 'string', example: 'nurturing' }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    '/api/auth/gender': {
+      put: {
+        tags: ['Authentication'],
+        summary: 'Update AI companion gender',
+        description: `Update the user's preferred AI companion gender. This affects the AI's identity and pronouns.
+
+**Available Genders:**
+- \`female\`: The AI uses she/her pronouns (default)
+- \`male\`: The AI uses he/him pronouns
+- \`non-binary\`: The AI uses they/them pronouns
+- \`custom\`: Define a custom gender identity
+
+**Example (curl):**
+\`\`\`bash
+curl -X PUT "https://api.abionti.com/api/auth/gender" \\
+  -H "Content-Type: application/json" \\
+  -H "Authorization: Bearer your-jwt-token" \\
+  -d '{"gender": "male"}'
+\`\`\`
+
+**Custom gender example:**
+\`\`\`bash
+curl -X PUT "https://api.abionti.com/api/auth/gender" \\
+  -H "Content-Type: application/json" \\
+  -H "Authorization: Bearer your-jwt-token" \\
+  -d '{"gender": "custom", "customGender": "agender companion"}'
+\`\`\``,
+        security: [{ bearerAuth: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['gender'],
+                properties: {
+                  gender: { type: 'string', enum: ['male', 'female', 'non-binary', 'custom'], example: 'female', description: 'The AI companion gender' },
+                  customGender: { type: 'string', maxLength: 100, example: 'agender companion', description: 'Required when gender is "custom"' }
+                }
+              }
+            }
+          }
+        },
+        responses: {
+          '200': {
+            description: 'Gender preference updated successfully',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    message: { type: 'string', example: 'Gender preference updated successfully' },
+                    gender: { type: 'string', example: 'female' },
+                    customGender: { type: 'string', nullable: true, example: null }
+                  }
+                }
+              }
+            }
+          },
+          '400': { description: 'Invalid gender or missing customGender for custom type' },
+          '401': { description: 'Not authenticated' }
+        }
+      }
+    },
+    '/api/auth/genders': {
+      get: {
+        tags: ['Authentication'],
+        summary: 'List gender options',
+        description: 'Get all available AI companion gender options.',
+        responses: {
+          '200': {
+            description: 'List of available gender options',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    genders: {
+                      type: 'array',
+                      items: {
+                        type: 'object',
+                        properties: {
+                          id: { type: 'string', example: 'female' },
+                          name: { type: 'string', example: 'Female' },
+                          description: { type: 'string', example: 'The AI companion identifies as female with she/her pronouns' }
+                        }
+                      }
+                    },
+                    default: { type: 'string', example: 'female' }
                   }
                 }
               }
@@ -704,6 +803,8 @@ while (true) {
         tags: ['Conversations'],
         summary: 'List conversations',
         description: `Retrieve all conversations for the authenticated user.
+
+**Multiple Conversations:** Each user can have many conversations. New conversations are created automatically when you send a message to \`/api/chat\` without specifying a \`conversationId\`. To continue an existing conversation, include the \`conversationId\` in your chat request.
 
 **Example (curl):**
 \`\`\`bash

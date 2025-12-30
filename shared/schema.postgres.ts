@@ -9,6 +9,8 @@ export const users = pgTable('users', {
   displayName: text('display_name'),
   chatName: text('chat_name'), // User's preferred name for AI to address them
   personalityMode: text('personality_mode').default('nurturing'), // 'nurturing' | 'playful' | 'dominant'
+  preferredGender: text('preferred_gender').default('female'), // 'male' | 'female' | 'non-binary' | 'custom'
+  customGender: text('custom_gender'), // Custom gender text if preferredGender is 'custom'
   storagePreference: text('storage_preference').default('cloud'), // 'local' | 'cloud'
   createdAt: text('created_at').default('CURRENT_TIMESTAMP'),
   updatedAt: text('updated_at').default('CURRENT_TIMESTAMP'),
