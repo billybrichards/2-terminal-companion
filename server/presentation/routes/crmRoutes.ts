@@ -493,14 +493,17 @@ crmRouter.get('/templates', async (req: Request, res: Response) => {
   const persona = req.query.persona as string || 'curious';
 
   const preview = getEmailPreview(selectedTemplate, 'preview-user', persona);
+  
+  const htmlBase64 = Buffer.from(preview.html).toString('base64');
 
   const templateCards = TEMPLATE_LIST.map(t => `
-    <div class="template-card ${t.id === selectedTemplate ? 'active' : ''}" 
-         onclick="selectTemplate('${t.id}')">
+    <a href="/admin/crm/templates?template=${t.id}${t.id === 'W3' ? '&persona=' + persona : ''}" 
+       class="template-card ${t.id === selectedTemplate ? 'active' : ''}"
+       style="text-decoration: none; color: inherit;">
       <div class="template-name">${t.name}</div>
       <div class="template-delay">${t.delay}</div>
       <div class="template-seq">${t.sequence}</div>
-    </div>
+    </a>
   `).join('');
 
   const content = `
@@ -516,11 +519,17 @@ crmRouter.get('/templates', async (req: Request, res: Response) => {
         ${selectedTemplate === 'W3' ? `
           <div style="margin-top: 24px;">
             <h2>Persona Variant</h2>
-            <select class="filter-select" style="width: 100%;" onchange="selectPersona(this.value)">
-              <option value="lonely" ${persona === 'lonely' ? 'selected' : ''}>Lonely</option>
-              <option value="curious" ${persona === 'curious' ? 'selected' : ''}>Curious</option>
-              <option value="privacy" ${persona === 'privacy' ? 'selected' : ''}>Privacy</option>
-            </select>
+            <div style="display: flex; flex-direction: column; gap: 8px;">
+              <a href="/admin/crm/templates?template=W3&persona=lonely" 
+                 class="btn ${persona === 'lonely' ? '' : 'btn-secondary'}" 
+                 style="text-align: center;">Lonely</a>
+              <a href="/admin/crm/templates?template=W3&persona=curious" 
+                 class="btn ${persona === 'curious' ? '' : 'btn-secondary'}" 
+                 style="text-align: center;">Curious</a>
+              <a href="/admin/crm/templates?template=W3&persona=privacy" 
+                 class="btn ${persona === 'privacy' ? '' : 'btn-secondary'}" 
+                 style="text-align: center;">Privacy</a>
+            </div>
           </div>
         ` : ''}
       </div>
@@ -528,25 +537,10 @@ crmRouter.get('/templates', async (req: Request, res: Response) => {
       <div>
         <h2>Preview: ${escapeHtml(preview.subject)}</h2>
         <div class="email-preview">
-          <iframe srcdoc="${escapeHtml(preview.html)}"></iframe>
+          <iframe src="data:text/html;base64,${htmlBase64}" style="width: 100%; height: 600px; border: none; border-radius: 8px;"></iframe>
         </div>
       </div>
     </div>
-
-    <script>
-      function selectTemplate(id) {
-        const params = new URLSearchParams(window.location.search);
-        params.set('template', id);
-        if (id !== 'W3') params.delete('persona');
-        window.location.href = '/admin/crm/templates?' + params.toString();
-      }
-      
-      function selectPersona(persona) {
-        const params = new URLSearchParams(window.location.search);
-        params.set('persona', persona);
-        window.location.href = '/admin/crm/templates?' + params.toString();
-      }
-    </script>
   `;
 
   res.send(wrapPage('Email Templates', content, 'templates'));
