@@ -25,6 +25,8 @@ export const emailScheduler = {
       { template: 'W1', scheduledAt: now },
       { template: 'W2', scheduledAt: addDays(now, 2) },
       { template: 'W3', scheduledAt: addDays(now, 4) },
+      { template: 'W4', scheduledAt: addDays(now, 7) },
+      { template: 'W5', scheduledAt: addDays(now, 9) },
     ];
 
     for (const email of emails) {
@@ -41,13 +43,22 @@ export const emailScheduler = {
   async scheduleDirectSequence(userId: string): Promise<void> {
     const now = new Date();
     
-    await db.insert(emailQueue).values({
-      id: uuidv4(),
-      userId,
-      emailTemplate: 'D1',
-      scheduledAt: now.toISOString(),
-      status: 'pending',
-    });
+    const emails = [
+      { template: 'D1', scheduledAt: now },
+      { template: 'D2', scheduledAt: addDays(now, 1) },
+      { template: 'D3', scheduledAt: addDays(now, 3) },
+      { template: 'D4', scheduledAt: addDays(now, 5) },
+    ];
+
+    for (const email of emails) {
+      await db.insert(emailQueue).values({
+        id: uuidv4(),
+        userId,
+        emailTemplate: email.template,
+        scheduledAt: email.scheduledAt.toISOString(),
+        status: 'pending',
+      });
+    }
   },
 
   async scheduleWaitlistInvite(userId: string): Promise<void> {

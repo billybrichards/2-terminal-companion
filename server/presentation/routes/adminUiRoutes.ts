@@ -9,11 +9,11 @@ import { ANPLEXA_DEFAULT_PROMPT } from '../../config/anplexaPrompt.js';
 
 export const adminUiRouter = Router();
 
-const ADMIN_PASSWORD = process.env.ADMIN_UI_PASSWORD || '';
-const COOKIE_NAME = 'admin_session';
+export const ADMIN_PASSWORD = process.env.ADMIN_UI_PASSWORD || '';
+export const COOKIE_NAME = 'admin_session';
 const SESSION_SECRET = process.env.JWT_SECRET || crypto.randomBytes(32).toString('hex');
 
-const activeSessions = new Map<string, { expiresAt: number }>();
+export const activeSessions = new Map<string, { expiresAt: number }>();
 
 const loginAttempts = new Map<string, { count: number; lastAttempt: number }>();
 const MAX_ATTEMPTS = 5;
@@ -49,7 +49,7 @@ function generateSessionToken(): string {
   return `${randomBytes}.${timestamp}.${signature}`;
 }
 
-function validateSessionToken(token: string): boolean {
+export function validateSessionToken(token: string): boolean {
   const parts = token.split('.');
   if (parts.length !== 3) return false;
   const [randomBytes, timestamp, signature] = parts;
@@ -67,13 +67,13 @@ function validateSessionToken(token: string): boolean {
   return true;
 }
 
-function isAuthenticated(req: Request): boolean {
+export function isAuthenticated(req: Request): boolean {
   const sessionToken = req.cookies?.[COOKIE_NAME];
   if (!sessionToken || !ADMIN_PASSWORD) return false;
   return validateSessionToken(sessionToken);
 }
 
-function requireAuth(req: Request, res: Response): boolean {
+export function requireAuth(req: Request, res: Response): boolean {
   if (!isAuthenticated(req)) {
     res.redirect('/admin');
     return false;

@@ -1,50 +1,12 @@
 import { Router, Request, Response } from 'express';
-import crypto from 'crypto';
 import { db } from '../../infrastructure/database/index.js';
 import { users, emailQueue, emailLogs } from '../../../shared/schema.js';
-import { eq, desc, sql, and, gte, count } from 'drizzle-orm';
-import { emailTemplates, getEmailPreview, TEMPLATE_LIST, getW3Template } from '../../infrastructure/email/emailTemplates.js';
+import { eq, desc, and } from 'drizzle-orm';
+import { getEmailPreview, TEMPLATE_LIST } from '../../infrastructure/email/emailTemplates.js';
 import { emailScheduler } from '../../infrastructure/email/emailScheduler.js';
+import { isAuthenticated, requireAuth } from './adminUiRoutes.js';
 
 export const crmRouter = Router();
-
-const ADMIN_PASSWORD = process.env.ADMIN_UI_PASSWORD || '';
-const COOKIE_NAME = 'admin_session';
-const SESSION_SECRET = process.env.JWT_SECRET || crypto.randomBytes(32).toString('hex');
-
-const activeSessions = new Map<string, { expiresAt: number }>();
-
-function validateSessionToken(token: string): boolean {
-  const parts = token.split('.');
-  if (parts.length !== 3) return false;
-  const [randomBytes, timestamp, signature] = parts;
-  const expectedSignature = crypto.createHmac('sha256', SESSION_SECRET)
-    .update(randomBytes + timestamp)
-    .digest('hex');
-  if (!crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expectedSignature))) {
-    return false;
-  }
-  const session = activeSessions.get(token);
-  if (!session || session.expiresAt < Date.now()) {
-    activeSessions.delete(token);
-    return false;
-  }
-  return true;
-}
-
-function isAuthenticated(req: Request): boolean {
-  const sessionToken = req.cookies?.[COOKIE_NAME];
-  if (!sessionToken || !ADMIN_PASSWORD) return false;
-  return validateSessionToken(sessionToken);
-}
-
-function requireAuth(req: Request, res: Response): boolean {
-  if (!isAuthenticated(req)) {
-    res.redirect('/admin');
-    return false;
-  }
-  return true;
-}
 
 const anplexaStyles = `
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -940,14 +902,29 @@ crmRouter.get('/track/open/:logId', async (req: Request, res: Response) => {
 });
 
 crmRouter.get('/track/click/:logId', async (req: Request, res: Response) => {
+  const ALLOWED_REDIRECT_HOSTS = ['anplexa.com', 'www.anplexa.com'];
+  const DEFAULT_REDIRECT = 'https://anplexa.com/dash';
+  
   try {
     const source = req.query.source as string || 'unknown';
     await emailScheduler.trackEmailClick(req.params.logId, source);
     
-    const redirect = req.query.redirect as string || 'https://anplexa.com/dash';
-    res.redirect(redirect);
+    let redirectUrl = DEFAULT_REDIRECT;
+    const requestedRedirect = req.query.redirect as string;
+    
+    if (requestedRedirect) {
+      try {
+        const url = new URL(requestedRedirect);
+        if (ALLOWED_REDIRECT_HOSTS.includes(url.hostname)) {
+          redirectUrl = requestedRedirect;
+        }
+      } catch {
+      }
+    }
+    
+    res.redirect(redirectUrl);
   } catch (error) {
     console.error('Track click error:', error);
-    res.redirect('https://anplexa.com/dash');
+    res.redirect(DEFAULT_REDIRECT);
   }
 });
