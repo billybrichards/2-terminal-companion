@@ -125,24 +125,23 @@ funnelRouter.post('/checkout', funnelAuthMiddleware, async (req: Request, res: R
   try {
     const body = checkoutSchema.parse(req.body);
 
-    const userResult = await db.execute(
-      sql`SELECT id, email, stripe_customer_id FROM users WHERE id = ${body.userId}`
-    );
+    const user = await db.query.users.findFirst({
+      where: eq(users.id, body.userId),
+    });
 
-    if (userResult.rows.length === 0) {
+    if (!user) {
       return res.status(404).json({ error: 'User not found' });
     }
 
-    const user = userResult.rows[0] as { id: string; email: string; stripe_customer_id: string | null };
-    let customerId = user.stripe_customer_id;
+    let customerId = (user as any).stripeCustomerId;
 
     if (!customerId) {
       const customer = await stripeService.createCustomer(user.email, body.userId);
       customerId = customer.id;
 
-      await db.execute(
-        sql`UPDATE users SET stripe_customer_id = ${customerId} WHERE id = ${body.userId}`
-      );
+      await db.update(users)
+        .set({ stripeCustomerId: customerId })
+        .where(eq(users.id, body.userId));
     }
 
     const priceResult = await db.execute(
@@ -194,29 +193,23 @@ funnelRouter.get('/subscription/:userId', funnelAuthMiddleware, async (req: Requ
   try {
     const { userId } = req.params;
 
-    const userResult = await db.execute(
-      sql`SELECT id, email, subscription_status, stripe_customer_id, stripe_subscription_id FROM users WHERE id = ${userId}`
-    );
+    const user = await db.query.users.findFirst({
+      where: eq(users.id, userId),
+    });
 
-    if (userResult.rows.length === 0) {
+    if (!user) {
       return res.status(404).json({ error: 'User not found' });
     }
 
-    const user = userResult.rows[0] as {
-      id: string;
-      email: string;
-      subscription_status: string;
-      stripe_customer_id: string | null;
-      stripe_subscription_id: string | null;
-    };
+    const subscriptionStatus = (user as any).subscriptionStatus || 'not_subscribed';
 
     res.json({
       userId: user.id,
       email: user.email,
-      subscriptionStatus: user.subscription_status || 'not_subscribed',
-      isSubscribed: user.subscription_status === 'subscribed',
-      stripeCustomerId: user.stripe_customer_id,
-      stripeSubscriptionId: user.stripe_subscription_id,
+      subscriptionStatus: subscriptionStatus,
+      isSubscribed: subscriptionStatus === 'subscribed',
+      stripeCustomerId: (user as any).stripeCustomerId || null,
+      stripeSubscriptionId: (user as any).stripeSubscriptionId || null,
     });
   } catch (error) {
     console.error('Funnel get subscription error:', error);
@@ -228,34 +221,29 @@ funnelRouter.put('/subscription', funnelAuthMiddleware, async (req: Request, res
   try {
     const body = updateSubscriptionSchema.parse(req.body);
 
-    const userResult = await db.execute(
-      sql`SELECT id FROM users WHERE id = ${body.userId}`
-    );
+    const user = await db.query.users.findFirst({
+      where: eq(users.id, body.userId),
+    });
 
-    if (userResult.rows.length === 0) {
+    if (!user) {
       return res.status(404).json({ error: 'User not found' });
     }
 
-    const updates: Record<string, any> = {
-      subscription_status: body.subscriptionStatus,
-      updated_at: new Date().toISOString(),
+    const updateData: Record<string, any> = {
+      subscriptionStatus: body.subscriptionStatus,
+      updatedAt: new Date().toISOString(),
     };
 
     if (body.stripeCustomerId) {
-      updates.stripe_customer_id = body.stripeCustomerId;
+      updateData.stripeCustomerId = body.stripeCustomerId;
     }
     if (body.stripeSubscriptionId) {
-      updates.stripe_subscription_id = body.stripeSubscriptionId;
+      updateData.stripeSubscriptionId = body.stripeSubscriptionId;
     }
 
-    await db.execute(
-      sql`UPDATE users SET 
-        subscription_status = ${body.subscriptionStatus},
-        updated_at = ${new Date().toISOString()}
-        ${body.stripeCustomerId ? sql`, stripe_customer_id = ${body.stripeCustomerId}` : sql``}
-        ${body.stripeSubscriptionId ? sql`, stripe_subscription_id = ${body.stripeSubscriptionId}` : sql``}
-        WHERE id = ${body.userId}`
-    );
+    await db.update(users)
+      .set(updateData)
+      .where(eq(users.id, body.userId));
 
     res.json({
       message: 'Subscription updated successfully',
