@@ -67,8 +67,8 @@ const permissiveCorsOptions = {
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Webhook-Secret', 'X-API-Key', 'stripe-signature'],
 };
 
-// Apply strict CORS to admin routes
-app.use('/admin', cors(strictCorsOptions));
+// Apply permissive CORS to admin routes (password is the security gate)
+app.use('/admin', cors(permissiveCorsOptions));
 
 // Apply permissive CORS to API routes (API key is the security gate)
 app.use('/api', cors(permissiveCorsOptions));
