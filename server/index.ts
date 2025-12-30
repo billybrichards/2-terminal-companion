@@ -23,6 +23,7 @@ import { webhookRouter } from './presentation/routes/webhookRoutes.js';
 import { releaseNotesRouter } from './presentation/routes/releaseNotesRoutes.js';
 import { landingRouter } from './presentation/routes/landingRoutes.js';
 import { stripeRouter } from './presentation/routes/stripeRoutes.js';
+import { funnelRouter } from './presentation/routes/funnelRoutes.js';
 import { apiKeyMiddleware, optionalApiKeyMiddleware } from './presentation/middleware/apiKeyMiddleware.js';
 import { usageTrackingMiddleware } from './presentation/middleware/usageTrackingMiddleware.js';
 
@@ -135,6 +136,7 @@ app.use('/api/admin', adminRouter);
 app.use('/api/health', healthRouter);
 app.use('/api/webhooks', webhookRouter);
 app.use('/api/stripe', stripeRouter);
+app.use('/api/funnel', funnelRouter);
 app.use('/docs', docsRouter);
 app.use('/admin', adminUiRouter);
 app.use('/release-notes', releaseNotesRouter);

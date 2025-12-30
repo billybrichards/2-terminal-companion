@@ -1,0 +1,336 @@
+import { Router, Request, Response, NextFunction } from 'express';
+import { z } from 'zod';
+import { sql } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
+import { db } from '../../infrastructure/database/index.js';
+import { users, apiKeys, sessions } from '../../../shared/schema.js';
+import { jwtAdapter } from '../../infrastructure/auth/JWTAdapter.js';
+import { generateApiKey } from '../../infrastructure/auth/ApiKeyGenerator.js';
+import { stripeService } from '../../infrastructure/stripe/stripeService.js';
+import { emailService } from '../../infrastructure/email/resendService.js';
+
+export const funnelRouter = Router();
+
+const FUNNEL_API_SECRET = process.env.FUNNEL_API_SECRET;
+
+function funnelAuthMiddleware(req: Request, res: Response, next: NextFunction) {
+  const authHeader = req.headers.authorization;
+  
+  if (!FUNNEL_API_SECRET) {
+    console.error('FUNNEL_API_SECRET not configured');
+    return res.status(500).json({ error: 'Funnel API not configured' });
+  }
+  
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'Missing or invalid authorization header' });
+  }
+  
+  const token = authHeader.substring(7);
+  
+  if (token !== FUNNEL_API_SECRET) {
+    return res.status(403).json({ error: 'Invalid funnel API secret' });
+  }
+  
+  next();
+}
+
+const createUserSchema = z.object({
+  email: z.string().email(),
+  password: z.string().min(6),
+  displayName: z.string().optional(),
+  chatName: z.string().max(50).optional(),
+});
+
+const checkoutSchema = z.object({
+  userId: z.string(),
+  plan: z.enum(['unlimited']).optional().default('unlimited'),
+  successUrl: z.string().url().optional(),
+  cancelUrl: z.string().url().optional(),
+});
+
+const updateSubscriptionSchema = z.object({
+  userId: z.string(),
+  subscriptionStatus: z.enum(['subscribed', 'not_subscribed']),
+  stripeCustomerId: z.string().optional(),
+  stripeSubscriptionId: z.string().optional(),
+});
+
+funnelRouter.post('/users', funnelAuthMiddleware, async (req: Request, res: Response) => {
+  try {
+    const body = createUserSchema.parse(req.body);
+
+    const existingUser = await db.query.users.findFirst({
+      where: eq(users.email, body.email),
+    });
+
+    if (existingUser) {
+      return res.status(400).json({ error: 'Email already registered' });
+    }
+
+    const passwordHash = await jwtAdapter.hashPassword(body.password);
+    const userId = jwtAdapter.generateId();
+
+    await db.insert(users).values({
+      id: userId,
+      email: body.email,
+      passwordHash,
+      displayName: body.displayName || body.email.split('@')[0],
+      chatName: body.chatName || null,
+      accountSource: 'api',
+    });
+
+    const apiKeyData = await generateApiKey();
+    await db.insert(apiKeys).values({
+      id: jwtAdapter.generateId(),
+      userId,
+      keyHash: apiKeyData.keyHash,
+      keyPrefix: apiKeyData.keyPrefix,
+      name: 'Funnel Generated Key',
+    });
+
+    const tokens = jwtAdapter.generateTokenPair(userId, body.email, false);
+
+    await db.insert(sessions).values({
+      id: jwtAdapter.generateId(),
+      userId,
+      refreshToken: tokens.refreshToken,
+      expiresAt: jwtAdapter.getRefreshExpiryDate().toISOString(),
+    });
+
+    emailService.sendWelcomeEmail(body.email, body.displayName || body.email.split('@')[0]).catch(err => {
+      console.error('Failed to send welcome email:', err);
+    });
+
+    res.status(201).json({
+      message: 'User created successfully',
+      user: {
+        id: userId,
+        email: body.email,
+        displayName: body.displayName || body.email.split('@')[0],
+      },
+      apiKey: apiKeyData.key,
+      accessToken: tokens.accessToken,
+      refreshToken: tokens.refreshToken,
+    });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({ error: 'Validation error', details: error.errors });
+    }
+    console.error('Funnel create user error:', error);
+    res.status(500).json({ error: 'Failed to create user' });
+  }
+});
+
+funnelRouter.post('/checkout', funnelAuthMiddleware, async (req: Request, res: Response) => {
+  try {
+    const body = checkoutSchema.parse(req.body);
+
+    const userResult = await db.execute(
+      sql`SELECT id, email, stripe_customer_id FROM users WHERE id = ${body.userId}`
+    );
+
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const user = userResult.rows[0] as { id: string; email: string; stripe_customer_id: string | null };
+    let customerId = user.stripe_customer_id;
+
+    if (!customerId) {
+      const customer = await stripeService.createCustomer(user.email, body.userId);
+      customerId = customer.id;
+
+      await db.execute(
+        sql`UPDATE users SET stripe_customer_id = ${customerId} WHERE id = ${body.userId}`
+      );
+    }
+
+    const priceResult = await db.execute(
+      sql`
+        SELECT pr.id as price_id
+        FROM stripe.products p
+        JOIN stripe.prices pr ON pr.product = p.id
+        WHERE p.name ILIKE '%Unlimited%' AND p.active = true AND pr.active = true
+        LIMIT 1
+      `
+    );
+
+    if (priceResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Unlimited plan not found. Please run npm run stripe:seed first.' });
+    }
+
+    const priceId = priceResult.rows[0].price_id as string;
+
+    const baseUrl = `https://${process.env.REPLIT_DOMAINS?.split(',')[0]}`;
+    const successUrl = body.successUrl || `${baseUrl}/subscription/success?session_id={CHECKOUT_SESSION_ID}`;
+    const cancelUrl = body.cancelUrl || `${baseUrl}/subscription/cancel`;
+
+    const session = await stripeService.createCheckoutSession(
+      customerId,
+      priceId,
+      successUrl,
+      cancelUrl,
+      {
+        customerEmail: user.email,
+        customerCreation: 'always',
+        billingAddressCollection: 'required',
+      }
+    );
+
+    res.json({
+      checkoutUrl: session.url,
+      sessionId: session.id,
+    });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({ error: 'Validation error', details: error.errors });
+    }
+    console.error('Funnel checkout error:', error);
+    res.status(500).json({ error: 'Failed to create checkout session' });
+  }
+});
+
+funnelRouter.get('/subscription/:userId', funnelAuthMiddleware, async (req: Request, res: Response) => {
+  try {
+    const { userId } = req.params;
+
+    const userResult = await db.execute(
+      sql`SELECT id, email, subscription_status, stripe_customer_id, stripe_subscription_id FROM users WHERE id = ${userId}`
+    );
+
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const user = userResult.rows[0] as {
+      id: string;
+      email: string;
+      subscription_status: string;
+      stripe_customer_id: string | null;
+      stripe_subscription_id: string | null;
+    };
+
+    res.json({
+      userId: user.id,
+      email: user.email,
+      subscriptionStatus: user.subscription_status || 'not_subscribed',
+      isSubscribed: user.subscription_status === 'subscribed',
+      stripeCustomerId: user.stripe_customer_id,
+      stripeSubscriptionId: user.stripe_subscription_id,
+    });
+  } catch (error) {
+    console.error('Funnel get subscription error:', error);
+    res.status(500).json({ error: 'Failed to get subscription status' });
+  }
+});
+
+funnelRouter.put('/subscription', funnelAuthMiddleware, async (req: Request, res: Response) => {
+  try {
+    const body = updateSubscriptionSchema.parse(req.body);
+
+    const userResult = await db.execute(
+      sql`SELECT id FROM users WHERE id = ${body.userId}`
+    );
+
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const updates: Record<string, any> = {
+      subscription_status: body.subscriptionStatus,
+      updated_at: new Date().toISOString(),
+    };
+
+    if (body.stripeCustomerId) {
+      updates.stripe_customer_id = body.stripeCustomerId;
+    }
+    if (body.stripeSubscriptionId) {
+      updates.stripe_subscription_id = body.stripeSubscriptionId;
+    }
+
+    await db.execute(
+      sql`UPDATE users SET 
+        subscription_status = ${body.subscriptionStatus},
+        updated_at = ${new Date().toISOString()}
+        ${body.stripeCustomerId ? sql`, stripe_customer_id = ${body.stripeCustomerId}` : sql``}
+        ${body.stripeSubscriptionId ? sql`, stripe_subscription_id = ${body.stripeSubscriptionId}` : sql``}
+        WHERE id = ${body.userId}`
+    );
+
+    res.json({
+      message: 'Subscription updated successfully',
+      userId: body.userId,
+      subscriptionStatus: body.subscriptionStatus,
+    });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({ error: 'Validation error', details: error.errors });
+    }
+    console.error('Funnel update subscription error:', error);
+    res.status(500).json({ error: 'Failed to update subscription' });
+  }
+});
+
+funnelRouter.get('/users/:userId', funnelAuthMiddleware, async (req: Request, res: Response) => {
+  try {
+    const { userId } = req.params;
+
+    const user = await db.query.users.findFirst({
+      where: eq(users.id, userId),
+    });
+
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    res.json({
+      user: {
+        id: user.id,
+        email: user.email,
+        displayName: user.displayName,
+        chatName: (user as any).chatName,
+        personalityMode: (user as any).personalityMode,
+        preferredGender: (user as any).preferredGender,
+        subscriptionStatus: (user as any).subscriptionStatus || 'not_subscribed',
+        isSubscribed: (user as any).subscriptionStatus === 'subscribed',
+        createdAt: user.createdAt,
+      },
+    });
+  } catch (error) {
+    console.error('Funnel get user error:', error);
+    res.status(500).json({ error: 'Failed to get user' });
+  }
+});
+
+funnelRouter.post('/users/:userId/api-key', funnelAuthMiddleware, async (req: Request, res: Response) => {
+  try {
+    const { userId } = req.params;
+    const { name } = req.body;
+
+    const user = await db.query.users.findFirst({
+      where: eq(users.id, userId),
+    });
+
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const apiKeyData = await generateApiKey();
+    await db.insert(apiKeys).values({
+      id: jwtAdapter.generateId(),
+      userId,
+      keyHash: apiKeyData.keyHash,
+      keyPrefix: apiKeyData.keyPrefix,
+      name: name || 'Funnel Generated Key',
+    });
+
+    res.status(201).json({
+      message: 'API key created successfully',
+      apiKey: apiKeyData.key,
+      keyPrefix: apiKeyData.keyPrefix,
+    });
+  } catch (error) {
+    console.error('Funnel create API key error:', error);
+    res.status(500).json({ error: 'Failed to create API key' });
+  }
+});
