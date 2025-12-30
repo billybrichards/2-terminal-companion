@@ -346,7 +346,8 @@ const { accessToken, refreshToken } = await response.json();
                         email: { type: 'string', example: 'user@example.com' },
                         displayName: { type: 'string', example: 'John Doe' },
                         isAdmin: { type: 'boolean', example: false },
-                        storagePreference: { type: 'string', example: 'server' }
+                        storagePreference: { type: 'string', example: 'server' },
+                        chatName: { type: 'string', example: 'Alex', nullable: true }
                       }
                     },
                     preferences: {
@@ -363,6 +364,68 @@ const { accessToken, refreshToken } = await response.json();
               }
             }
           },
+          '401': { description: 'Not authenticated' }
+        }
+      }
+    },
+    '/api/auth/chat-name': {
+      put: {
+        tags: ['Authentication'],
+        summary: 'Update chat name',
+        description: `Update the user's preferred name for personalized AI interactions. The AI will address the user by this name during conversations.
+
+**Example (curl):**
+\`\`\`bash
+curl -X PUT "https://api.abionti.com/api/auth/chat-name" \\
+  -H "Content-Type: application/json" \\
+  -H "Authorization: Bearer your-jwt-token" \\
+  -d '{"name": "Alex"}'
+\`\`\`
+
+**Example (Node.js):**
+\`\`\`javascript
+const response = await fetch('https://api.abionti.com/api/auth/chat-name', {
+  method: 'PUT',
+  headers: {
+    'Content-Type': 'application/json',
+    'Authorization': 'Bearer ' + accessToken
+  },
+  body: JSON.stringify({ name: 'Alex' })
+});
+const data = await response.json();
+console.log(data.chatName); // "Alex"
+\`\`\``,
+        security: [{ bearerAuth: [] }, { apiKey: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['name'],
+                properties: {
+                  name: { type: 'string', maxLength: 50, example: 'Alex', description: 'The name the AI should use to address the user' }
+                }
+              }
+            }
+          }
+        },
+        responses: {
+          '200': {
+            description: 'Chat name updated successfully',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    message: { type: 'string', example: 'Chat name updated' },
+                    chatName: { type: 'string', example: 'Alex' }
+                  }
+                }
+              }
+            }
+          },
+          '400': { description: 'Invalid name provided' },
           '401': { description: 'Not authenticated' }
         }
       }
@@ -731,6 +794,191 @@ console.log(conversations);
         security: [{ bearerAuth: [] }],
         responses: {
           '200': { description: 'Updated configuration' }
+        }
+      }
+    },
+    '/api/admin/system-prompts': {
+      get: {
+        tags: ['Admin'],
+        summary: 'List all system prompts',
+        description: 'Retrieve all system prompt versions with metadata. Only one prompt can be active at a time.',
+        security: [{ bearerAuth: [] }],
+        responses: {
+          '200': {
+            description: 'Array of system prompts',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    prompts: {
+                      type: 'array',
+                      items: {
+                        type: 'object',
+                        properties: {
+                          id: { type: 'string', example: 'uuid-here' },
+                          name: { type: 'string', example: 'Anplexa v2' },
+                          content: { type: 'string', example: 'You are Anplexa...' },
+                          version: { type: 'integer', example: 2 },
+                          isActive: { type: 'boolean', example: true },
+                          notes: { type: 'string', example: 'Updated personality traits', nullable: true },
+                          createdAt: { type: 'string', format: 'date-time' },
+                          createdBy: { type: 'string', example: 'user-uuid', nullable: true }
+                        }
+                      }
+                    },
+                    activePromptId: { type: 'string', example: 'uuid-here', nullable: true }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      post: {
+        tags: ['Admin'],
+        summary: 'Create new system prompt version',
+        description: 'Create a new version of the system prompt. The prompt will be inactive by default.',
+        security: [{ bearerAuth: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['name', 'content'],
+                properties: {
+                  name: { type: 'string', example: 'Anplexa v2', description: 'Name for this prompt version' },
+                  content: { type: 'string', example: 'You are Anplexa...', description: 'The full system prompt content. Use {{USER_NAME}} placeholder for personalization.' },
+                  notes: { type: 'string', example: 'Updated personality', description: 'Optional notes about changes' }
+                }
+              }
+            }
+          }
+        },
+        responses: {
+          '201': {
+            description: 'Prompt created successfully',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    message: { type: 'string', example: 'System prompt created' },
+                    prompt: {
+                      type: 'object',
+                      properties: {
+                        id: { type: 'string' },
+                        name: { type: 'string' },
+                        version: { type: 'integer' },
+                        isActive: { type: 'boolean' }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          '400': { description: 'Invalid input' }
+        }
+      }
+    },
+    '/api/admin/system-prompts/{id}': {
+      get: {
+        tags: ['Admin'],
+        summary: 'Get system prompt by ID',
+        description: 'Retrieve a specific system prompt with full content.',
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          { name: 'id', in: 'path', required: true, schema: { type: 'string' }, description: 'System prompt ID' }
+        ],
+        responses: {
+          '200': {
+            description: 'System prompt details',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    prompt: {
+                      type: 'object',
+                      properties: {
+                        id: { type: 'string' },
+                        name: { type: 'string' },
+                        content: { type: 'string' },
+                        version: { type: 'integer' },
+                        isActive: { type: 'boolean' },
+                        notes: { type: 'string', nullable: true },
+                        createdAt: { type: 'string', format: 'date-time' }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          '404': { description: 'Prompt not found' }
+        }
+      },
+      delete: {
+        tags: ['Admin'],
+        summary: 'Delete system prompt',
+        description: 'Delete a system prompt version. Cannot delete the currently active prompt.',
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          { name: 'id', in: 'path', required: true, schema: { type: 'string' }, description: 'System prompt ID' }
+        ],
+        responses: {
+          '200': {
+            description: 'Prompt deleted successfully',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    message: { type: 'string', example: 'System prompt deleted' }
+                  }
+                }
+              }
+            }
+          },
+          '400': { description: 'Cannot delete active prompt' },
+          '404': { description: 'Prompt not found' }
+        }
+      }
+    },
+    '/api/admin/system-prompts/{id}/activate': {
+      put: {
+        tags: ['Admin'],
+        summary: 'Activate system prompt',
+        description: 'Set a system prompt as the active prompt. This will deactivate any other active prompt.',
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          { name: 'id', in: 'path', required: true, schema: { type: 'string' }, description: 'System prompt ID' }
+        ],
+        responses: {
+          '200': {
+            description: 'Prompt activated successfully',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    message: { type: 'string', example: 'System prompt activated' },
+                    prompt: {
+                      type: 'object',
+                      properties: {
+                        id: { type: 'string' },
+                        name: { type: 'string' },
+                        isActive: { type: 'boolean', example: true }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          '404': { description: 'Prompt not found' }
         }
       }
     },
