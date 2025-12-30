@@ -1,10 +1,12 @@
 import { Router } from 'express';
 import { z } from 'zod';
+import { v4 as uuidv4 } from 'uuid';
 import { db } from '../../infrastructure/database/index.js';
-import { companionConfig, users, userFeedback, messages, conversations } from '../../../shared/schema.js';
+import { companionConfig, users, userFeedback, messages, conversations, systemPrompts } from '../../../shared/schema.js';
 import { authMiddleware, adminMiddleware } from '../middleware/authMiddleware.js';
 import { getOllamaGateway } from '../../infrastructure/adapters/OllamaGateway.js';
 import { eq, desc, count } from 'drizzle-orm';
+import { ANPLEXA_DEFAULT_PROMPT } from '../../config/anplexaPrompt.js';
 
 export const adminRouter = Router();
 
@@ -559,5 +561,175 @@ adminRouter.get('/users/:id/billing', async (req, res) => {
   } catch (error) {
     console.error('Get billing error:', error);
     res.status(500).json({ error: 'Failed to get billing info' });
+  }
+});
+
+// ============== SYSTEM PROMPT MANAGEMENT ==============
+
+const systemPromptSchema = z.object({
+  name: z.string().min(1).max(200),
+  content: z.string().min(1).max(50000),
+  notes: z.string().max(500).optional(),
+});
+
+// GET /api/admin/system-prompts - List all system prompts with version history
+adminRouter.get('/system-prompts', async (req, res) => {
+  try {
+    const prompts = await db.query.systemPrompts.findMany({
+      orderBy: [desc(systemPrompts.createdAt)],
+    });
+
+    res.json({
+      prompts,
+      defaultPrompt: ANPLEXA_DEFAULT_PROMPT,
+    });
+  } catch (error) {
+    console.error('List system prompts error:', error);
+    res.status(500).json({ error: 'Failed to list system prompts' });
+  }
+});
+
+// GET /api/admin/system-prompts/active - Get the currently active system prompt
+adminRouter.get('/system-prompts/active', async (req, res) => {
+  try {
+    const activePrompt = await db.query.systemPrompts.findFirst({
+      where: eq(systemPrompts.isActive, true),
+    });
+
+    res.json({
+      prompt: activePrompt || {
+        content: ANPLEXA_DEFAULT_PROMPT,
+        name: 'Anplexa Default (Built-in)',
+        isActive: true,
+      },
+    });
+  } catch (error) {
+    console.error('Get active system prompt error:', error);
+    res.status(500).json({ error: 'Failed to get active system prompt' });
+  }
+});
+
+// GET /api/admin/system-prompts/:id - Get a specific system prompt by ID
+adminRouter.get('/system-prompts/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    const prompt = await db.query.systemPrompts.findFirst({
+      where: eq(systemPrompts.id, id),
+    });
+
+    if (!prompt) {
+      return res.status(404).json({ error: 'System prompt not found' });
+    }
+
+    res.json({ prompt });
+  } catch (error) {
+    console.error('Get system prompt error:', error);
+    res.status(500).json({ error: 'Failed to get system prompt' });
+  }
+});
+
+// POST /api/admin/system-prompts - Create a new system prompt version
+adminRouter.post('/system-prompts', async (req, res) => {
+  try {
+    const body = systemPromptSchema.parse(req.body);
+    const adminId = req.user!.sub;
+
+    // Get the current highest version for this prompt name
+    const existingPrompts = await db.query.systemPrompts.findMany({
+      where: eq(systemPrompts.name, body.name),
+      orderBy: [desc(systemPrompts.version)],
+    });
+    
+    const nextVersion = existingPrompts.length > 0 ? (existingPrompts[0].version || 0) + 1 : 1;
+
+    const newPromptId = `sp_${uuidv4().substring(0, 8)}`;
+
+    await db.insert(systemPrompts).values({
+      id: newPromptId,
+      name: body.name,
+      content: body.content,
+      version: nextVersion,
+      isActive: false,
+      createdBy: adminId,
+      createdAt: new Date().toISOString(),
+      notes: body.notes || null,
+    });
+
+    res.status(201).json({
+      message: 'System prompt created',
+      promptId: newPromptId,
+      version: nextVersion,
+    });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({ error: 'Validation error', details: error.errors });
+    }
+    console.error('Create system prompt error:', error);
+    res.status(500).json({ error: 'Failed to create system prompt' });
+  }
+});
+
+// PUT /api/admin/system-prompts/:id/activate - Set a system prompt as the active one
+adminRouter.put('/system-prompts/:id/activate', async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // First check if the prompt exists
+    const prompt = await db.query.systemPrompts.findFirst({
+      where: eq(systemPrompts.id, id),
+    });
+
+    if (!prompt) {
+      return res.status(404).json({ error: 'System prompt not found' });
+    }
+
+    // Deactivate all other prompts
+    await db.update(systemPrompts)
+      .set({ isActive: false })
+      .where(eq(systemPrompts.isActive, true));
+
+    // Activate the selected prompt
+    await db.update(systemPrompts)
+      .set({ isActive: true })
+      .where(eq(systemPrompts.id, id));
+
+    res.json({
+      message: 'System prompt activated',
+      promptId: id,
+      promptName: prompt.name,
+    });
+  } catch (error) {
+    console.error('Activate system prompt error:', error);
+    res.status(500).json({ error: 'Failed to activate system prompt' });
+  }
+});
+
+// DELETE /api/admin/system-prompts/:id - Delete a system prompt
+adminRouter.delete('/system-prompts/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const prompt = await db.query.systemPrompts.findFirst({
+      where: eq(systemPrompts.id, id),
+    });
+
+    if (!prompt) {
+      return res.status(404).json({ error: 'System prompt not found' });
+    }
+
+    if (prompt.isActive) {
+      return res.status(400).json({ error: 'Cannot delete the active system prompt. Activate another prompt first.' });
+    }
+
+    await db.delete(systemPrompts).where(eq(systemPrompts.id, id));
+
+    res.json({
+      message: 'System prompt deleted',
+      promptId: id,
+    });
+  } catch (error) {
+    console.error('Delete system prompt error:', error);
+    res.status(500).json({ error: 'Failed to delete system prompt' });
   }
 });

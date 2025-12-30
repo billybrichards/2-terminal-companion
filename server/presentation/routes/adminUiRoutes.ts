@@ -3,8 +3,9 @@ import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
 import { v4 as uuidv4 } from 'uuid';
 import { db } from '../../infrastructure/database/index.js';
-import { apiKeys, users, conversations, messages, userFeedback, apiUsage } from '../../../shared/schema.js';
+import { apiKeys, users, conversations, messages, userFeedback, apiUsage, systemPrompts } from '../../../shared/schema.js';
 import { eq, desc, sql, gte, count } from 'drizzle-orm';
+import { ANPLEXA_DEFAULT_PROMPT } from '../../config/anplexaPrompt.js';
 
 export const adminUiRouter = Router();
 
@@ -180,6 +181,7 @@ function layout(title: string, content: string, showNav: boolean = true): string
       <a href="/admin/dashboard/usage">Usage Analytics</a>
       <a href="/admin/users">Users</a>
       <a href="/admin/api-keys">API Keys</a>
+      <a href="/admin/system-prompts">System Prompts</a>
       <a href="/admin/logout">Logout</a>
     </nav>
     ` : ''}
@@ -756,3 +758,285 @@ adminUiRouter.get('/dashboard/usage/export', async (req: Request, res: Response)
     res.status(500).send('Failed to export usage data');
   }
 });
+
+adminUiRouter.get('/system-prompts', async (req: Request, res: Response) => {
+  if (!requireAuth(req, res)) return;
+
+  try {
+    const allPrompts = await db.query.systemPrompts.findMany({
+      orderBy: [desc(systemPrompts.createdAt)],
+    });
+
+    const activePrompt = allPrompts.find((p: any) => p.isActive);
+    const allUsers = await db.query.users.findMany();
+
+    const promptsHtml = allPrompts.length === 0 
+      ? '<p style="color: #888;">No custom prompts yet. The built-in Anplexa prompt is being used.</p>'
+      : allPrompts.map((p: any) => {
+          const creator = allUsers.find((u: any) => u.id === p.createdBy);
+          const createdDate = p.createdAt ? new Date(p.createdAt).toLocaleString() : 'Unknown';
+          const contentPreview = p.content.substring(0, 200) + (p.content.length > 200 ? '...' : '');
+          return `
+            <tr>
+              <td>
+                ${p.isActive ? '<span class="badge badge-active">ACTIVE</span>' : ''}
+                <strong>${escapeHtml(p.name)}</strong>
+                <div style="color: #888; font-size: 12px;">Version ${p.version}</div>
+              </td>
+              <td style="max-width: 400px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                ${escapeHtml(contentPreview)}
+              </td>
+              <td style="font-size: 12px;">
+                ${createdDate}<br>
+                <span style="color: #888;">by ${creator?.email || 'System'}</span>
+              </td>
+              <td>
+                <button class="btn btn-sm" onclick="viewPrompt('${p.id}')">View</button>
+                ${!p.isActive ? `<button class="btn btn-sm" style="margin-left: 5px;" onclick="activatePrompt('${p.id}')">Activate</button>` : ''}
+                ${!p.isActive ? `<button class="btn btn-sm btn-danger" style="margin-left: 5px;" onclick="deletePrompt('${p.id}')">Delete</button>` : ''}
+              </td>
+            </tr>
+          `;
+        }).join('');
+
+    const html = layout('System Prompts', `
+      <style>
+        .badge { 
+          display: inline-block; 
+          padding: 2px 8px; 
+          border-radius: 3px; 
+          font-size: 11px; 
+          font-weight: bold;
+          margin-right: 8px;
+        }
+        .badge-active { background: #28a745; color: white; }
+        .prompt-editor {
+          width: 100%;
+          min-height: 400px;
+          background: #1a1a1a;
+          border: 1px solid #333;
+          color: #e0e0e0;
+          padding: 15px;
+          font-family: 'Courier New', monospace;
+          font-size: 14px;
+          line-height: 1.6;
+          resize: vertical;
+          border-radius: 4px;
+        }
+        .modal {
+          display: none;
+          position: fixed;
+          top: 0;
+          left: 0;
+          width: 100%;
+          height: 100%;
+          background: rgba(0,0,0,0.8);
+          z-index: 1000;
+          align-items: center;
+          justify-content: center;
+        }
+        .modal.show { display: flex; }
+        .modal-content {
+          background: #1a1a1a;
+          padding: 30px;
+          border-radius: 8px;
+          max-width: 900px;
+          width: 90%;
+          max-height: 90vh;
+          overflow-y: auto;
+        }
+        .modal-content h2 { margin-bottom: 20px; }
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; margin-bottom: 5px; color: #ff6b35; }
+        .form-group input, .form-group textarea { width: 100%; }
+      </style>
+
+      <h1>System Prompts</h1>
+      
+      <div class="card" style="margin-bottom: 20px;">
+        <h3 style="color: #ff6b35; margin-bottom: 10px;">Current Active Prompt</h3>
+        <p><strong>${activePrompt ? escapeHtml(activePrompt.name) : 'Anplexa Default (Built-in)'}</strong></p>
+        <p style="color: #888; font-size: 14px;">
+          ${activePrompt 
+            ? `Version ${activePrompt.version} - Created ${new Date(activePrompt.createdAt || '').toLocaleString()}`
+            : 'Using the default Anplexa identity prompt. Create a new version to customize.'}
+        </p>
+      </div>
+
+      <div style="margin-bottom: 20px;">
+        <button class="btn" onclick="showCreateModal()">Create New Prompt Version</button>
+        <button class="btn" style="margin-left: 10px; background: #333; color: #e0e0e0;" onclick="showDefaultPrompt()">View Default Prompt</button>
+      </div>
+
+      <h2>Prompt History</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Name / Version</th>
+            <th>Content Preview</th>
+            <th>Created</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${promptsHtml}
+        </tbody>
+      </table>
+
+      <div id="createModal" class="modal">
+        <div class="modal-content">
+          <h2>Create New Prompt Version</h2>
+          <form id="createForm">
+            <div class="form-group">
+              <label for="promptName">Prompt Name</label>
+              <input type="text" id="promptName" placeholder="e.g., Anplexa v2" required>
+            </div>
+            <div class="form-group">
+              <label for="promptNotes">Notes (optional)</label>
+              <input type="text" id="promptNotes" placeholder="Brief description of changes">
+            </div>
+            <div class="form-group">
+              <label for="promptContent">System Prompt Content</label>
+              <textarea id="promptContent" class="prompt-editor" required placeholder="Enter the full system prompt..."></textarea>
+            </div>
+            <div style="display: flex; gap: 10px;">
+              <button type="submit" class="btn">Create Prompt</button>
+              <button type="button" class="btn" style="background: #333; color: #e0e0e0;" onclick="hideCreateModal()">Cancel</button>
+              <button type="button" class="btn" style="background: #555; color: #e0e0e0;" onclick="loadDefaultIntoEditor()">Load Default Template</button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <div id="viewModal" class="modal">
+        <div class="modal-content">
+          <h2 id="viewModalTitle">View Prompt</h2>
+          <pre id="viewModalContent" style="background: #0a0a0a; padding: 20px; border-radius: 4px; white-space: pre-wrap; max-height: 60vh; overflow-y: auto;"></pre>
+          <div style="margin-top: 20px;">
+            <button class="btn" style="background: #333; color: #e0e0e0;" onclick="hideViewModal()">Close</button>
+          </div>
+        </div>
+      </div>
+
+      <script>
+        const defaultPrompt = ${JSON.stringify(ANPLEXA_DEFAULT_PROMPT)};
+        
+        function showCreateModal() {
+          document.getElementById('createModal').classList.add('show');
+        }
+        
+        function hideCreateModal() {
+          document.getElementById('createModal').classList.remove('show');
+        }
+        
+        function showViewModal() {
+          document.getElementById('viewModal').classList.add('show');
+        }
+        
+        function hideViewModal() {
+          document.getElementById('viewModal').classList.remove('show');
+        }
+        
+        function loadDefaultIntoEditor() {
+          document.getElementById('promptContent').value = defaultPrompt;
+        }
+        
+        function showDefaultPrompt() {
+          document.getElementById('viewModalTitle').textContent = 'Anplexa Default Prompt (Built-in)';
+          document.getElementById('viewModalContent').textContent = defaultPrompt;
+          showViewModal();
+        }
+        
+        async function viewPrompt(id) {
+          try {
+            const res = await fetch('/api/admin/system-prompts/' + id, {
+              credentials: 'include'
+            });
+            const data = await res.json();
+            if (data.prompt) {
+              document.getElementById('viewModalTitle').textContent = data.prompt.name + ' (v' + data.prompt.version + ')';
+              document.getElementById('viewModalContent').textContent = data.prompt.content;
+              showViewModal();
+            }
+          } catch (err) {
+            alert('Failed to load prompt');
+          }
+        }
+        
+        async function activatePrompt(id) {
+          if (!confirm('Activate this prompt? All chat requests will use this prompt.')) return;
+          try {
+            const res = await fetch('/api/admin/system-prompts/' + id + '/activate', {
+              method: 'PUT',
+              credentials: 'include'
+            });
+            if (res.ok) {
+              location.reload();
+            } else {
+              const data = await res.json();
+              alert(data.error || 'Failed to activate');
+            }
+          } catch (err) {
+            alert('Failed to activate prompt');
+          }
+        }
+        
+        async function deletePrompt(id) {
+          if (!confirm('Delete this prompt version? This cannot be undone.')) return;
+          try {
+            const res = await fetch('/api/admin/system-prompts/' + id, {
+              method: 'DELETE',
+              credentials: 'include'
+            });
+            if (res.ok) {
+              location.reload();
+            } else {
+              const data = await res.json();
+              alert(data.error || 'Failed to delete');
+            }
+          } catch (err) {
+            alert('Failed to delete prompt');
+          }
+        }
+        
+        document.getElementById('createForm').addEventListener('submit', async (e) => {
+          e.preventDefault();
+          const name = document.getElementById('promptName').value;
+          const notes = document.getElementById('promptNotes').value;
+          const content = document.getElementById('promptContent').value;
+          
+          try {
+            const res = await fetch('/api/admin/system-prompts', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              credentials: 'include',
+              body: JSON.stringify({ name, notes, content })
+            });
+            if (res.ok) {
+              location.reload();
+            } else {
+              const data = await res.json();
+              alert(data.error || 'Failed to create prompt');
+            }
+          } catch (err) {
+            alert('Failed to create prompt');
+          }
+        });
+      </script>
+    `);
+
+    res.send(html);
+  } catch (error) {
+    console.error('System prompts page error:', error);
+    res.status(500).send('Failed to load system prompts');
+  }
+});
+
+function escapeHtml(text: string): string {
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
