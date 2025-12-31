@@ -81,7 +81,12 @@ const chatSchema = z.object({
   }).optional(),
   personalityMode: z.enum(['nurturing', 'playful', 'dominant']).optional(),
   storeLocally: z.boolean().optional(),
+  newChat: z.boolean().optional(),
 });
+
+function buildNewChatIceBreakerPrompt(name: string, userMessage: string): string {
+  return `[Context: ${name} just opened a new chat and said "${userMessage}". This is their first message to you. They want to find a genuine companion. Give a warm, human, natural ice-breaker response - not too long - to keep things flowing naturally. Make it feel like you're genuinely happy to meet them.]`;
+}
 
 // Gender persona templates
 const genderPersonas: Record<string, string> = {
@@ -175,14 +180,19 @@ chatRouter.post('/', optionalAuthMiddleware, async (req, res) => {
     const body = chatSchema.parse(req.body);
     const userId = req.user?.sub;
     const storeLocally = body.storeLocally || false;
+    const isNewChat = body.newChat || false;
 
-    // Check message limit for free users (resets weekly)
+    // Get user info for new chat ice-breaker
+    let user: any = null;
     if (userId) {
-      const user = await db.query.users.findFirst({
+      user = await db.query.users.findFirst({
         where: eq(users.id, userId),
       });
+    }
 
-      if (user && (user as any).subscriptionStatus !== 'subscribed') {
+    // Check message limit for free users (resets weekly) - skip for newChat ice-breakers
+    if (userId && user && !isNewChat) {
+      if ((user as any).subscriptionStatus !== 'subscribed') {
         // Calculate start of current week (Monday)
         const now = new Date();
         const dayOfWeek = now.getDay();
@@ -250,10 +260,14 @@ chatRouter.post('/', optionalAuthMiddleware, async (req, res) => {
     // Get or create conversation (only if not storing locally)
     let conversationId = body.conversationId;
     if (!storeLocally && userId && !conversationId) {
+      // For new chat, use a generic title; otherwise use the message
+      const title = isNewChat 
+        ? 'New Conversation' 
+        : body.message.substring(0, 50) + (body.message.length > 50 ? '...' : '');
       const newConversation = {
         id: jwtAdapter.generateId(),
         userId,
-        title: body.message.substring(0, 50) + (body.message.length > 50 ? '...' : ''),
+        title,
       };
       await db.insert(conversations).values(newConversation);
       conversationId = newConversation.id;
@@ -280,14 +294,25 @@ chatRouter.post('/', optionalAuthMiddleware, async (req, res) => {
       body.personalityMode as PersonalityMode | undefined
     );
 
+    // Determine the actual message to send to the AI
+    let actualMessage = body.message;
+    let isHiddenIceBreaker = false;
+    
+    // For new chat with user name set, use ice-breaker prompt (hidden from user)
+    // This wraps the user's message with context to help AI give a natural ice-breaker response
+    if (isNewChat && user?.chatName) {
+      actualMessage = buildNewChatIceBreakerPrompt(user.chatName, body.message);
+      isHiddenIceBreaker = true;
+    }
+
     // Build messages array
     const chatMessages: ChatMessage[] = [
       { role: 'system', content: systemPrompt },
       ...conversationHistory,
-      { role: 'user', content: body.message },
+      { role: 'user', content: actualMessage },
     ];
 
-    // Store user message (if not local mode)
+    // Store user message - for ice-breaker, store the original user message (not the wrapped prompt)
     let userMessageId: string | undefined;
     if (!storeLocally && conversationId) {
       userMessageId = jwtAdapter.generateId();
@@ -295,7 +320,7 @@ chatRouter.post('/', optionalAuthMiddleware, async (req, res) => {
         id: userMessageId,
         conversationId,
         role: 'user',
-        content: body.message,
+        content: body.message,  // Store original message, not the ice-breaker wrapper
       });
     }
 
@@ -349,6 +374,7 @@ chatRouter.post('/', optionalAuthMiddleware, async (req, res) => {
         conversationId,
         userMessageId,
         assistantMessageId,
+        isNewChat: isHiddenIceBreaker,
       })}\n\n`);
 
     } catch (streamError) {
@@ -375,6 +401,15 @@ chatRouter.post('/non-streaming', optionalAuthMiddleware, async (req, res) => {
   try {
     const body = chatSchema.parse(req.body);
     const userId = req.user?.sub;
+    const isNewChat = body.newChat || false;
+
+    // Get user info for new chat ice-breaker
+    let user: any = null;
+    if (userId) {
+      user = await db.query.users.findFirst({
+        where: eq(users.id, userId),
+      });
+    }
 
     // Get companion config
     const config = await db.query.companionConfig.findFirst({
@@ -400,10 +435,21 @@ chatRouter.post('/non-streaming', optionalAuthMiddleware, async (req, res) => {
     // Get the complete system prompt with personality overlay
     const systemPrompt = await buildCompleteSystemPrompt(userId);
 
+    // Determine the actual message to send to the AI
+    let actualMessage = body.message;
+    let isHiddenIceBreaker = false;
+    
+    // For new chat with user name set, use ice-breaker prompt (hidden from user)
+    // This wraps the user's message with context to help AI give a natural ice-breaker response
+    if (isNewChat && user?.chatName) {
+      actualMessage = buildNewChatIceBreakerPrompt(user.chatName, body.message);
+      isHiddenIceBreaker = true;
+    }
+
     // Build messages array
     const chatMessages: ChatMessage[] = [
       { role: 'system', content: systemPrompt },
-      { role: 'user', content: body.message },
+      { role: 'user', content: actualMessage },
     ];
 
     // Select model and generate response
@@ -426,6 +472,7 @@ chatRouter.post('/non-streaming', optionalAuthMiddleware, async (req, res) => {
       model,
       length,
       style,
+      isNewChat: isHiddenIceBreaker,
     });
 
   } catch (error) {

@@ -97,6 +97,11 @@ npm run start            # Run compiled server
 
 ### Chat (API key or JWT required)
 - `POST /api/chat` - Send message (SSE streaming)
+  - Supports `newChat: true` flag for AI-initiated conversations
+  - When newChat=true and user has chatName set, sends hidden ice-breaker prompt
+  - AI response appears as if Anplexa initiated the conversation naturally
+  - Hidden prompt is NOT stored in conversation history
+- `POST /api/chat/non-streaming` - Send message and get full response (supports newChat flag)
 - `GET /api/chat/config` - Get companion config
 
 ### Conversations (JWT required)
@@ -177,6 +182,7 @@ Uses PostgreSQL with Drizzle ORM (falls back to SQLite if DATABASE_URL not set).
 - Responsive, mobile-friendly
 
 ## Recent Changes
+- 2025-12-31: Added newChat flag for AI-initiated conversations - sends hidden ice-breaker prompt when user has name set, making Anplexa appear to initiate naturally
 - 2025-12-30: Added CRM system with email retention sequences (9 templates: W1-W5 waitlist, D1-D4 direct) styled in Anplexa purple (#7B2CBF)
 - 2025-12-30: Added Admin CRM dashboard at /admin/crm with user management, email queue, template preview, and funnel analytics
 - 2025-12-30: Added email scheduler with automatic sequence delivery (every 5 minutes processing)
