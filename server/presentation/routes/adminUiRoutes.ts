@@ -3,7 +3,7 @@ import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
 import { v4 as uuidv4 } from 'uuid';
 import { db } from '../../infrastructure/database/index.js';
-import { apiKeys, users, conversations, messages, userFeedback, apiUsage, systemPrompts } from '../../../shared/schema.js';
+import { apiKeys, users, conversations, messages, userFeedback, apiUsage, systemPrompts, funnelApiKeys } from '../../../shared/schema.js';
 import { eq, desc, sql, gte, count } from 'drizzle-orm';
 import { ANPLEXA_DEFAULT_PROMPT } from '../../config/anplexaPrompt.js';
 
@@ -164,6 +164,26 @@ const darkThemeStyles = `
   .filter-tab.active { background: #ff6b35; color: #0a0a0a; border-color: #ff6b35; }
 `;
 
+const footerStyles = `
+  .footer-nav {
+    margin-top: 60px;
+    padding: 20px 0;
+    border-top: 1px solid #333;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 15px;
+    font-size: 13px;
+  }
+  .footer-nav .links a {
+    color: #888;
+    margin-right: 20px;
+  }
+  .footer-nav .links a:hover { color: #ff6b35; }
+  .footer-nav .copyright { color: #555; }
+`;
+
 function layout(title: string, content: string, showNav: boolean = true): string {
   return `<!DOCTYPE html>
 <html lang="en">
@@ -171,7 +191,7 @@ function layout(title: string, content: string, showNav: boolean = true): string
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>${title} - Terminal Companion Admin</title>
-  <style>${darkThemeStyles}</style>
+  <style>${darkThemeStyles}${footerStyles}</style>
 </head>
 <body>
   <div class="container">
@@ -181,11 +201,23 @@ function layout(title: string, content: string, showNav: boolean = true): string
       <a href="/admin/dashboard/usage">Usage Analytics</a>
       <a href="/admin/users">Users</a>
       <a href="/admin/api-keys">API Keys</a>
+      <a href="/admin/funnel-keys">Funnel Keys</a>
       <a href="/admin/system-prompts">System Prompts</a>
       <a href="/admin/logout">Logout</a>
     </nav>
     ` : ''}
     ${content}
+    ${showNav ? `
+    <footer class="footer-nav">
+      <div class="links">
+        <a href="/docs">API Docs</a>
+        <a href="/">Landing Page</a>
+        <a href="/api/health">Health Check</a>
+        <a href="/admin/crm">CRM</a>
+      </div>
+      <div class="copyright">Abionti Admin &copy; ${new Date().getFullYear()}</div>
+    </footer>
+    ` : ''}
   </div>
 </body>
 </html>`;
@@ -1029,6 +1061,164 @@ adminUiRouter.get('/system-prompts', async (req: Request, res: Response) => {
   } catch (error) {
     console.error('System prompts page error:', error);
     res.status(500).send('Failed to load system prompts');
+  }
+});
+
+// Funnel API Keys management
+adminUiRouter.get('/funnel-keys', async (req: Request, res: Response) => {
+  if (!requireAuth(req, res)) return;
+
+  try {
+    const allFunnelKeys = await db.select().from(funnelApiKeys).orderBy(desc(funnelApiKeys.createdAt));
+    const newKeyDisplay = req.query.newKey as string | undefined;
+
+    const keysTable = allFunnelKeys.length === 0
+      ? '<p style="color: #888;">No funnel API keys created yet.</p>'
+      : `<table>
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Key Prefix</th>
+              <th>Status</th>
+              <th>Created</th>
+              <th>Last Used</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${allFunnelKeys.map((k: any) => `
+              <tr>
+                <td>${escapeHtml(k.name || 'Funnel API Key')}</td>
+                <td><code style="background:#2a2a2a;padding:3px 6px;border-radius:3px;">${k.keyPrefix}...</code></td>
+                <td><span class="badge ${k.isActive ? 'badge-success' : 'badge-secondary'}">${k.isActive ? 'Active' : 'Inactive'}</span></td>
+                <td>${k.createdAt ? new Date(k.createdAt).toLocaleDateString() : 'N/A'}</td>
+                <td>${k.lastUsedAt ? new Date(k.lastUsedAt).toLocaleDateString() : 'Never'}</td>
+                <td>
+                  <form method="POST" action="/admin/funnel-keys/${k.id}/toggle" style="display:inline;">
+                    <button type="submit" class="btn btn-sm ${k.isActive ? 'btn-danger' : ''}">${k.isActive ? 'Deactivate' : 'Activate'}</button>
+                  </form>
+                  <form method="POST" action="/admin/funnel-keys/${k.id}/delete" style="display:inline;margin-left:5px;">
+                    <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Delete this key?')">Delete</button>
+                  </form>
+                </td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>`;
+
+    const html = layout('Funnel API Keys', `
+      <h1>Funnel API Keys</h1>
+      <p style="color: #888; margin-bottom: 20px;">
+        Funnel API keys are used by external funnels (Anplexa landing pages, lead capture forms) to create users and manage subscriptions via the Funnel API.
+      </p>
+      
+      ${newKeyDisplay ? `
+        <div class="card" style="border: 2px solid #28a745; margin-bottom: 20px;">
+          <h3 style="color: #28a745; margin-bottom: 15px;">New Funnel API Key Created</h3>
+          <p style="color: #ff6b35; margin-bottom: 10px;"><strong>Copy this key now - it will not be shown again!</strong></p>
+          <div class="api-key-display" id="newKeyDisplay">${escapeHtml(newKeyDisplay)}</div>
+          <button onclick="navigator.clipboard.writeText(document.getElementById('newKeyDisplay').textContent);this.textContent='Copied!'" class="btn" style="margin-top: 15px;">Copy to Clipboard</button>
+        </div>
+      ` : ''}
+      
+      <div class="card">
+        <h2>Generate New Funnel API Key</h2>
+        <form method="POST" action="/admin/funnel-keys/generate">
+          <div class="form-group">
+            <label for="keyName">Key Name (optional)</label>
+            <input type="text" id="keyName" name="keyName" placeholder="e.g., Anplexa Main Funnel">
+          </div>
+          <div class="form-group">
+            <label for="notes">Notes (optional)</label>
+            <input type="text" id="notes" name="notes" placeholder="e.g., Used for Instagram campaign">
+          </div>
+          <button type="submit" class="btn">Generate New Key</button>
+        </form>
+      </div>
+      
+      <div class="card">
+        <h2>Existing Funnel Keys</h2>
+        ${keysTable}
+      </div>
+      
+      <div class="card" style="background: #1a1a1a; border: 1px solid #333;">
+        <h3 style="color: #888;">Usage</h3>
+        <p style="color: #666; font-size: 13px;">
+          Include the funnel API key in requests to the Funnel API:
+        </p>
+        <pre style="background: #0a0a0a; padding: 15px; border-radius: 5px; overflow-x: auto; margin-top: 10px;">
+Authorization: Bearer YOUR_FUNNEL_API_KEY
+
+POST /api/funnel/users
+POST /api/funnel/checkout
+GET /api/funnel/subscription/:userId
+        </pre>
+      </div>
+    `);
+
+    res.send(html);
+  } catch (error) {
+    console.error('Funnel keys page error:', error);
+    res.status(500).send('Failed to load funnel keys');
+  }
+});
+
+adminUiRouter.post('/funnel-keys/generate', async (req: Request, res: Response) => {
+  if (!requireAuth(req, res)) return;
+
+  try {
+    const { keyName, notes } = req.body;
+    const rawKey = `fk_${crypto.randomBytes(24).toString('hex')}`;
+    const keyHash = await bcrypt.hash(rawKey, 10);
+    const keyPrefix = rawKey.slice(0, 12);
+
+    await db.insert(funnelApiKeys).values({
+      id: uuidv4(),
+      name: keyName || 'Funnel API Key',
+      keyHash,
+      keyPrefix,
+      isActive: true,
+      createdAt: new Date().toISOString(),
+      notes: notes || null,
+    });
+
+    res.redirect(`/admin/funnel-keys?newKey=${encodeURIComponent(rawKey)}`);
+  } catch (error) {
+    console.error('Generate funnel key error:', error);
+    res.status(500).send('Failed to generate funnel key');
+  }
+});
+
+adminUiRouter.post('/funnel-keys/:id/toggle', async (req: Request, res: Response) => {
+  if (!requireAuth(req, res)) return;
+
+  try {
+    const { id } = req.params;
+    const [existing] = await db.select().from(funnelApiKeys).where(eq(funnelApiKeys.id, id));
+    
+    if (existing) {
+      await db.update(funnelApiKeys)
+        .set({ isActive: !existing.isActive })
+        .where(eq(funnelApiKeys.id, id));
+    }
+
+    res.redirect('/admin/funnel-keys');
+  } catch (error) {
+    console.error('Toggle funnel key error:', error);
+    res.status(500).send('Failed to toggle key');
+  }
+});
+
+adminUiRouter.post('/funnel-keys/:id/delete', async (req: Request, res: Response) => {
+  if (!requireAuth(req, res)) return;
+
+  try {
+    const { id } = req.params;
+    await db.delete(funnelApiKeys).where(eq(funnelApiKeys.id, id));
+    res.redirect('/admin/funnel-keys');
+  } catch (error) {
+    console.error('Delete funnel key error:', error);
+    res.status(500).send('Failed to delete key');
   }
 });
 

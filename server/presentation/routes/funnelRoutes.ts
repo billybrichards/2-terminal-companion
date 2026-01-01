@@ -2,8 +2,9 @@ import { Router, Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import { sql } from 'drizzle-orm';
 import { eq } from 'drizzle-orm';
+import bcrypt from 'bcryptjs';
 import { db } from '../../infrastructure/database/index.js';
-import { users, apiKeys, sessions } from '../../../shared/schema.js';
+import { users, apiKeys, sessions, funnelApiKeys } from '../../../shared/schema.js';
 import { jwtAdapter } from '../../infrastructure/auth/JWTAdapter.js';
 import { generateApiKey } from '../../infrastructure/auth/ApiKeyGenerator.js';
 import { stripeService } from '../../infrastructure/stripe/stripeService.js';
@@ -14,13 +15,8 @@ export const funnelRouter = Router();
 
 const FUNNEL_API_SECRET = process.env.FUNNEL_API_SECRET;
 
-function funnelAuthMiddleware(req: Request, res: Response, next: NextFunction) {
+async function funnelAuthMiddleware(req: Request, res: Response, next: NextFunction) {
   const authHeader = req.headers.authorization;
-  
-  if (!FUNNEL_API_SECRET) {
-    console.error('FUNNEL_API_SECRET not configured');
-    return res.status(500).json({ error: 'Funnel API not configured' });
-  }
   
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
     return res.status(401).json({ error: 'Missing or invalid authorization header' });
@@ -28,11 +24,30 @@ function funnelAuthMiddleware(req: Request, res: Response, next: NextFunction) {
   
   const token = authHeader.substring(7);
   
-  if (token !== FUNNEL_API_SECRET) {
-    return res.status(403).json({ error: 'Invalid funnel API secret' });
+  // First check database for funnel API keys
+  try {
+    const activeFunnelKeys = await db.select().from(funnelApiKeys).where(eq(funnelApiKeys.isActive, true));
+    
+    for (const fk of activeFunnelKeys) {
+      const isValid = await bcrypt.compare(token, fk.keyHash);
+      if (isValid) {
+        // Update last used timestamp
+        await db.update(funnelApiKeys)
+          .set({ lastUsedAt: new Date().toISOString() })
+          .where(eq(funnelApiKeys.id, fk.id));
+        return next();
+      }
+    }
+  } catch (error) {
+    console.error('Error checking funnel API keys from database:', error);
   }
   
-  next();
+  // Fallback to environment variable for backwards compatibility
+  if (FUNNEL_API_SECRET && token === FUNNEL_API_SECRET) {
+    return next();
+  }
+  
+  return res.status(403).json({ error: 'Invalid funnel API secret' });
 }
 
 const createUserSchema = z.object({

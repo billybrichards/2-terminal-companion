@@ -141,11 +141,13 @@ Uses PostgreSQL with Drizzle ORM (falls back to SQLite if DATABASE_URL not set).
 **Key tables:**
 - `users` - User accounts with stripe_customer_id, stripe_subscription_id, chatName, personalityMode, preferredGender
 - `api_keys` - API keys with tc_ prefix, hashed storage
+- `funnel_api_keys` - Funnel API keys for external integrations (fk_ prefix)
 - `api_usage` - Per-request usage tracking
 - `api_usage_daily` - Daily aggregated usage
 - `companion_config` - AI companion settings
 - `conversations`, `messages` - Chat history
 - `system_prompts` - AI system prompts with version control
+- `email_queue`, `email_logs` - CRM email scheduling and tracking
 - `stripe.*` - Stripe data (managed by stripe-replit-sync)
 
 ## Environment Variables
@@ -182,6 +184,16 @@ Uses PostgreSQL with Drizzle ORM (falls back to SQLite if DATABASE_URL not set).
 - Responsive, mobile-friendly
 
 ## Recent Changes
+- 2026-01-01: Added Funnel API Keys management in admin dashboard at /admin/funnel-keys
+  - Generate, activate, deactivate, and delete funnel API keys from the admin UI
+  - Funnel API now authenticates against database-stored keys (with fallback to FUNNEL_API_SECRET env var)
+  - Keys are hashed and securely stored in `funnel_api_keys` table
+- 2026-01-01: Added public `/api/register-subscriber` endpoint for landing page email capture
+  - No authentication required (rate limited to 10 requests/minute per IP)
+  - Automatically enrolls leads into CRM email sequences
+  - Supports funnelType, persona, entrySource parameters
+- 2026-01-01: Added mini footer navigation to all admin dashboard pages
+  - Links to API Docs, Landing Page, Health Check, and CRM
 - 2025-12-31: Added newChat flag for AI-initiated conversations - sends hidden ice-breaker prompt when user has name set, making Anplexa appear to initiate naturally
 - 2025-12-30: Added CRM system with email retention sequences (9 templates: W1-W5 waitlist, D1-D4 direct) styled in Anplexa purple (#7B2CBF)
 - 2025-12-30: Added Admin CRM dashboard at /admin/crm with user management, email queue, template preview, and funnel analytics

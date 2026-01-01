@@ -283,6 +283,18 @@ export const emailLogs = pgTable('email_logs', {
   createdAt: text('created_at').default('CURRENT_TIMESTAMP'),
 });
 
+// Funnel API Keys for external funnel integrations
+export const funnelApiKeys = pgTable('funnel_api_keys', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull().default('Funnel API Key'),
+  keyHash: text('key_hash').notNull(),
+  keyPrefix: text('key_prefix').notNull(), // First 12 chars for identification
+  isActive: boolean('is_active').default(true),
+  createdAt: text('created_at').default('CURRENT_TIMESTAMP'),
+  lastUsedAt: text('last_used_at'),
+  notes: text('notes'),
+});
+
 // Types
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
@@ -298,3 +310,4 @@ export type PasswordResetToken = typeof passwordResetTokens.$inferSelect;
 export type SystemPrompt = typeof systemPrompts.$inferSelect;
 export type EmailQueue = typeof emailQueue.$inferSelect;
 export type EmailLog = typeof emailLogs.$inferSelect;
+export type FunnelApiKey = typeof funnelApiKeys.$inferSelect;
