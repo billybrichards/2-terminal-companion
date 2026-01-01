@@ -78,6 +78,7 @@ authRouter.post('/register', registrationRateLimiter, async (req, res) => {
       passwordHash,
       displayName: body.displayName || body.email.split('@')[0],
       isAdmin,
+      accountSource: 'abionti_api', // Users registering via API routes are Abionti API users
     });
 
     // Create default preferences

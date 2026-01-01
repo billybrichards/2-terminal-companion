@@ -99,7 +99,7 @@ funnelRouter.post('/users', funnelAuthMiddleware, async (req: Request, res: Resp
       passwordHash,
       displayName: body.displayName || body.email.split('@')[0],
       chatName: body.chatName || null,
-      accountSource: 'api',
+      accountSource: 'anplexa', // Funnel users are Anplexa app users, NOT Abionti API users
       funnelType: body.funnelType,
       persona: body.persona || null,
       entrySource: body.entrySource || null,

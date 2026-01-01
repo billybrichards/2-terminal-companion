@@ -19,7 +19,7 @@ export const users = pgTable('users', {
   credits: integer('credits').default(0),
   stripeCustomerId: text('stripe_customer_id'),
   stripeSubscriptionId: text('stripe_subscription_id'),
-  accountSource: text('account_source').default('frontend'), // 'frontend' | 'api'
+  accountSource: text('account_source').default('abionti_api'), // 'anplexa' = Anplexa app users (from funnel), 'abionti_api' = Abionti API product users
   
   // CRM fields for email sequences
   funnelType: text('funnel_type').default('direct'), // 'waitlist' | 'direct'
