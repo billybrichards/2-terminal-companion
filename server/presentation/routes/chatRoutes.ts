@@ -93,6 +93,34 @@ interface AmplexaProfile {
   tags?: string[];
 }
 
+/**
+ * Extract Amplexa profile from user data with safe JSON parsing
+ */
+function extractAmplexaProfile(user: any): AmplexaProfile | undefined {
+  if (!user?.amplexaFunnel) {
+    return undefined;
+  }
+  
+  let tags: string[] | undefined;
+  if (user.amplexaTags) {
+    try {
+      tags = JSON.parse(user.amplexaTags);
+    } catch (error) {
+      console.error('Failed to parse amplexaTags JSON:', error);
+      tags = undefined;
+    }
+  }
+  
+  return {
+    funnel: user.amplexaFunnel,
+    funnelName: user.amplexaFunnelName || undefined,
+    primaryNeed: user.amplexaPrimaryNeed || undefined,
+    communicationStyle: user.amplexaCommunicationStyle || undefined,
+    pace: user.amplexaPace || undefined,
+    tags,
+  };
+}
+
 function buildNewChatIceBreakerPrompt(name: string, userMessage: string, amplexaProfile?: AmplexaProfile): string {
   let basePrompt = `[Context: ${name} just opened a new chat and said "${userMessage}". This is their first message to you.`;
   
@@ -333,18 +361,7 @@ chatRouter.post('/', optionalAuthMiddleware, async (req, res) => {
     // This wraps the user's message with context to help AI give a natural ice-breaker response
     if (isNewChat && user?.chatName) {
       // Extract Amplexa funnel profile if available
-      let amplexaProfile: AmplexaProfile | undefined;
-      if ((user as any).amplexaFunnel) {
-        amplexaProfile = {
-          funnel: (user as any).amplexaFunnel,
-          funnelName: (user as any).amplexaFunnelName || undefined,
-          primaryNeed: (user as any).amplexaPrimaryNeed || undefined,
-          communicationStyle: (user as any).amplexaCommunicationStyle || undefined,
-          pace: (user as any).amplexaPace || undefined,
-          tags: (user as any).amplexaTags ? JSON.parse((user as any).amplexaTags) : undefined,
-        };
-      }
-      
+      const amplexaProfile = extractAmplexaProfile(user);
       actualMessage = buildNewChatIceBreakerPrompt(user.chatName, body.message, amplexaProfile);
       isHiddenIceBreaker = true;
     }
@@ -487,18 +504,7 @@ chatRouter.post('/non-streaming', optionalAuthMiddleware, async (req, res) => {
     // This wraps the user's message with context to help AI give a natural ice-breaker response
     if (isNewChat && user?.chatName) {
       // Extract Amplexa funnel profile if available
-      let amplexaProfile: AmplexaProfile | undefined;
-      if ((user as any).amplexaFunnel) {
-        amplexaProfile = {
-          funnel: (user as any).amplexaFunnel,
-          funnelName: (user as any).amplexaFunnelName || undefined,
-          primaryNeed: (user as any).amplexaPrimaryNeed || undefined,
-          communicationStyle: (user as any).amplexaCommunicationStyle || undefined,
-          pace: (user as any).amplexaPace || undefined,
-          tags: (user as any).amplexaTags ? JSON.parse((user as any).amplexaTags) : undefined,
-        };
-      }
-      
+      const amplexaProfile = extractAmplexaProfile(user);
       actualMessage = buildNewChatIceBreakerPrompt(user.chatName, body.message, amplexaProfile);
       isHiddenIceBreaker = true;
     }
