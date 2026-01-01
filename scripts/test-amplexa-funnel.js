@@ -10,13 +10,21 @@
  * 
  * Prerequisites:
  * - Server must be running
- * - FUNNEL_API_SECRET must be set in .env
+ * - FUNNEL_API_SECRET must be set in environment
  * 
  * Usage:
- *   node scripts/test-amplexa-funnel.js
+ *   FUNNEL_API_SECRET=your-secret node scripts/test-amplexa-funnel.js
  */
 
-const FUNNEL_API_SECRET = process.env.FUNNEL_API_SECRET || 'your-secret-here';
+// Validate required environment variables
+if (!process.env.FUNNEL_API_SECRET) {
+  console.error('❌ Error: FUNNEL_API_SECRET environment variable is required');
+  console.error('\nUsage:');
+  console.error('  FUNNEL_API_SECRET=your-secret node scripts/test-amplexa-funnel.js');
+  process.exit(1);
+}
+
+const FUNNEL_API_SECRET = process.env.FUNNEL_API_SECRET;
 const BASE_URL = process.env.API_URL || 'http://localhost:3001';
 
 // Test user data

@@ -104,7 +104,14 @@ function extractAmplexaProfile(user: any): AmplexaProfile | undefined {
   let tags: string[] | undefined;
   if (user.amplexaTags) {
     try {
-      tags = JSON.parse(user.amplexaTags);
+      const parsed = JSON.parse(user.amplexaTags);
+      // Validate that parsed value is an array of strings
+      if (Array.isArray(parsed) && parsed.every(item => typeof item === 'string')) {
+        tags = parsed;
+      } else {
+        console.error('amplexaTags is not a valid string array');
+        tags = undefined;
+      }
     } catch (error) {
       console.error('Failed to parse amplexaTags JSON:', error);
       tags = undefined;
