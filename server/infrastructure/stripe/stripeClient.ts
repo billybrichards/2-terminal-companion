@@ -8,15 +8,15 @@ async function getCredentials() {
     return cachedCredentials;
   }
 
-  // First, try to use sandbox keys from environment (preferred for Anplexa)
-  const sandboxSecret = process.env.STRIPE_SANDBOX_SECRET;
-  const sandboxPublic = process.env.STRIPE_SANDBOX_PUBLIC;
+  // First, try to use production keys from environment
+  const stripeSecret = process.env.STRIPE_SECRET;
+  const stripePublic = process.env.STRIPE_PUBLIC;
   
-  if (sandboxSecret && sandboxPublic) {
-    console.log('Using Stripe sandbox keys from environment');
+  if (stripeSecret && stripePublic) {
+    console.log('Using Stripe production keys from environment');
     cachedCredentials = {
-      publishableKey: sandboxPublic,
-      secretKey: sandboxSecret,
+      publishableKey: stripePublic,
+      secretKey: stripeSecret,
     };
     return cachedCredentials;
   }
@@ -30,7 +30,7 @@ async function getCredentials() {
       : null;
 
   if (!xReplitToken || !hostname) {
-    throw new Error('No Stripe credentials available. Set STRIPE_SANDBOX_SECRET and STRIPE_SANDBOX_PUBLIC, or configure the Stripe connector.');
+    throw new Error('No Stripe credentials available. Set STRIPE_SECRET and STRIPE_PUBLIC, or configure the Stripe connector.');
   }
 
   const connectorName = 'stripe';

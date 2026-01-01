@@ -97,8 +97,8 @@ const checkoutSchema = z.object({
 });
 
 const ANPLEXA_PRICES = {
-  yearly: 'price_1SkkrmB6IBiJ6M2wj4cbn7Hq',   // £11.99/year (early adopter £0.99/mo)
-  monthly: 'price_1SkkrmB6IBiJ6M2wKHKGA2WV',  // £2.99/month (standard)
+  yearly: 'price_1SkBhsHf3F7YsE79UDhlyjdG',   // £11.99/year (early adopter £0.99/mo)
+  monthly: 'price_1Sj3Q4Hf3F7YsE79EfGL6BuF',  // £2.99/month (standard)
 };
 
 const updateSubscriptionSchema = z.object({
