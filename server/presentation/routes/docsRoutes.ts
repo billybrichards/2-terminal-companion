@@ -1426,7 +1426,18 @@ curl -X POST "https://api.abionti.com/api/funnel/users" \\
   -d '{"email": "user@example.com", "password": "securepass123", "funnelType": "direct"}'
 \`\`\`
 
-**Note:** Your funnel app does NOT need Stripe credentials - all Stripe operations are handled by Abionti API.`,
+**Example (curl) - Pre-subscribed user (paid via funnel):**
+\`\`\`bash
+curl -X POST "https://api.abionti.com/api/funnel/users" \\
+  -H "Content-Type: application/json" \\
+  -H "Authorization: Bearer YOUR_FUNNEL_API_SECRET" \\
+  -d '{"email": "user@example.com", "password": "securepass123", "subscriptionStatus": "subscribed", "stripeCustomerId": "cus_xxx", "stripeSubscriptionId": "sub_xxx"}'
+\`\`\`
+
+**Note:** 
+- Your funnel app can handle Stripe payments directly and pass subscription info here
+- Subscribed users skip CRM email sequences automatically
+- If you don't have Stripe on your funnel, use /api/funnel/checkout instead`,
         security: [{ funnelAuth: [] }],
         requestBody: {
           required: true,
@@ -1442,7 +1453,10 @@ curl -X POST "https://api.abionti.com/api/funnel/users" \\
                   chatName: { type: 'string', maxLength: 50, example: 'Johnny', description: 'Name for AI to address user' },
                   funnelType: { type: 'string', enum: ['waitlist', 'direct'], example: 'waitlist', description: 'Funnel type for CRM email sequences. "waitlist" = W1-W5 sequence, "direct" = D1-D4 sequence' },
                   persona: { type: 'string', enum: ['lonely', 'curious', 'privacy'], example: 'curious', description: 'User persona for personalized email content' },
-                  entrySource: { type: 'string', example: 'landing_page', description: 'Track where user originated from' }
+                  entrySource: { type: 'string', enum: ['instagram', 'tiktok', 'reddit', 'search', 'retargeting', 'organic'], example: 'instagram', description: 'Track where user originated from' },
+                  subscriptionStatus: { type: 'string', enum: ['subscribed', 'not_subscribed'], default: 'not_subscribed', example: 'subscribed', description: 'Set to "subscribed" if user already paid via your funnel. Skips CRM emails.' },
+                  stripeCustomerId: { type: 'string', example: 'cus_xxx', description: 'Stripe customer ID if payment handled on funnel side' },
+                  stripeSubscriptionId: { type: 'string', example: 'sub_xxx', description: 'Stripe subscription ID if payment handled on funnel side' }
                 }
               }
             }

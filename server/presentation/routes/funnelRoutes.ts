@@ -43,6 +43,9 @@ const createUserSchema = z.object({
   funnelType: z.enum(['waitlist', 'direct']).optional().default('direct'),
   persona: z.enum(['lonely', 'curious', 'privacy']).optional(),
   entrySource: z.enum(['instagram', 'tiktok', 'reddit', 'search', 'retargeting', 'organic']).optional(),
+  subscriptionStatus: z.enum(['subscribed', 'not_subscribed']).optional().default('not_subscribed'),
+  stripeCustomerId: z.string().optional(),
+  stripeSubscriptionId: z.string().optional(),
 });
 
 const amplexaFunnelProfileSchema = z.object({
@@ -103,7 +106,10 @@ funnelRouter.post('/users', funnelAuthMiddleware, async (req: Request, res: Resp
       funnelType: body.funnelType,
       persona: body.persona || null,
       entrySource: body.entrySource || null,
-      stage: body.funnelType === 'waitlist' ? 'waitlist' : 'new',
+      stage: body.subscriptionStatus === 'subscribed' ? 'converted' : (body.funnelType === 'waitlist' ? 'waitlist' : 'new'),
+      subscriptionStatus: body.subscriptionStatus,
+      stripeCustomerId: body.stripeCustomerId || null,
+      stripeSubscriptionId: body.stripeSubscriptionId || null,
     });
 
     const apiKeyData = await generateApiKey();
@@ -124,14 +130,17 @@ funnelRouter.post('/users', funnelAuthMiddleware, async (req: Request, res: Resp
       expiresAt: jwtAdapter.getRefreshExpiryDate().toISOString(),
     });
 
-    if (body.funnelType === 'waitlist') {
-      emailScheduler.scheduleWaitlistSequence(userId).catch(err => {
-        console.error('Failed to schedule waitlist emails:', err);
-      });
-    } else {
-      emailScheduler.scheduleDirectSequence(userId).catch(err => {
-        console.error('Failed to schedule direct emails:', err);
-      });
+    // Only schedule CRM emails for non-subscribed users
+    if (body.subscriptionStatus !== 'subscribed') {
+      if (body.funnelType === 'waitlist') {
+        emailScheduler.scheduleWaitlistSequence(userId).catch(err => {
+          console.error('Failed to schedule waitlist emails:', err);
+        });
+      } else {
+        emailScheduler.scheduleDirectSequence(userId).catch(err => {
+          console.error('Failed to schedule direct emails:', err);
+        });
+      }
     }
 
     res.status(201).json({
