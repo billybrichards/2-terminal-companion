@@ -2159,5 +2159,108 @@ docsRouter.get('/', (req, res) => {
 });
 
 docsRouter.get('/openapi.json', (req, res) => {
+  res.setHeader('Content-Disposition', 'attachment; filename="abionti-api-openapi.json"');
   res.json(apiDocs);
+});
+
+docsRouter.get('/export', (req, res) => {
+  const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Export API Documentation - Abionti</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { 
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #0a0a0a; 
+      color: #e0e0e0; 
+      min-height: 100vh;
+      padding: 40px 20px;
+    }
+    .container { max-width: 800px; margin: 0 auto; }
+    h1 { color: #ff6b35; margin-bottom: 10px; }
+    .subtitle { color: #888; margin-bottom: 40px; }
+    .export-options { display: grid; gap: 20px; }
+    .export-card {
+      background: #1a1a1a;
+      border: 1px solid #2a2a2a;
+      border-radius: 12px;
+      padding: 25px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .export-card h3 { color: #fff; margin-bottom: 5px; }
+    .export-card p { color: #888; font-size: 0.9rem; }
+    .btn {
+      padding: 12px 24px;
+      background: #ff6b35;
+      color: #0a0a0a;
+      border: none;
+      border-radius: 6px;
+      font-weight: 600;
+      cursor: pointer;
+      text-decoration: none;
+    }
+    .btn:hover { background: #ff8c5a; }
+    .btn-secondary { background: #2a2a2a; color: #e0e0e0; }
+    .btn-secondary:hover { background: #3a3a3a; }
+    .back-link { display: inline-block; margin-top: 30px; color: #ff6b35; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Export API Documentation</h1>
+    <p class="subtitle">Download the Abionti API specification in your preferred format</p>
+    
+    <div class="export-options">
+      <div class="export-card">
+        <div>
+          <h3>OpenAPI JSON</h3>
+          <p>Standard OpenAPI 3.0 specification in JSON format. Import into Postman, Insomnia, or any API tool.</p>
+        </div>
+        <a href="/docs/openapi.json" class="btn" download>Download JSON</a>
+      </div>
+      
+      <div class="export-card">
+        <div>
+          <h3>Copy JSON to Clipboard</h3>
+          <p>Copy the full OpenAPI spec to your clipboard for pasting into code generators.</p>
+        </div>
+        <button onclick="copySpec()" class="btn btn-secondary" id="copyBtn">Copy JSON</button>
+      </div>
+      
+      <div class="export-card">
+        <div>
+          <h3>View Raw JSON</h3>
+          <p>View the raw JSON specification in your browser.</p>
+        </div>
+        <a href="/docs/openapi.json" target="_blank" class="btn btn-secondary">View Raw</a>
+      </div>
+    </div>
+    
+    <a href="/docs" class="back-link">&larr; Back to API Documentation</a>
+  </div>
+  
+  <script>
+    const spec = ${JSON.stringify(JSON.stringify(apiDocs))};
+    
+    async function copySpec() {
+      try {
+        await navigator.clipboard.writeText(spec);
+        document.getElementById('copyBtn').textContent = 'Copied!';
+        setTimeout(() => {
+          document.getElementById('copyBtn').textContent = 'Copy JSON';
+        }, 2000);
+      } catch (err) {
+        alert('Failed to copy');
+      }
+    }
+  </script>
+</body>
+</html>`;
+  res.setHeader('Content-Type', 'text/html');
+  res.send(html);
 });
