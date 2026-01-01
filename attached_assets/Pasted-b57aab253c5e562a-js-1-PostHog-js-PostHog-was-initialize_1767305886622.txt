@@ -1,0 +1,101 @@
+b57aab253c5e562a.js:1 [PostHog.js] PostHog was initialized without a token. This likely indicates a misconfiguration. Please check the first argument passed to posthog.init()
+critical @ b57aab253c5e562a.js:1
+_init @ b57aab253c5e562a.js:1
+init @ b57aab253c5e562a.js:1
+module evaluation @ b57aab253c5e562a.js:1
+L @ turbopack-f3a74ae95360ba7f.js:3
+N @ turbopack-f3a74ae95360ba7f.js:3
+(anonymous) @ turbopack-f3a74ae95360ba7f.js:1
+module @ b57aab253c5e562a.js:1
+t @ turbopack-f3a74ae95360ba7f.js:1
+module evaluation @ b57aab253c5e562a.js:1
+L @ turbopack-f3a74ae95360ba7f.js:3
+N @ turbopack-f3a74ae95360ba7f.js:3
+(anonymous) @ turbopack-f3a74ae95360ba7f.js:1
+module evaluation @ b57aab253c5e562a.js:1
+L @ turbopack-f3a74ae95360ba7f.js:3
+(anonymous) @ turbopack-f3a74ae95360ba7f.js:3
+registerChunk @ turbopack-f3a74ae95360ba7f.js:3
+await in registerChunk
+q @ turbopack-f3a74ae95360ba7f.js:3
+(anonymous) @ turbopack-f3a74ae95360ba7f.js:3
+(anonymous) @ turbopack-f3a74ae95360ba7f.js:3
+a2853a9877c8eb7f.js:51 [Checkout] Pending session ID stored for verification
+a2853a9877c8eb7f.js:51 [Chat] Found existing messages, skipping ice-breaker
+a2853a9877c8eb7f.js:51 [Chat] Status changed: ready Error: undefined
+a2853a9877c8eb7f.js:51 [Checkout] Verifying successful checkout session...
+7d878c5abfb60895.js:1 [Auth] Refreshing subscription status...
+7d878c5abfb60895.js:1  GET https://anplexa.com/_vercel/insights/script.js net::ERR_ABORTED 404 (Not Found)
+(anonymous) @ 7d878c5abfb60895.js:1
+(anonymous) @ 7d878c5abfb60895.js:1
+og @ b57aab253c5e562a.js:1
+e @ b57aab253c5e562a.js:1
+e @ b57aab253c5e562a.js:1
+ld @ b57aab253c5e562a.js:1
+lc @ b57aab253c5e562a.js:1
+ld @ b57aab253c5e562a.js:1
+lc @ b57aab253c5e562a.js:1
+ld @ b57aab253c5e562a.js:1
+lc @ b57aab253c5e562a.js:1
+ld @ b57aab253c5e562a.js:1
+lc @ b57aab253c5e562a.js:1
+ld @ b57aab253c5e562a.js:1
+lc @ b57aab253c5e562a.js:1
+ld @ b57aab253c5e562a.js:1
+lc @ b57aab253c5e562a.js:1
+ld @ b57aab253c5e562a.js:1
+lc @ b57aab253c5e562a.js:1
+ld @ b57aab253c5e562a.js:1
+lc @ b57aab253c5e562a.js:1
+ld @ b57aab253c5e562a.js:1
+lc @ b57aab253c5e562a.js:1
+ld @ b57aab253c5e562a.js:1
+lc @ b57aab253c5e562a.js:1
+ld @ b57aab253c5e562a.js:1
+lc @ b57aab253c5e562a.js:1
+ld @ b57aab253c5e562a.js:1
+lc @ b57aab253c5e562a.js:1
+ld @ b57aab253c5e562a.js:1
+lc @ b57aab253c5e562a.js:1
+ld @ b57aab253c5e562a.js:1
+lc @ b57aab253c5e562a.js:1
+ld @ b57aab253c5e562a.js:1
+lc @ b57aab253c5e562a.js:1
+ld @ b57aab253c5e562a.js:1
+lc @ b57aab253c5e562a.js:1
+ld @ b57aab253c5e562a.js:1
+lc @ b57aab253c5e562a.js:1
+ld @ b57aab253c5e562a.js:1
+lc @ b57aab253c5e562a.js:1
+ld @ b57aab253c5e562a.js:1
+lc @ b57aab253c5e562a.js:1
+ld @ b57aab253c5e562a.js:1
+lc @ b57aab253c5e562a.js:1
+ld @ b57aab253c5e562a.js:1
+lc @ b57aab253c5e562a.js:1
+ld @ b57aab253c5e562a.js:1
+lc @ b57aab253c5e562a.js:1
+ld @ b57aab253c5e562a.js:1
+lc @ b57aab253c5e562a.js:1
+ld @ b57aab253c5e562a.js:1
+lc @ b57aab253c5e562a.js:1
+ld @ b57aab253c5e562a.js:1
+lc @ b57aab253c5e562a.js:1
+ld @ b57aab253c5e562a.js:1
+lc @ b57aab253c5e562a.js:1
+ld @ b57aab253c5e562a.js:1
+lc @ b57aab253c5e562a.js:1
+ld @ b57aab253c5e562a.js:1
+lc @ b57aab253c5e562a.js:1
+ld @ b57aab253c5e562a.js:1
+uS @ b57aab253c5e562a.js:1
+(anonymous) @ b57aab253c5e562a.js:1
+O @ b57aab253c5e562a.js:1
+/dash:1 Refused to execute script from 'https://anplexa.com/_vercel/insights/script.js' because its MIME type ('text/html') is not executable, and strict MIME type checking is enabled.
+7d878c5abfb60895.js:1 [Vercel Web Analytics] Failed to load script from /_vercel/insights/script.js. Be sure to enable Web Analytics for your project and deploy again. See https://vercel.com/docs/analytics/quickstart for more information.
+7d878c5abfb60895.js:1 [Auth] Subscription data received: {subscriptionStatus: 'not_subscribed'}
+7d878c5abfb60895.js:1 [Auth] Updated user status to: not_subscribed
+a2853a9877c8eb7f.js:51 [Checkout] Subscription verified: {success: true, subscriptionStatus: 'subscribed', plan: 'monthly'}
+7d878c5abfb60895.js:1 [Auth] Refreshing subscription status...
+7d878c5abfb60895.js:1 [Auth] Subscription data received: {subscriptionStatus: 'not_subscribed'}
+7d878c5abfb60895.js:1 [Auth] Updated user status to: not_subscribed
