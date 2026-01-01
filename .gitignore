@@ -4,5 +4,3 @@ node_modules/
 data/
 .claude/
 dist/
-coverage/
-*.log
