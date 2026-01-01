@@ -45,6 +45,25 @@ const createUserSchema = z.object({
   entrySource: z.enum(['instagram', 'tiktok', 'reddit', 'search', 'retargeting', 'organic']).optional(),
 });
 
+const amplexaFunnelProfileSchema = z.object({
+  email: z.string().email(),
+  funnel: z.enum(['A', 'B', 'C', 'D', 'E', 'F']),
+  funnelName: z.string(),
+  responses: z.array(z.object({
+    questionId: z.string(),
+    questionText: z.string(),
+    answer: z.string(),
+    answerIndex: z.number().min(0).max(3),
+  })).optional(),
+  profile: z.object({
+    primaryNeed: z.string().optional(),
+    communicationStyle: z.string().optional(),
+    pace: z.string().optional(),
+    tags: z.array(z.string()).optional(),
+  }).optional(),
+  timestamp: z.string().optional(),
+});
+
 const checkoutSchema = z.object({
   userId: z.string(),
   plan: z.enum(['unlimited']).optional().default('unlimited'),
@@ -334,5 +353,50 @@ funnelRouter.post('/users/:userId/api-key', funnelAuthMiddleware, async (req: Re
   } catch (error) {
     console.error('Funnel create API key error:', error);
     res.status(500).json({ error: 'Failed to create API key' });
+  }
+});
+
+// POST /api/funnel/profile - Store Amplexa funnel profile for user
+funnelRouter.post('/profile', funnelAuthMiddleware, async (req: Request, res: Response) => {
+  try {
+    const body = amplexaFunnelProfileSchema.parse(req.body);
+
+    // Find user by email
+    const user = await db.query.users.findFirst({
+      where: eq(users.email, body.email),
+    });
+
+    if (!user) {
+      return res.status(404).json({ error: 'User not found with this email' });
+    }
+
+    // Update user with Amplexa funnel profile
+    await db.update(users)
+      .set({
+        amplexaFunnel: body.funnel,
+        amplexaFunnelName: body.funnelName,
+        amplexaResponses: body.responses ? JSON.stringify(body.responses) : null,
+        amplexaPrimaryNeed: body.profile?.primaryNeed || null,
+        amplexaCommunicationStyle: body.profile?.communicationStyle || null,
+        amplexaPace: body.profile?.pace || null,
+        amplexaTags: body.profile?.tags ? JSON.stringify(body.profile.tags) : null,
+        amplexaTimestamp: body.timestamp || new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      })
+      .where(eq(users.id, user.id));
+
+    res.json({
+      message: 'Amplexa funnel profile stored successfully',
+      userId: user.id,
+      email: user.email,
+      funnel: body.funnel,
+      funnelName: body.funnelName,
+    });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({ error: 'Validation error', details: error.errors });
+    }
+    console.error('Funnel profile error:', error);
+    res.status(500).json({ error: 'Failed to store funnel profile' });
   }
 });
