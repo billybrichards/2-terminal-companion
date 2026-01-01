@@ -35,6 +35,16 @@ export const users = pgTable('users', {
   refundRequested: boolean('refund_requested').default(false),
   refundProcessed: boolean('refund_processed').default(false),
   lastActivityAt: text('last_activity_at'),
+  
+  // Amplexa Funnel Profile (optional, not mandatory)
+  amplexaFunnel: text('amplexa_funnel'), // A-F (Quietly Lonely, Curious/Fantasy-Open, Privacy-First, Late Night Thinker, Emotional Explorer, Creative Seeker)
+  amplexaFunnelName: text('amplexa_funnel_name'), // Full funnel name
+  amplexaResponses: text('amplexa_responses'), // JSON string of question responses
+  amplexaPrimaryNeed: text('amplexa_primary_need'), // Connection, Exploration, Safety, Processing, Understanding, Imagination
+  amplexaCommunicationStyle: text('amplexa_communication_style'), // Gentle/patient, Open/uninhibited, Structured/clear, etc.
+  amplexaPace: text('amplexa_pace'), // Slow, Flexible, Controlled, Late-night, Thoughtful, Spontaneous
+  amplexaTags: text('amplexa_tags'), // JSON array of personality tags
+  amplexaTimestamp: text('amplexa_timestamp'), // When funnel data was submitted
 });
 
 // Companion config (single row - admin configured)

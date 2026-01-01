@@ -1718,6 +1718,139 @@ curl -X PUT "https://api.abionti.com/api/funnel/subscription" \\
           '404': { description: 'User not found' }
         }
       }
+    },
+    '/api/funnel/profile': {
+      post: {
+        tags: ['Funnel'],
+        summary: 'Store Amplexa funnel profile',
+        description: `Store Amplexa personality funnel data for a user. This data enhances AI responses during new chat sessions by providing personality insights.
+
+**Authentication:** Requires \`FUNNEL_API_SECRET\` in Authorization header.
+
+**Funnel Types:**
+- **A**: Quietly Lonely - For those seeking a safe space to talk
+- **B**: Curious / Fantasy-Open - For those exploring connection and fantasy
+- **C**: Privacy-First / Neurodivergent - For those who value predictability and safety
+- **D**: Late Night Thinker - For those with thoughts that keep them awake
+- **E**: Emotional Explorer - For those processing feelings and experiences
+- **F**: Creative Seeker - For those who want imaginative conversation
+
+**How It Works:**
+1. User completes funnel questionnaire on external site
+2. Funnel app calls this endpoint with user's email and responses
+3. Profile data is stored in user's account (optional, not mandatory)
+4. When user starts a new chat (newChat=true), AI receives personality context
+5. AI tailors ice-breaker response (max 1-2 sentences) based on:
+   - Primary need (Connection, Safety, Understanding, etc.)
+   - Communication style (Gentle, Open, Structured, etc.)
+   - Conversation pace (Slow, Flexible, Thoughtful, etc.)
+   - Personality tags (Night Owl Processor, Creative Escapist, etc.)
+
+**Example (curl):**
+\`\`\`bash
+curl -X POST "https://api.abionti.com/api/funnel/profile" \\
+  -H "Content-Type: application/json" \\
+  -H "Authorization: Bearer YOUR_FUNNEL_API_SECRET" \\
+  -d '{
+    "email": "user@example.com",
+    "funnel": "A",
+    "funnelName": "Quietly Lonely",
+    "responses": [
+      {
+        "questionId": "q1",
+        "questionText": "This is private. Why are you here right now?",
+        "answer": "I feel lonely sometimes",
+        "answerIndex": 0
+      },
+      {
+        "questionId": "q2",
+        "questionText": "When do you usually feel like talking?",
+        "answer": "Late at night",
+        "answerIndex": 0
+      },
+      {
+        "questionId": "q3",
+        "questionText": "What matters most to you?",
+        "answer": "Feeling heard",
+        "answerIndex": 1
+      }
+    ],
+    "profile": {
+      "primaryNeed": "Connection",
+      "communicationStyle": "Gentle, patient",
+      "pace": "Slow",
+      "tags": ["Night Owl Processor", "Validation Seeker"]
+    },
+    "timestamp": "2026-01-01T00:00:00.000Z"
+  }'
+\`\`\`
+
+**Note:** See AMPLEXA_FUNNEL_MAPPING.md for complete funnel reference and all example payloads.`,
+        security: [{ funnelAuth: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['email', 'funnel', 'funnelName'],
+                properties: {
+                  email: { type: 'string', format: 'email', example: 'user@example.com', description: 'User email to identify account' },
+                  funnel: { type: 'string', enum: ['A', 'B', 'C', 'D', 'E', 'F'], example: 'A', description: 'Funnel identifier' },
+                  funnelName: { type: 'string', example: 'Quietly Lonely', description: 'Full funnel name' },
+                  responses: {
+                    type: 'array',
+                    description: 'Optional array of question responses',
+                    items: {
+                      type: 'object',
+                      properties: {
+                        questionId: { type: 'string', example: 'q1' },
+                        questionText: { type: 'string', example: 'Why are you here?' },
+                        answer: { type: 'string', example: 'I feel lonely sometimes' },
+                        answerIndex: { type: 'number', minimum: 0, maximum: 3, example: 0 }
+                      }
+                    }
+                  },
+                  profile: {
+                    type: 'object',
+                    description: 'Optional personality profile derived from funnel',
+                    properties: {
+                      primaryNeed: { type: 'string', example: 'Connection', description: 'Connection, Exploration, Safety, Processing, Understanding, or Imagination' },
+                      communicationStyle: { type: 'string', example: 'Gentle, patient', description: 'Preferred communication approach' },
+                      pace: { type: 'string', example: 'Slow', description: 'Conversation pace preference' },
+                      tags: { type: 'array', items: { type: 'string' }, example: ['Night Owl Processor', 'Validation Seeker'], description: 'Personality tags' }
+                    }
+                  },
+                  timestamp: { type: 'string', format: 'date-time', description: 'When funnel was completed (optional, defaults to current time)' }
+                }
+              }
+            }
+          }
+        },
+        responses: {
+          '200': {
+            description: 'Profile stored successfully',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    message: { type: 'string', example: 'Amplexa funnel profile stored successfully' },
+                    userId: { type: 'string', example: 'user-uuid-here' },
+                    email: { type: 'string', example: 'user@example.com' },
+                    funnel: { type: 'string', example: 'A' },
+                    funnelName: { type: 'string', example: 'Quietly Lonely' }
+                  }
+                }
+              }
+            }
+          },
+          '400': { description: 'Validation error - invalid funnel data' },
+          '401': { description: 'Missing authorization header' },
+          '403': { description: 'Invalid funnel API secret' },
+          '404': { description: 'User not found with this email' }
+        }
+      }
     }
   },
   components: {

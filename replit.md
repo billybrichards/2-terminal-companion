@@ -203,3 +203,51 @@ Uses PostgreSQL with Drizzle ORM (falls back to SQLite if DATABASE_URL not set).
 - 2025-12-28: Added API key generation on subscription
 - 2025-12-27: Security audit - moved secrets, added CORS/CSP/rate limiting
 - 2025-12-27: Initial Replit setup with PostgreSQL
+- 2026-01-01: **Amplexa Funnel Integration** - Added personality profiling system:
+  - Database schema updated with Amplexa funnel profile fields (funnel A-F, responses, personality tags)
+  - New API endpoint: POST /api/funnel/profile to store user funnel data
+  - Enhanced new chat ice-breakers with funnel context (1-2 sentence personalized responses)
+  - See AMPLEXA_FUNNEL_MAPPING.md for complete funnel reference
+  - Test script: scripts/test-amplexa-funnel.js
+
+## Amplexa Funnel Integration
+
+The Amplexa funnel system enables personality-based user profiling to enhance AI conversations:
+
+### Database Fields
+The following optional fields are stored in the `users` table:
+- `amplexa_funnel` - Funnel ID (A-F)
+- `amplexa_funnel_name` - Human-readable funnel name
+- `amplexa_responses` - JSON array of question responses
+- `amplexa_primary_need` - User's primary emotional need
+- `amplexa_communication_style` - Preferred communication style
+- `amplexa_pace` - Conversation pace preference
+- `amplexa_tags` - JSON array of personality tags
+- `amplexa_timestamp` - When profile was submitted
+
+### API Endpoint
+**POST /api/funnel/profile**
+- Authentication: Bearer token with FUNNEL_API_SECRET
+- Stores funnel profile data for a user identified by email
+- See API docs at /api/docs for full specification
+
+### How It Enhances Conversations
+When a user with a funnel profile starts a new chat (`newChat: true`):
+1. System retrieves their funnel profile data
+2. AI receives context about:
+   - Primary emotional need (e.g., Connection, Safety, Understanding)
+   - Communication style (e.g., Gentle/patient, Open/uninhibited)
+   - Conversation pace (e.g., Slow, Thoughtful, Spontaneous)
+   - Personality tags (e.g., Night Owl Processor, Creative Escapist)
+3. AI generates a personalized 1-2 sentence ice-breaker
+4. Response is tailored to make user feel understood and increase engagement
+
+### Funnel Types
+- **A - Quietly Lonely**: Safe space for connection seekers
+- **B - Curious/Fantasy-Open**: For exploratory conversations
+- **C - Privacy-First/Neurodivergent**: Structured, predictable interactions
+- **D - Late Night Thinker**: For processing thoughts and emotions
+- **E - Emotional Explorer**: Deep validation and understanding
+- **F - Creative Seeker**: Imaginative, playful conversations
+
+See [AMPLEXA_FUNNEL_MAPPING.md](./AMPLEXA_FUNNEL_MAPPING.md) for complete documentation.

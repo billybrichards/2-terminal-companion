@@ -84,8 +84,74 @@ const chatSchema = z.object({
   newChat: z.boolean().optional(),
 });
 
-function buildNewChatIceBreakerPrompt(name: string, userMessage: string): string {
-  return `[Context: ${name} just opened a new chat and said "${userMessage}". This is their first message to you. They want to find a genuine companion. Give a warm, human, natural ice-breaker response - not too long - to keep things flowing naturally. Make it feel like you're genuinely happy to meet them.]`;
+interface AmplexaProfile {
+  funnel?: string;
+  funnelName?: string;
+  primaryNeed?: string;
+  communicationStyle?: string;
+  pace?: string;
+  tags?: string[];
+}
+
+/**
+ * Extract Amplexa profile from user data with safe JSON parsing
+ */
+function extractAmplexaProfile(user: any): AmplexaProfile | undefined {
+  if (!user?.amplexaFunnel) {
+    return undefined;
+  }
+  
+  let tags: string[] | undefined;
+  if (user.amplexaTags) {
+    try {
+      const parsed = JSON.parse(user.amplexaTags);
+      // Validate that parsed value is an array of strings
+      if (Array.isArray(parsed) && parsed.every(item => typeof item === 'string')) {
+        tags = parsed;
+      } else {
+        console.error('amplexaTags is not a valid string array');
+        tags = undefined;
+      }
+    } catch (error) {
+      console.error('Failed to parse amplexaTags JSON:', error);
+      tags = undefined;
+    }
+  }
+  
+  return {
+    funnel: user.amplexaFunnel,
+    funnelName: user.amplexaFunnelName || undefined,
+    primaryNeed: user.amplexaPrimaryNeed || undefined,
+    communicationStyle: user.amplexaCommunicationStyle || undefined,
+    pace: user.amplexaPace || undefined,
+    tags,
+  };
+}
+
+function buildNewChatIceBreakerPrompt(name: string, userMessage: string, amplexaProfile?: AmplexaProfile): string {
+  let basePrompt = `[Context: ${name} just opened a new chat and said "${userMessage}". This is their first message to you.`;
+  
+  // Add Amplexa funnel context if available to enhance personalization
+  if (amplexaProfile?.primaryNeed || amplexaProfile?.communicationStyle || amplexaProfile?.pace) {
+    basePrompt += `\n\nPersonality Insights from their profile:`;
+    if (amplexaProfile.primaryNeed) {
+      basePrompt += `\n- Primary emotional need: ${amplexaProfile.primaryNeed}`;
+    }
+    if (amplexaProfile.communicationStyle) {
+      basePrompt += `\n- Preferred communication: ${amplexaProfile.communicationStyle}`;
+    }
+    if (amplexaProfile.pace) {
+      basePrompt += `\n- Conversation pace: ${amplexaProfile.pace}`;
+    }
+    if (amplexaProfile.tags && amplexaProfile.tags.length > 0) {
+      basePrompt += `\n- Personality tags: ${amplexaProfile.tags.join(', ')}`;
+    }
+    basePrompt += `\n\nUse these insights to tailor your response to resonate with their needs and style.`;
+  }
+  
+  basePrompt += `\n\nGive a warm, human, natural ice-breaker response. CRITICAL: Keep it SHORT - maximum 1-2 sentences. Make it feel genuine and tailored to who they are. Your goal is to make them feel understood and want to continue the conversation.]`;
+  
+  return basePrompt;
 }
 
 // Gender persona templates
@@ -301,7 +367,9 @@ chatRouter.post('/', optionalAuthMiddleware, async (req, res) => {
     // For new chat with user name set, use ice-breaker prompt (hidden from user)
     // This wraps the user's message with context to help AI give a natural ice-breaker response
     if (isNewChat && user?.chatName) {
-      actualMessage = buildNewChatIceBreakerPrompt(user.chatName, body.message);
+      // Extract Amplexa funnel profile if available
+      const amplexaProfile = extractAmplexaProfile(user);
+      actualMessage = buildNewChatIceBreakerPrompt(user.chatName, body.message, amplexaProfile);
       isHiddenIceBreaker = true;
     }
 
@@ -442,7 +510,9 @@ chatRouter.post('/non-streaming', optionalAuthMiddleware, async (req, res) => {
     // For new chat with user name set, use ice-breaker prompt (hidden from user)
     // This wraps the user's message with context to help AI give a natural ice-breaker response
     if (isNewChat && user?.chatName) {
-      actualMessage = buildNewChatIceBreakerPrompt(user.chatName, body.message);
+      // Extract Amplexa funnel profile if available
+      const amplexaProfile = extractAmplexaProfile(user);
+      actualMessage = buildNewChatIceBreakerPrompt(user.chatName, body.message, amplexaProfile);
       isHiddenIceBreaker = true;
     }
 
