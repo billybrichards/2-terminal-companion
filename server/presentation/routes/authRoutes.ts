@@ -7,6 +7,7 @@ import { jwtAdapter } from '../../infrastructure/auth/JWTAdapter.js';
 import { authMiddleware } from '../middleware/authMiddleware.js';
 import { authRateLimiter, registrationRateLimiter } from '../middleware/rateLimitMiddleware.js';
 import { emailService } from '../../infrastructure/email/resendService.js';
+import { emailTemplates } from '../../infrastructure/email/emailTemplates.js';
 import { eq, and, isNull, gt } from 'drizzle-orm';
 
 export const authRouter = Router();
@@ -480,10 +481,24 @@ authRouter.post('/forgot-password', authRateLimiter, async (req, res) => {
       expiresAt,
     });
 
-    // Send password reset email
-    emailService.sendPasswordResetEmail(body.email, token).catch(err => {
-      console.error('Failed to send password reset email:', err);
-    });
+    // Send password reset email with appropriate branding
+    const isAnplexaUser = user.accountSource === 'anplexa';
+    if (isAnplexaUser) {
+      // Use Anplexa-branded email template
+      const BASE_URL = process.env.REPLIT_DOMAINS 
+        ? `https://${process.env.REPLIT_DOMAINS.split(',')[0]}`
+        : 'http://localhost:5000';
+      const resetLink = `${BASE_URL}/reset-password?token=${token}`;
+      const template = emailTemplates.password_reset(user.id, resetLink);
+      emailService.sendRawEmail(body.email, template.subject, template.html).catch(err => {
+        console.error('Failed to send Anplexa password reset email:', err);
+      });
+    } else {
+      // Use Abionti API branded email
+      emailService.sendPasswordResetEmail(body.email, token).catch(err => {
+        console.error('Failed to send password reset email:', err);
+      });
+    }
 
     res.json({
       message: successMessage,
