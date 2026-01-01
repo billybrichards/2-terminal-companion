@@ -81,7 +81,8 @@ while (true) {
     { name: 'Chat', description: 'AI companion chat endpoints' },
     { name: 'Conversations', description: 'Conversation history management' },
     { name: 'Settings', description: 'User preferences and settings' },
-    { name: 'Funnel', description: 'External funnel integration endpoints - create users, manage subscriptions' },
+    { name: 'Public', description: 'Public endpoints for landing pages and lead capture (no authentication required)' },
+    { name: 'Funnel', description: 'External funnel integration endpoints - create users, manage subscriptions (requires funnel API key)' },
     { name: 'Admin', description: 'Administrative endpoints (requires admin role)' },
     { name: 'Health', description: 'System health checks' },
     { name: 'Webhooks', description: 'External webhook integrations' }
@@ -1389,6 +1390,103 @@ console.log(conversations);
         }
       }
     },
+    '/api/register-subscriber': {
+      post: {
+        tags: ['Public'],
+        summary: 'Register email subscriber (no auth required)',
+        description: `Register a new subscriber from a landing page or signup form. This is a public endpoint designed for lead capture - no authentication required.
+
+**Use Cases:**
+- Landing page email capture forms
+- Waitlist signup forms
+- Lead generation funnels
+
+**CRM Integration:**
+New leads are automatically enrolled in email retention sequences:
+- \`funnelType: "waitlist"\` → W1-W5 email sequence
+- \`funnelType: "direct"\` → D1-D4 email sequence
+
+**Rate Limiting:** 10 requests per minute per IP address.
+
+**Example (curl):**
+\`\`\`bash
+curl -X POST "https://api.abionti.com/api/register-subscriber" \\
+  -H "Content-Type: application/json" \\
+  -d '{"email": "user@example.com", "funnelType": "waitlist", "persona": "curious"}'
+\`\`\`
+
+**Example (JavaScript):**
+\`\`\`javascript
+const response = await fetch('/api/register-subscriber', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    email: 'user@example.com',
+    displayName: 'John',
+    funnelType: 'direct',
+    entrySource: 'landing'
+  })
+});
+const data = await response.json();
+// { status: 'success', message: 'Thanks for signing up!', leadId: 'uuid' }
+\`\`\``,
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['email'],
+                properties: {
+                  email: { type: 'string', format: 'email', example: 'user@example.com' },
+                  displayName: { type: 'string', example: 'John', description: 'Optional display name' },
+                  chatName: { type: 'string', example: 'Johnny', description: 'Preferred name for AI to use' },
+                  funnelType: { type: 'string', enum: ['waitlist', 'direct'], default: 'direct', description: 'Determines which email sequence is used' },
+                  persona: { type: 'string', enum: ['lonely', 'curious', 'privacy'], description: 'User persona for personalized emails' },
+                  entrySource: { type: 'string', enum: ['instagram', 'tiktok', 'reddit', 'search', 'retargeting', 'organic', 'landing'], description: 'Where the user came from' },
+                  utm_source: { type: 'string', description: 'UTM source parameter' },
+                  utm_medium: { type: 'string', description: 'UTM medium parameter' },
+                  utm_campaign: { type: 'string', description: 'UTM campaign parameter' }
+                }
+              }
+            }
+          }
+        },
+        responses: {
+          '201': {
+            description: 'Subscriber registered successfully',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    message: { type: 'string', example: 'Thanks for signing up! Check your email for next steps.' },
+                    status: { type: 'string', enum: ['success', 'existing_lead', 'existing_subscriber'], example: 'success' },
+                    leadId: { type: 'string', example: 'uuid-here' }
+                  }
+                }
+              }
+            }
+          },
+          '200': {
+            description: 'Email already registered (not an error)',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    message: { type: 'string', example: 'Thanks! You\'re already on our list.' },
+                    status: { type: 'string', enum: ['existing_lead', 'existing_subscriber'] }
+                  }
+                }
+              }
+            }
+          },
+          '400': { description: 'Invalid email address' },
+          '429': { description: 'Rate limit exceeded - too many requests' }
+        }
+      }
+    },
     '/api/funnel/users': {
       post: {
         tags: ['Funnel'],
@@ -1892,6 +1990,11 @@ curl -X POST "https://api.abionti.com/api/funnel/profile" \\
         in: 'header',
         name: 'X-API-Key',
         description: 'API key obtained from dashboard after subscribing'
+      },
+      funnelAuth: {
+        type: 'http',
+        scheme: 'bearer',
+        description: 'Funnel API key (fk_xxx) generated from admin dashboard at /admin/funnel-keys. Include as: Authorization: Bearer fk_your_key_here'
       }
     }
   }
