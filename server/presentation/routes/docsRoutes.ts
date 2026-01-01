@@ -1493,7 +1493,9 @@ const data = await response.json();
         summary: 'Create user from funnel',
         description: `Create a new user account from an external funnel application. Returns user details, API key, and authentication tokens.
 
-**Authentication:** Requires \`FUNNEL_API_SECRET\` in Authorization header.
+**Authentication:** Requires Funnel API key (e.g., \`fk_...\`) sent as a **Bearer token** in the \`Authorization\` header.
+
+**Important:** Legacy \`X-API-Key\` header is no longer supported for funnel endpoints. You must use \`Authorization: Bearer your_key_here\`.
 
 **CRM Integration:**
 When creating users, you can pass additional CRM fields to segment them for email retention sequences:
@@ -1512,7 +1514,7 @@ When creating users, you can pass additional CRM fields to segment them for emai
 \`\`\`bash
 curl -X POST "https://api.abionti.com/api/funnel/users" \\
   -H "Content-Type: application/json" \\
-  -H "Authorization: Bearer YOUR_FUNNEL_API_SECRET" \\
+  -H "Authorization: Bearer fk_your_key_here" \\
   -d '{"email": "user@example.com", "password": "securepass123", "displayName": "John", "funnelType": "waitlist", "persona": "curious", "entrySource": "landing_page"}'
 \`\`\`
 
@@ -1520,7 +1522,7 @@ curl -X POST "https://api.abionti.com/api/funnel/users" \\
 \`\`\`bash
 curl -X POST "https://api.abionti.com/api/funnel/users" \\
   -H "Content-Type: application/json" \\
-  -H "Authorization: Bearer YOUR_FUNNEL_API_SECRET" \\
+  -H "Authorization: Bearer fk_your_key_here" \\
   -d '{"email": "user@example.com", "password": "securepass123", "funnelType": "direct"}'
 \`\`\`
 
@@ -1528,7 +1530,7 @@ curl -X POST "https://api.abionti.com/api/funnel/users" \\
 \`\`\`bash
 curl -X POST "https://api.abionti.com/api/funnel/users" \\
   -H "Content-Type: application/json" \\
-  -H "Authorization: Bearer YOUR_FUNNEL_API_SECRET" \\
+  -H "Authorization: Bearer fk_your_key_here" \\
   -d '{"email": "user@example.com", "password": "securepass123", "subscriptionStatus": "subscribed", "stripeCustomerId": "cus_xxx", "stripeSubscriptionId": "sub_xxx"}'
 \`\`\`
 
@@ -1602,7 +1604,9 @@ curl -X POST "https://api.abionti.com/api/funnel/users" \\
         summary: 'Create Stripe checkout for user',
         description: `Generate a Stripe checkout URL for a user. Redirect the user to this URL to complete payment.
 
-**Authentication:** Requires \`FUNNEL_API_SECRET\` in Authorization header.
+**Authentication:** Requires Funnel API key (e.g., \`fk_...\`) sent as a **Bearer token** in the \`Authorization\` header.
+
+**Important:** Legacy \`X-API-Key\` header is no longer supported for funnel endpoints. You must use \`Authorization: Bearer your_key_here\`.
 
 **Flow:**
 1. Call this endpoint with userId
@@ -1619,7 +1623,7 @@ curl -X POST "https://api.abionti.com/api/funnel/users" \\
 \`\`\`bash
 curl -X POST "https://api.abionti.com/api/funnel/checkout" \\
   -H "Content-Type: application/json" \\
-  -H "Authorization: Bearer YOUR_FUNNEL_API_SECRET" \\
+  -H "Authorization: Bearer fk_your_key_here" \\
   -d '{"userId": "user-uuid-here", "plan": "yearly"}'
 \`\`\`
 
@@ -1627,7 +1631,7 @@ curl -X POST "https://api.abionti.com/api/funnel/checkout" \\
 \`\`\`bash
 curl -X POST "https://api.abionti.com/api/funnel/checkout" \\
   -H "Content-Type: application/json" \\
-  -H "Authorization: Bearer YOUR_FUNNEL_API_SECRET" \\
+  -H "Authorization: Bearer fk_your_key_here" \\
   -d '{"userId": "user-uuid-here", "plan": "monthly"}'
 \`\`\``,
         security: [{ funnelAuth: [] }],
@@ -1675,10 +1679,14 @@ curl -X POST "https://api.abionti.com/api/funnel/checkout" \\
         summary: 'Get user subscription status',
         description: `Check a user's current subscription status.
 
+**Authentication:** Requires Funnel API key (e.g., \`fk_...\`) sent as a **Bearer token** in the \`Authorization\` header.
+
+**Important:** Legacy \`X-API-Key\` header is no longer supported for funnel endpoints. You must use \`Authorization: Bearer your_key_here\`.
+
 **Example (curl):**
 \`\`\`bash
 curl -X GET "https://api.abionti.com/api/funnel/subscription/user-uuid-here" \\
-  -H "Authorization: Bearer YOUR_FUNNEL_API_SECRET"
+  -H "Authorization: Bearer fk_your_key_here"
 \`\`\``,
         security: [{ funnelAuth: [] }],
         parameters: [
@@ -1715,11 +1723,15 @@ curl -X GET "https://api.abionti.com/api/funnel/subscription/user-uuid-here" \\
         summary: 'Update user subscription status',
         description: `Manually update a user's subscription status. Use this for manual overrides or integrations that bypass Stripe webhooks.
 
+**Authentication:** Requires Funnel API key (e.g., \`fk_...\`) sent as a **Bearer token** in the \`Authorization\` header.
+
+**Important:** Legacy \`X-API-Key\` header is no longer supported for funnel endpoints. You must use \`Authorization: Bearer your_key_here\`.
+
 **Example (curl):**
 \`\`\`bash
 curl -X PUT "https://api.abionti.com/api/funnel/subscription" \\
   -H "Content-Type: application/json" \\
-  -H "Authorization: Bearer YOUR_FUNNEL_API_SECRET" \\
+  -H "Authorization: Bearer fk_your_key_here" \\
   -d '{"userId": "user-uuid-here", "subscriptionStatus": "subscribed"}'
 \`\`\``,
         security: [{ funnelAuth: [] }],
@@ -1849,7 +1861,9 @@ curl -X PUT "https://api.abionti.com/api/funnel/subscription" \\
         summary: 'Store Amplexa funnel profile',
         description: `Store Amplexa personality funnel data for a user. This data enhances AI responses during new chat sessions by providing personality insights.
 
-**Authentication:** Requires \`FUNNEL_API_SECRET\` in Authorization header.
+**Authentication:** Requires Funnel API key (e.g., \`fk_...\`) sent as a **Bearer token** in the \`Authorization\` header.
+
+**Important:** Legacy \`X-API-Key\` header is no longer supported for funnel endpoints. You must use \`Authorization: Bearer your_key_here\`.
 
 **Funnel Types:**
 - **A**: Quietly Lonely - For those seeking a safe space to talk
@@ -1874,7 +1888,7 @@ curl -X PUT "https://api.abionti.com/api/funnel/subscription" \\
 \`\`\`bash
 curl -X POST "https://api.abionti.com/api/funnel/profile" \\
   -H "Content-Type: application/json" \\
-  -H "Authorization: Bearer YOUR_FUNNEL_API_SECRET" \\
+  -H "Authorization: Bearer fk_your_key_here" \\
   -d '{
     "email": "user@example.com",
     "funnel": "A",
