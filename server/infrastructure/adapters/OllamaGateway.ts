@@ -38,9 +38,11 @@ export class OllamaGateway {
    */
   private cleanOutput(text: string): string {
     return text
-      .replace(/\s*<\s*$/g, '')           // Trailing < with optional whitespace
-      .replace(/\s*\[INST\]?\s*$/g, '')   // Trailing [INST] or [INST
-      .replace(/\s*\[\/INST\]?\s*$/g, '') // Trailing [/INST] or [/INST
+      .replace(/\s*<\s*$/g, '')              // Trailing < with optional whitespace
+      .replace(/\s*\|\s*\d+\s*\|\s*$/g, '') // Trailing | 1234 | artifacts
+      .replace(/\s*\[INST\]?\s*$/g, '')      // Trailing [INST] or [INST
+      .replace(/\s*\[\/INST\]?\s*$/g, '')    // Trailing [/INST] or [/INST
+      .replace(/\s*<\/s>?\s*$/g, '')        // Trailing </s>
       .trim();
   }
 
@@ -162,24 +164,20 @@ export class OllamaGateway {
             if (data.message?.content) {
               const content = data.message.content;
               
-              // If we have pending buffer, yield it now (it wasn't the end)
-              if (pendingBuffer) {
-                yield pendingBuffer;
-                pendingBuffer = '';
-              }
+              // Add to pending buffer
+              pendingBuffer += content;
               
-              // Check if this chunk could be a trailing artifact
-              // Hold back lone < or whitespace+< patterns
-              if (/^\s*<?\s*$/.test(content)) {
-                pendingBuffer = content;
-              } else {
-                yield content;
+              // Only yield if we're reasonably sure it's not a trailing artifact
+              // Dark Planet / Mistral artifacts often appear at the very end
+              // We'll keep a small buffer and clean it at the end
+              if (pendingBuffer.length > 20) {
+                const toYield = pendingBuffer.slice(0, -20);
+                pendingBuffer = pendingBuffer.slice(-20);
+                yield toYield;
               }
             }
             
-            // If stream is done, check for trailing artifacts in pending
             if (data.done && pendingBuffer) {
-              // Only yield if it's not just an artifact
               const cleaned = this.cleanOutput(pendingBuffer);
               if (cleaned) {
                 yield cleaned;
