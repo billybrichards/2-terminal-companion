@@ -19,18 +19,23 @@ async function funnelAuthMiddleware(req: Request, res: Response, next: NextFunct
   const authHeader = req.headers.authorization;
   
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    console.log('[FunnelAuth] Missing or invalid authorization header');
     return res.status(401).json({ error: 'Missing or invalid authorization header' });
   }
   
   const token = authHeader.substring(7);
+  console.log('[FunnelAuth] Token prefix:', token.slice(0, 12));
   
   // First check database for funnel API keys
   try {
     const activeFunnelKeys = await db.select().from(funnelApiKeys).where(eq(funnelApiKeys.isActive, true));
+    console.log('[FunnelAuth] Found', activeFunnelKeys.length, 'active funnel keys in database');
     
     for (const fk of activeFunnelKeys) {
+      console.log('[FunnelAuth] Checking against key prefix:', fk.keyPrefix);
       const isValid = await bcrypt.compare(token, fk.keyHash);
       if (isValid) {
+        console.log('[FunnelAuth] Key validated successfully via database');
         // Update last used timestamp
         await db.update(funnelApiKeys)
           .set({ lastUsedAt: new Date().toISOString() })
@@ -39,14 +44,16 @@ async function funnelAuthMiddleware(req: Request, res: Response, next: NextFunct
       }
     }
   } catch (error) {
-    console.error('Error checking funnel API keys from database:', error);
+    console.error('[FunnelAuth] Error checking funnel API keys from database:', error);
   }
   
   // Fallback to environment variable for backwards compatibility
   if (FUNNEL_API_SECRET && token === FUNNEL_API_SECRET) {
+    console.log('[FunnelAuth] Key validated via FUNNEL_API_SECRET env var');
     return next();
   }
   
+  console.log('[FunnelAuth] Key rejected - no match found');
   return res.status(403).json({ error: 'Invalid funnel API secret' });
 }
 
