@@ -34,10 +34,13 @@ export class OllamaGateway {
 
   /**
    * Clean model output by removing common artifacts
-   * Mistral models sometimes add trailing < or [INST] artifacts
+   * Llama-3 models sometimes add end-of-turn or prompt artifacts
    */
   private cleanOutput(text: string): string {
     return text
+      .replace(/<\|eot_id\|>/g, '')         // Llama-3 end of turn
+      .replace(/<\|end_of_text\|>/g, '')     // Llama-3 end of text
+      .replace(/<\|start_header_id\|>.*?<\|end_header_id\|>/g, '') // Header artifacts
       .replace(/\s*<\s*$/g, '')              // Trailing < with optional whitespace
       .replace(/\s*\|\s*\d+\s*\|\s*$/g, '') // Trailing | 1234 | artifacts
       .replace(/\s*\[INST\]?\s*$/g, '')      // Trailing [INST] or [INST
@@ -47,29 +50,17 @@ export class OllamaGateway {
   }
 
   /**
-   * Build the prompt in Mistral Instruct format
-   * Format: [INST] message [/INST]
+   * Build the prompt in Llama-3 Instruct format
+   * Format: <|begin_of_text|><|start_header_id|>system<|end_header_id|>\n\n{system_prompt}<|eot_id|><|start_header_id|>user<|end_header_id|>\n\n{user_prompt}<|eot_id|><|start_header_id|>assistant<|end_header_id|>\n\n
    */
-  private buildMistralPrompt(messages: ChatMessage[]): string {
-    let prompt = '';
-    let systemPrompt = '';
+  private buildLlama3Prompt(messages: ChatMessage[]): string {
+    let prompt = '<|begin_of_text|>';
 
     for (const msg of messages) {
-      if (msg.role === 'system') {
-        systemPrompt = msg.content;
-      } else if (msg.role === 'user') {
-        // Include system prompt in first user message if exists
-        if (systemPrompt && prompt === '') {
-          prompt += `[INST] ${systemPrompt}\n\n${msg.content} [/INST]`;
-          systemPrompt = ''; // Clear after first use
-        } else {
-          prompt += `[INST] ${msg.content} [/INST]`;
-        }
-      } else if (msg.role === 'assistant') {
-        prompt += ` ${msg.content}`;
-      }
+      prompt += `<|start_header_id|>${msg.role}<|end_header_id|>\n\n${msg.content}<|eot_id|>`;
     }
 
+    prompt += '<|start_header_id|>assistant<|end_header_id|>\n\n';
     return prompt;
   }
 
@@ -79,7 +70,7 @@ export class OllamaGateway {
   async generate(options: GenerateOptions): Promise<string> {
     const { model, messages, temperature = 0.8, maxTokens = 1000 } = options;
 
-    const prompt = this.buildMistralPrompt(messages);
+    const prompt = this.buildLlama3Prompt(messages);
 
     const response = await fetch(`${this.config.baseUrl}/api/generate`, {
       method: 'POST',
