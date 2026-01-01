@@ -81,6 +81,7 @@ while (true) {
     { name: 'Chat', description: 'AI companion chat endpoints' },
     { name: 'Conversations', description: 'Conversation history management' },
     { name: 'Settings', description: 'User preferences and settings' },
+    { name: 'Stripe', description: 'Subscription management and payment processing' },
     { name: 'Public', description: 'Public endpoints for landing pages and lead capture (no authentication required)' },
     { name: 'Funnel', description: 'External funnel integration endpoints - create users, manage subscriptions (requires funnel API key)' },
     { name: 'Admin', description: 'Administrative endpoints (requires admin role)' },
@@ -968,6 +969,277 @@ console.log(conversations);
         },
         responses: {
           '200': { description: 'Updated preferences' }
+        }
+      }
+    },
+    '/api/stripe/checkout': {
+      post: {
+        tags: ['Stripe'],
+        summary: 'Create checkout session',
+        description: `Create a Stripe checkout session for subscription purchase. Returns a URL to redirect the user to complete payment.
+
+**Plans:**
+- \`monthly\`: £2.99/month standard subscription
+- \`yearly\`: £11.99/year (early adopter price, equivalent to £0.99/month)
+
+**Example (curl):**
+\`\`\`bash
+curl -X POST "https://api.abionti.com/api/stripe/checkout" \\
+  -H "Content-Type: application/json" \\
+  -H "Authorization: Bearer your-jwt-token" \\
+  -d '{"plan": "monthly"}'
+\`\`\`
+
+**Example (Node.js):**
+\`\`\`javascript
+const response = await fetch('https://api.abionti.com/api/stripe/checkout', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    'Authorization': 'Bearer ' + accessToken
+  },
+  body: JSON.stringify({ plan: 'monthly' })
+});
+const { url } = await response.json();
+window.location.href = url; // Redirect to Stripe checkout
+\`\`\``,
+        security: [{ bearerAuth: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  plan: { type: 'string', enum: ['monthly', 'yearly'], example: 'monthly', description: 'Subscription plan to purchase' },
+                  priceId: { type: 'string', example: 'price_xxx', description: 'Alternative: pass a specific Stripe price ID directly' }
+                }
+              }
+            }
+          }
+        },
+        responses: {
+          '200': {
+            description: 'Checkout session created',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    url: { type: 'string', example: 'https://checkout.stripe.com/c/pay/cs_xxx', description: 'Redirect user to this URL to complete payment' }
+                  }
+                }
+              }
+            }
+          },
+          '400': { description: 'Invalid plan or missing priceId' },
+          '401': { description: 'Not authenticated' }
+        }
+      }
+    },
+    '/api/stripe/verify-checkout': {
+      post: {
+        tags: ['Stripe'],
+        summary: 'Verify checkout and update subscription',
+        description: `After a successful Stripe checkout, call this endpoint to verify the session and immediately update the user's subscription status in the database.
+
+**Why use this endpoint?**
+- Stripe webhooks may take a few seconds to process
+- This endpoint verifies the checkout directly with Stripe and updates the database immediately
+- Returns the confirmed subscription status so the frontend doesn't need to poll
+
+**Security:**
+- Validates the checkout session belongs to the authenticated user
+- Checks customer ID matches if user already has a Stripe customer
+- Only updates subscription if payment is confirmed
+
+**Example (curl):**
+\`\`\`bash
+curl -X POST "https://api.abionti.com/api/stripe/verify-checkout" \\
+  -H "Content-Type: application/json" \\
+  -H "Authorization: Bearer your-jwt-token" \\
+  -d '{"sessionId": "cs_test_xxx"}'
+\`\`\`
+
+**Example (Node.js):**
+\`\`\`javascript
+// After redirecting back from Stripe checkout
+const urlParams = new URLSearchParams(window.location.search);
+const sessionId = urlParams.get('session_id');
+
+const response = await fetch('https://api.abionti.com/api/stripe/verify-checkout', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    'Authorization': 'Bearer ' + accessToken
+  },
+  body: JSON.stringify({ sessionId })
+});
+const { success, subscriptionStatus, plan } = await response.json();
+if (success) {
+  // User is now subscribed, update UI immediately
+}
+\`\`\``,
+        security: [{ bearerAuth: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['sessionId'],
+                properties: {
+                  sessionId: { type: 'string', example: 'cs_test_a1b2c3', description: 'The checkout session ID from the success URL query parameter' }
+                }
+              }
+            }
+          }
+        },
+        responses: {
+          '200': {
+            description: 'Checkout verified and subscription updated',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    success: { type: 'boolean', example: true },
+                    subscriptionStatus: { type: 'string', enum: ['subscribed', 'not_subscribed'], example: 'subscribed' },
+                    plan: { type: 'string', enum: ['monthly', 'yearly'], example: 'monthly' },
+                    customerId: { type: 'string', example: 'cus_xxx' },
+                    subscriptionId: { type: 'string', example: 'sub_xxx' }
+                  }
+                }
+              }
+            }
+          },
+          '400': { description: 'Missing sessionId or invalid session data' },
+          '401': { description: 'Not authenticated' },
+          '403': { description: 'Session does not belong to this user' }
+        }
+      }
+    },
+    '/api/stripe/subscription': {
+      get: {
+        tags: ['Stripe'],
+        summary: 'Get subscription status',
+        description: "Get the current user's subscription status and details.",
+        security: [{ bearerAuth: [] }],
+        responses: {
+          '200': {
+            description: 'Subscription status',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    status: { type: 'string', enum: ['subscribed', 'not_subscribed'], example: 'subscribed' },
+                    subscription: {
+                      type: 'object',
+                      nullable: true,
+                      properties: {
+                        id: { type: 'string' },
+                        status: { type: 'string' },
+                        currentPeriodEnd: { type: 'string', format: 'date-time' }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          '401': { description: 'Not authenticated' }
+        }
+      }
+    },
+    '/api/stripe/portal': {
+      post: {
+        tags: ['Stripe'],
+        summary: 'Create customer portal session',
+        description: 'Create a Stripe customer portal session for the user to manage their subscription, update payment methods, or cancel.',
+        security: [{ bearerAuth: [] }],
+        responses: {
+          '200': {
+            description: 'Portal session created',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    url: { type: 'string', example: 'https://billing.stripe.com/session/xxx', description: 'Redirect user to this URL' }
+                  }
+                }
+              }
+            }
+          },
+          '400': { description: 'User has no Stripe customer' },
+          '401': { description: 'Not authenticated' }
+        }
+      }
+    },
+    '/api/stripe/publishable-key': {
+      get: {
+        tags: ['Stripe'],
+        summary: 'Get Stripe publishable key',
+        description: 'Get the Stripe publishable key for client-side Stripe.js initialization.',
+        responses: {
+          '200': {
+            description: 'Publishable key',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    publishableKey: { type: 'string', example: 'pk_live_xxx' }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    '/api/stripe/products': {
+      get: {
+        tags: ['Stripe'],
+        summary: 'List products with prices',
+        description: 'Get all active Stripe products and their prices.',
+        responses: {
+          '200': {
+            description: 'List of products',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    products: {
+                      type: 'array',
+                      items: {
+                        type: 'object',
+                        properties: {
+                          id: { type: 'string' },
+                          name: { type: 'string' },
+                          description: { type: 'string' },
+                          prices: {
+                            type: 'array',
+                            items: {
+                              type: 'object',
+                              properties: {
+                                id: { type: 'string' },
+                                unitAmount: { type: 'integer' },
+                                currency: { type: 'string' },
+                                recurring: { type: 'object' }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
         }
       }
     },

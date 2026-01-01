@@ -1,265 +1,50 @@
 # Abionti Unrestricted API
 
-## Overview
-Abionti Unrestricted API is an adult AI companion API that connects to Ollama for LLM inference using the "darkplanet" model. It provides unrestricted AI conversations, user authentication, conversation management, subscription billing via Stripe, and a comprehensive admin dashboard.
+### Overview
+Abionti Unrestricted API is an adult AI companion API that connects to Ollama for LLM inference using the "darkplanet" model. It provides unrestricted AI conversations, user authentication, conversation management, subscription billing via Stripe, and a comprehensive admin dashboard. The project aims to offer a robust and scalable platform for developers to integrate an unrestricted AI companion into their applications, with features like personalized AI interactions based on user preferences and an advanced CRM for user engagement.
 
-**Product Name:** Abionti Unrestricted API
-**Tagline:** Unrestricted AI Companion API for Developers
+### User Preferences
+No explicit user preferences were provided in the original `replit.md` file.
 
-## Pricing
-- **Free Tier:** 50 API calls per month, $0
-- **Unlimited:** Unlimited API calls, $9.99/month
+### System Architecture
+The project is built with Node.js and Express, utilizing a clean architecture with clear separation of concerns (infrastructure, presentation).
 
-## Project Structure
-```
-server/
-├── index.ts                           # Express app entry, middleware setup
-├── config/
-│   └── anplexaPrompt.ts              # Anplexa identity system prompt default
-├── infrastructure/
-│   ├── adapters/OllamaGateway.ts     # Ollama API client (streaming + non-streaming)
-│   ├── auth/
-│   │   ├── JWTAdapter.ts             # JWT token generation/verification
-│   │   └── ApiKeyGenerator.ts        # API key generation with tc_ prefix
-│   ├── email/
-│   │   └── resendService.ts          # Resend email service (welcome, reset)
-│   ├── stripe/
-│   │   ├── stripeClient.ts           # Stripe SDK client (Replit connector)
-│   │   ├── stripeService.ts          # Stripe API operations
-│   │   ├── storage.ts                # Query stripe schema tables
-│   │   └── webhookHandlers.ts        # Stripe webhook event handlers
-│   └── database/index.ts             # PostgreSQL/SQLite Drizzle setup
-└── presentation/
-    ├── middleware/
-    │   ├── authMiddleware.ts         # JWT auth guards
-    │   ├── apiKeyMiddleware.ts       # API key validation
-    │   ├── rateLimitMiddleware.ts    # IP-based rate limiting
-    │   └── usageTrackingMiddleware.ts # API usage tracking
-    └── routes/
-        ├── authRoutes.ts             # Registration, login, tokens, chat-name
-        ├── chatRoutes.ts             # AI chat (SSE streaming with system prompt)
-        ├── adminRoutes.ts            # Admin API (users, prompts, stats)
-        ├── stripeRoutes.ts           # Checkout, portal, subscription
-        ├── landingRoutes.ts          # Marketing landing page
-        ├── adminUiRoutes.ts          # Admin dashboard UI (users, usage, prompts)
-        └── docsRoutes.ts             # Swagger UI API documentation
-shared/
-├── schema.ts                          # Schema switcher
-├── schema.postgres.ts                 # PostgreSQL Drizzle schema
-└── schema.sqlite.ts                   # SQLite Drizzle schema
-scripts/
-└── seed-stripe-products.ts           # Create Stripe products
-```
+**UI/UX Decisions:**
+- **Admin Dashboard:** Provides interfaces for user management, usage analytics, system prompt management, CRM, and funnel key management.
+- **Landing Page:** Marketing-focused page detailing pricing and features.
+- **User Dashboard:** Allows users to manage API keys, subscriptions, and view usage.
+- **Design Theme:** Dark background (`#0a0a0a`) with an orange accent (`#ff6b35`), designed to be responsive and mobile-friendly.
 
-## Development Commands
-```bash
-npm run dev              # Run server with hot reload (tsx watch)
-npm run stripe:seed      # Create Stripe products (Free Tier, Unlimited)
-npm run db:generate      # Generate Drizzle migrations
-npm run db:push          # Push schema changes to database
-npm run db:studio        # Open Drizzle Studio for database inspection
-npm run build            # Compile TypeScript
-npm run start            # Run compiled server
-```
+**Technical Implementations:**
+- **Database:** PostgreSQL with Drizzle ORM (falls back to SQLite). Key tables include `users`, `api_keys`, `funnel_api_keys`, `api_usage`, `conversations`, `messages`, `system_prompts`, `companion_config`, `email_queue`, and `email_logs`.
+- **Authentication:** JWT for user sessions and API Keys for API access. Funnel API keys are also supported for external integrations.
+- **AI Integration:** Connects to Ollama for LLM inference, using a customizable "Anplexa" identity system prompt. Supports streaming (SSE) and non-streaming chat.
+- **Conversation Management:** Stores and retrieves user conversations and messages.
+- **Personalization:**
+    - Users can set a `chatName` for personalized AI addressing.
+    - Supports dynamic personality modes (e.g., nurturing, playful, dominant) and preferred AI companion gender (male/female/non-binary/custom).
+    - **Amplexa Funnel Integration:** Incorporates personality profiling based on user responses to funnel questions, storing `amplexa_funnel`, `amplexa_responses`, `amplexa_primary_need`, `amplexa_communication_style`, `amplexa_pace`, and `amplexa_tags`. This data is used to tailor AI ice-breakers and conversation style.
+- **Admin Features:**
+    - System prompt management with version control.
+    - Comprehensive CRM system with email retention sequences, scheduling, tracking, and funnel analytics.
+    - Management of funnel API keys.
+- **Security:** Implements CORS, Content Security Policy (Helmet), rate limiting on authentication and API routes, HMAC-signed admin session tokens, and encrypted secrets.
 
-## API Endpoints
+**Feature Specifications:**
+- **API Endpoints:** Comprehensive set of public, authentication, funnel, chat, conversation, Stripe, and admin API endpoints.
+- **Rate Limiting:** Implemented for authentication and API key usage.
+- **Email Services:** Utilizes Resend for welcome and password reset emails, and an internal CRM for email sequences and tracking.
+- **Stripe Integration:** Handles product listing, checkout sessions, customer portal management, subscription webhooks, and syncing Stripe data to the database.
+  - Key endpoints:
+    - `POST /api/stripe/checkout` - Create checkout session (returns Stripe URL)
+    - `POST /api/stripe/verify-checkout` - Verify checkout session and update subscription status immediately (fixes race condition with webhooks)
+    - `POST /api/stripe/portal` - Create customer portal session
+    - `GET /api/stripe/subscription` - Get user's subscription status
 
-### Public Pages
-- `GET /` - Landing page with pricing and features
-- `GET /signup` - User registration page
-- `GET /login` - User login page
-- `GET /forgot-password` - Password reset request page
-- `GET /dashboard` - User dashboard (API keys, subscription, usage)
-- `GET /docs` - Swagger UI API documentation
-- `GET /release-notes` - Release notes
-
-### Authentication API
-- `POST /api/auth/register` - Create new account
-- `POST /api/auth/login` - Login and get tokens
-- `POST /api/auth/refresh` - Refresh access token
-- `POST /api/auth/logout` - Logout
-- `POST /api/auth/forgot-password` - Request password reset
-- `POST /api/auth/reset-password` - Complete password reset
-- `GET /api/auth/me` - Current user info
-- `PUT /api/auth/chat-name` - Update user's chat name for AI personalization
-- `PUT /api/auth/personality-mode` - Update user's preferred AI personality mode
-- `GET /api/auth/personality-modes` - List available personality modes
-- `PUT /api/auth/gender` - Update user's preferred AI companion gender
-- `GET /api/auth/genders` - List available gender options
-
-### Funnel API (FUNNEL_API_SECRET required)
-- `POST /api/funnel/users` - Create user from external funnel, returns API key + tokens
-- `POST /api/funnel/checkout` - Generate Stripe checkout URL for a user
-- `GET /api/funnel/subscription/:userId` - Check user subscription status
-- `PUT /api/funnel/subscription` - Update user subscription status manually
-- `GET /api/funnel/users/:userId` - Get user details
-- `POST /api/funnel/users/:userId/api-key` - Generate new API key for user
-
-### Chat (API key or JWT required)
-- `POST /api/chat` - Send message (SSE streaming)
-  - Supports `newChat: true` flag for AI-initiated conversations
-  - When newChat=true and user has chatName set, sends hidden ice-breaker prompt
-  - AI response appears as if Anplexa initiated the conversation naturally
-  - Hidden prompt is NOT stored in conversation history
-- `POST /api/chat/non-streaming` - Send message and get full response (supports newChat flag)
-- `GET /api/chat/config` - Get companion config
-
-### Conversations (JWT required)
-- `GET /api/conversations` - List conversations
-- `POST /api/conversations` - Create conversation
-- `GET /api/conversations/:id` - Get conversation with messages
-- `DELETE /api/conversations/:id` - Delete conversation
-
-### Stripe (JWT required for most)
-- `GET /api/stripe/publishable-key` - Get Stripe publishable key
-- `GET /api/stripe/products` - List products with prices
-- `POST /api/stripe/checkout` - Create checkout session
-- `POST /api/stripe/portal` - Create customer portal
-- `GET /api/stripe/subscription` - Get user's subscription
-- `POST /api/stripe/webhook` - Stripe webhook (system)
-
-### Admin (Admin JWT required)
-- `GET /admin/dashboard` - Admin dashboard
-- `GET /admin/dashboard/usage` - Usage analytics
-- `GET /admin/dashboard/usage/export` - Export usage CSV
-- `GET /admin/system-prompts` - System prompt management UI
-- `/api/admin/*` - Admin API endpoints
-
-### System Prompts Admin API
-- `GET /api/admin/system-prompts` - List all prompts with versions
-- `GET /api/admin/system-prompts/:id` - Get specific prompt
-- `POST /api/admin/system-prompts` - Create new prompt version
-- `PUT /api/admin/system-prompts/:id/activate` - Activate a prompt
-- `DELETE /api/admin/system-prompts/:id` - Delete a prompt
-
-### Health
-- `GET /api/health` - Server health check
-
-## Database
-Uses PostgreSQL with Drizzle ORM (falls back to SQLite if DATABASE_URL not set).
-
-**Key tables:**
-- `users` - User accounts with stripe_customer_id, stripe_subscription_id, chatName, personalityMode, preferredGender
-- `api_keys` - API keys with tc_ prefix, hashed storage
-- `funnel_api_keys` - Funnel API keys for external integrations (fk_ prefix)
-- `api_usage` - Per-request usage tracking
-- `api_usage_daily` - Daily aggregated usage
-- `companion_config` - AI companion settings
-- `conversations`, `messages` - Chat history
-- `system_prompts` - AI system prompts with version control
-- `email_queue`, `email_logs` - CRM email scheduling and tracking
-- `stripe.*` - Stripe data (managed by stripe-replit-sync)
-
-## Environment Variables
-**Required secrets (in Replit Secrets):**
-- `JWT_SECRET` - Secret for signing tokens
-- `WEBHOOK_SECRET` - Secret for authenticating webhook requests
-- `ADMIN_UI_PASSWORD` - Password for admin dashboard login
-- `OLLAMA_BASE_URL` - Ollama API endpoint
-- `OLLAMA_API_KEY` - API key for Ollama (optional)
-
-**Auto-configured:**
-- `DATABASE_URL` - PostgreSQL connection string
-- `REPLIT_DOMAINS` - Domain for webhooks
-- Stripe credentials via Replit connector
-
-## Security Features
-- CORS restricted to specific origins
-- Content Security Policy via Helmet
-- Rate limiting on auth routes (10 login/15min, 5 register/hour)
-- API key rate limiting (20 attempts/15min)
-- HMAC-signed admin session tokens
-- All secrets in encrypted Replit Secrets
-
-## Stripe Integration
-- Products: Free Tier ($0), Unlimited ($9.99/mo)
-- Checkout flow with automatic API key generation
-- Customer portal for subscription management
-- Webhook handling for subscription events
-- Stripe data synced to PostgreSQL via stripe-replit-sync
-
-## Design Theme
-- Background: #0a0a0a (dark)
-- Accent: #ff6b35 (orange)
-- Responsive, mobile-friendly
-
-## Recent Changes
-- 2026-01-01: Added Funnel API Keys management in admin dashboard at /admin/funnel-keys
-  - Generate, activate, deactivate, and delete funnel API keys from the admin UI
-  - Funnel API now authenticates against database-stored keys (with fallback to FUNNEL_API_SECRET env var)
-  - Keys are hashed and securely stored in `funnel_api_keys` table
-- 2026-01-01: Added public `/api/register-subscriber` endpoint for landing page email capture
-  - No authentication required (rate limited to 10 requests/minute per IP)
-  - Automatically enrolls leads into CRM email sequences
-  - Supports funnelType, persona, entrySource parameters
-- 2026-01-01: Added mini footer navigation to all admin dashboard pages
-  - Links to API Docs, Landing Page, Health Check, and CRM
-- 2025-12-31: Added newChat flag for AI-initiated conversations - sends hidden ice-breaker prompt when user has name set, making Anplexa appear to initiate naturally
-- 2025-12-30: Added CRM system with email retention sequences (9 templates: W1-W5 waitlist, D1-D4 direct) styled in Anplexa purple (#7B2CBF)
-- 2025-12-30: Added Admin CRM dashboard at /admin/crm with user management, email queue, template preview, and funnel analytics
-- 2025-12-30: Added email scheduler with automatic sequence delivery (every 5 minutes processing)
-- 2025-12-30: Added persona-aware email content (lonely/curious/privacy) for W3 template
-- 2025-12-30: Added email tracking (open/click) with query strings (src=email&campaign=X&uid=Y)
-- 2025-12-30: Extended funnel API to accept funnelType (waitlist/direct), persona, and entrySource for CRM tagging
-- 2025-12-30: Added Funnel API for external integrations - create users, generate Stripe checkout URLs, manage subscriptions (no Stripe credentials needed on funnel side)
-- 2025-12-30: Added AI companion gender preference (male/female/non-binary/custom) with PUT /api/auth/gender endpoint
-- 2025-12-30: Added dynamic personality mode system (nurturing/playful/dominant) with per-request or persistent user preference
-- 2025-12-30: Added system prompt management with version control (admin UI at /admin/system-prompts)
-- 2025-12-30: Added chatName field for personalized AI addressing (PUT /api/auth/chat-name)
-- 2025-12-30: Anplexa identity system prompt now prepended to all chat requests
-- 2025-12-30: Added Resend email integration (welcome, password reset)
-- 2025-12-28: Added Stripe integration with checkout flow and subscriptions
-- 2025-12-28: Created Abionti landing page with pricing
-- 2025-12-28: Added API usage tracking and analytics dashboard
-- 2025-12-28: Enhanced API documentation with code examples
-- 2025-12-28: Added API key generation on subscription
-- 2025-12-27: Security audit - moved secrets, added CORS/CSP/rate limiting
-- 2025-12-27: Initial Replit setup with PostgreSQL
-- 2026-01-01: **Amplexa Funnel Integration** - Added personality profiling system:
-  - Database schema updated with Amplexa funnel profile fields (funnel A-F, responses, personality tags)
-  - New API endpoint: POST /api/funnel/profile to store user funnel data
-  - Enhanced new chat ice-breakers with funnel context (1-2 sentence personalized responses)
-  - See AMPLEXA_FUNNEL_MAPPING.md for complete funnel reference
-  - Test script: scripts/test-amplexa-funnel.js
-
-## Amplexa Funnel Integration
-
-The Amplexa funnel system enables personality-based user profiling to enhance AI conversations:
-
-### Database Fields
-The following optional fields are stored in the `users` table:
-- `amplexa_funnel` - Funnel ID (A-F)
-- `amplexa_funnel_name` - Human-readable funnel name
-- `amplexa_responses` - JSON array of question responses
-- `amplexa_primary_need` - User's primary emotional need
-- `amplexa_communication_style` - Preferred communication style
-- `amplexa_pace` - Conversation pace preference
-- `amplexa_tags` - JSON array of personality tags
-- `amplexa_timestamp` - When profile was submitted
-
-### API Endpoint
-**POST /api/funnel/profile**
-- Authentication: Bearer token with FUNNEL_API_SECRET
-- Stores funnel profile data for a user identified by email
-- See API docs at /api/docs for full specification
-
-### How It Enhances Conversations
-When a user with a funnel profile starts a new chat (`newChat: true`):
-1. System retrieves their funnel profile data
-2. AI receives context about:
-   - Primary emotional need (e.g., Connection, Safety, Understanding)
-   - Communication style (e.g., Gentle/patient, Open/uninhibited)
-   - Conversation pace (e.g., Slow, Thoughtful, Spontaneous)
-   - Personality tags (e.g., Night Owl Processor, Creative Escapist)
-3. AI generates a personalized 1-2 sentence ice-breaker
-4. Response is tailored to make user feel understood and increase engagement
-
-### Funnel Types
-- **A - Quietly Lonely**: Safe space for connection seekers
-- **B - Curious/Fantasy-Open**: For exploratory conversations
-- **C - Privacy-First/Neurodivergent**: Structured, predictable interactions
-- **D - Late Night Thinker**: For processing thoughts and emotions
-- **E - Emotional Explorer**: Deep validation and understanding
-- **F - Creative Seeker**: Imaginative, playful conversations
-
-See [AMPLEXA_FUNNEL_MAPPING.md](./AMPLEXA_FUNNEL_MAPPING.md) for complete documentation.
+### External Dependencies
+- **Ollama:** Used for Large Language Model (LLM) inference, specifically with the "darkplanet" model.
+- **Stripe:** For subscription billing, payment processing, and customer portal management. Integrated via the Stripe SDK and `stripe-replit-sync`.
+- **Resend:** Email service for sending welcome and password reset emails.
+- **PostgreSQL / SQLite:** Database systems for data persistence, managed with Drizzle ORM.
+- **tsx:** For running TypeScript files directly during development.
+- **Helmet:** Express middleware for setting various HTTP headers to improve security.
