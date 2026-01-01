@@ -33,6 +33,18 @@ export class OllamaGateway {
   }
 
   /**
+   * Clean model output by removing common artifacts
+   * Mistral models sometimes add trailing < or [INST] artifacts
+   */
+  private cleanOutput(text: string): string {
+    return text
+      .replace(/\s*<\s*$/g, '')           // Trailing < with optional whitespace
+      .replace(/\s*\[INST\]?\s*$/g, '')   // Trailing [INST] or [INST
+      .replace(/\s*\[\/INST\]?\s*$/g, '') // Trailing [/INST] or [/INST
+      .trim();
+  }
+
+  /**
    * Build the prompt in Mistral Instruct format
    * Format: [INST] message [/INST]
    */
@@ -90,7 +102,7 @@ export class OllamaGateway {
     }
 
     const data = await response.json() as { response: string };
-    return data.response;
+    return this.cleanOutput(data.response);
   }
 
   /**
@@ -133,6 +145,9 @@ export class OllamaGateway {
     const reader = response.body.getReader();
     const decoder = new TextDecoder();
 
+    // Buffer to hold pending content that might be trailing artifacts
+    let pendingBuffer = '';
+
     try {
       while (true) {
         const { done, value } = await reader.read();
@@ -145,11 +160,43 @@ export class OllamaGateway {
           try {
             const data = JSON.parse(line);
             if (data.message?.content) {
-              yield data.message.content;
+              const content = data.message.content;
+              
+              // If we have pending buffer, yield it now (it wasn't the end)
+              if (pendingBuffer) {
+                yield pendingBuffer;
+                pendingBuffer = '';
+              }
+              
+              // Check if this chunk could be a trailing artifact
+              // Hold back lone < or whitespace+< patterns
+              if (/^\s*<?\s*$/.test(content)) {
+                pendingBuffer = content;
+              } else {
+                yield content;
+              }
+            }
+            
+            // If stream is done, check for trailing artifacts in pending
+            if (data.done && pendingBuffer) {
+              // Only yield if it's not just an artifact
+              const cleaned = this.cleanOutput(pendingBuffer);
+              if (cleaned) {
+                yield cleaned;
+              }
+              pendingBuffer = '';
             }
           } catch {
             // Skip invalid JSON lines
           }
+        }
+      }
+      
+      // Final cleanup of any pending buffer at stream end
+      if (pendingBuffer) {
+        const cleaned = this.cleanOutput(pendingBuffer);
+        if (cleaned) {
+          yield cleaned;
         }
       }
     } finally {
