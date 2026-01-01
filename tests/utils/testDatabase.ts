@@ -27,8 +27,8 @@ export async function setupTestDatabase(): Promise<any> {
     fs.mkdirSync(dataDir, { recursive: true });
   }
 
-  // Initialize database
-  const database = require('../../server/infrastructure/database/index.js');
+  // Initialize database - importing .ts files in Jest
+  const database = require('../../server/infrastructure/database/index');
   await database.initializeDatabase();
   
   return database.db;
@@ -61,9 +61,9 @@ export async function createTestUser(db: any, userData?: {
   displayName?: string;
   isAdmin?: boolean;
 }) {
-  const auth = require('../../server/infrastructure/auth/JWTAdapter.js');
+  const auth = require('../../server/infrastructure/auth/JWTAdapter');
   const jwtAdapter = auth.jwtAdapter;
-  const schema = require('../../shared/schema.js');
+  const schema = require('../../shared/schema');
   const { users, userPreferences } = schema;
   
   const email = userData?.email || 'test@example.com';
@@ -94,7 +94,7 @@ export async function createTestUser(db: any, userData?: {
  * Create test companion config
  */
 export async function createTestCompanionConfig(db: any) {
-  const schema = require('../../shared/schema.js');
+  const schema = require('../../shared/schema');
   const { companionConfig } = schema;
   
   await db.insert(companionConfig).values({
@@ -115,7 +115,7 @@ export async function createTestCompanionConfig(db: any) {
  * Generate auth tokens for testing
  */
 export async function generateTestTokens(userId: string, email: string, isAdmin: boolean = false) {
-  const auth = require('../../server/infrastructure/auth/JWTAdapter.js');
+  const auth = require('../../server/infrastructure/auth/JWTAdapter');
   const jwtAdapter = auth.jwtAdapter;
   return jwtAdapter.generateTokenPair(userId, email, isAdmin);
 }

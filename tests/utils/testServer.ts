@@ -33,13 +33,13 @@ export async function createTestApp() {
   app.use(express.json());
   app.use(express.urlencoded({ extended: true }));
 
-  // Import routes using require for better test compatibility
-  const authRoutes = require('../../server/presentation/routes/authRoutes.js');
-  const chatRoutes = require('../../server/presentation/routes/chatRoutes.js');
-  const conversationRoutes = require('../../server/presentation/routes/conversationRoutes.js');
-  const settingsRoutes = require('../../server/presentation/routes/settingsRoutes.js');
-  const adminRoutes = require('../../server/presentation/routes/adminRoutes.js');
-  const healthRoutes = require('../../server/presentation/routes/healthRoutes.js');
+  // Import routes using require for better test compatibility (Jest handles .ts)
+  const authRoutes = require('../../server/presentation/routes/authRoutes');
+  const chatRoutes = require('../../server/presentation/routes/chatRoutes');
+  const conversationRoutes = require('../../server/presentation/routes/conversationRoutes');
+  const settingsRoutes = require('../../server/presentation/routes/settingsRoutes');
+  const adminRoutes = require('../../server/presentation/routes/adminRoutes');
+  const healthRoutes = require('../../server/presentation/routes/healthRoutes');
 
   // Mount routes
   app.use('/api/auth', authRoutes.authRouter);
