@@ -69,10 +69,15 @@ const amplexaFunnelProfileSchema = z.object({
 
 const checkoutSchema = z.object({
   userId: z.string(),
-  plan: z.enum(['unlimited']).optional().default('unlimited'),
+  plan: z.enum(['yearly', 'monthly', 'early', 'standard', 'unlimited']).optional().default('monthly'),
   successUrl: z.string().url().optional(),
   cancelUrl: z.string().url().optional(),
 });
+
+const ANPLEXA_PRICES = {
+  yearly: 'price_1SkkrmB6IBiJ6M2wj4cbn7Hq',   // £11.99/year (early adopter £0.99/mo)
+  monthly: 'price_1SkkrmB6IBiJ6M2wKHKGA2WV',  // £2.99/month (standard)
+};
 
 const updateSubscriptionSchema = z.object({
   userId: z.string(),
@@ -186,21 +191,13 @@ funnelRouter.post('/checkout', funnelAuthMiddleware, async (req: Request, res: R
         .where(eq(users.id, body.userId));
     }
 
-    const priceResult = await db.execute(
-      sql`
-        SELECT pr.id as price_id
-        FROM stripe.products p
-        JOIN stripe.prices pr ON pr.product = p.id
-        WHERE p.name ILIKE '%Unlimited%' AND p.active = true AND pr.active = true
-        LIMIT 1
-      `
-    );
-
-    if (priceResult.rows.length === 0) {
-      return res.status(404).json({ error: 'Unlimited plan not found. Please run npm run stripe:seed first.' });
+    // Determine price based on plan
+    let priceId: string;
+    if (body.plan === 'yearly' || body.plan === 'early') {
+      priceId = ANPLEXA_PRICES.yearly;  // £11.99/year
+    } else {
+      priceId = ANPLEXA_PRICES.monthly; // £2.99/month (default)
     }
-
-    const priceId = priceResult.rows[0].price_id as string;
 
     const baseUrl = `https://${process.env.REPLIT_DOMAINS?.split(',')[0]}`;
     const successUrl = body.successUrl || `${baseUrl}/subscription/success?session_id={CHECKOUT_SESSION_ID}`;

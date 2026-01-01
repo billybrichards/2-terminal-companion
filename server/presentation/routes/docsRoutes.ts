@@ -1513,12 +1513,24 @@ curl -X POST "https://api.abionti.com/api/funnel/users" \\
 4. Stripe webhooks automatically update subscription status
 5. Check status via /api/funnel/subscription/:userId
 
-**Example (curl):**
+**Pricing Plans:**
+- \`yearly\` / \`early\`: £11.99/year (early adopter rate = £0.99/mo)
+- \`monthly\` / \`standard\`: £2.99/month
+
+**Example (curl) - Early adopter yearly:**
 \`\`\`bash
 curl -X POST "https://api.abionti.com/api/funnel/checkout" \\
   -H "Content-Type: application/json" \\
   -H "Authorization: Bearer YOUR_FUNNEL_API_SECRET" \\
-  -d '{"userId": "user-uuid-here"}'
+  -d '{"userId": "user-uuid-here", "plan": "yearly"}'
+\`\`\`
+
+**Example (curl) - Standard monthly:**
+\`\`\`bash
+curl -X POST "https://api.abionti.com/api/funnel/checkout" \\
+  -H "Content-Type: application/json" \\
+  -H "Authorization: Bearer YOUR_FUNNEL_API_SECRET" \\
+  -d '{"userId": "user-uuid-here", "plan": "monthly"}'
 \`\`\``,
         security: [{ funnelAuth: [] }],
         requestBody: {
@@ -1530,7 +1542,7 @@ curl -X POST "https://api.abionti.com/api/funnel/checkout" \\
                 required: ['userId'],
                 properties: {
                   userId: { type: 'string', example: 'user-uuid-here' },
-                  plan: { type: 'string', enum: ['unlimited'], default: 'unlimited' },
+                  plan: { type: 'string', enum: ['yearly', 'monthly', 'early', 'standard'], default: 'monthly', description: 'yearly/early = £11.99/year, monthly/standard = £2.99/month' },
                   successUrl: { type: 'string', format: 'uri', description: 'Custom success redirect URL' },
                   cancelUrl: { type: 'string', format: 'uri', description: 'Custom cancel redirect URL' }
                 }

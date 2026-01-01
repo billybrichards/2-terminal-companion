@@ -1,0 +1,3 @@
+Price ID,Product ID,Product Name,Product Statement Descriptor,Product Tax Code,Description,Created (UTC),Amount,Currency,Interval,Interval Count,Usage Type,Aggregate Usage,Billing Scheme,Trial Period Days,Tax Behavior
+price_1SkkrmB6IBiJ6M2wj4cbn7Hq,prod_TiBEeHK4QY1KAW,Anplexa,,,,2026-01-01 12:20,11.99,gbp,year,1,licensed,,per_unit,,unspecified
+price_1SkkrmB6IBiJ6M2wKHKGA2WV,prod_TiBEeHK4QY1KAW,Anplexa,,,,2026-01-01 12:20,2.99,gbp,month,1,licensed,,per_unit,,unspecified

@@ -65,26 +65,38 @@ router.post('/checkout', authMiddleware, async (req: Request, res: Response) => 
     
     let finalPriceId = priceId;
     
-    if (plan === 'unlimited' && !priceId) {
-      const result = await db.execute(
-        sql`
-          SELECT pr.id as price_id
-          FROM stripe.products p
-          JOIN stripe.prices pr ON pr.product = p.id
-          WHERE p.name ILIKE '%Unlimited%' AND p.active = true AND pr.active = true
-          LIMIT 1
-        `
-      );
-      
-      if (result.rows.length === 0) {
-        return res.status(404).json({ error: 'Unlimited plan not found' });
+    // Anplexa product price IDs
+    const ANPLEXA_PRICES = {
+      yearly: 'price_1SkkrmB6IBiJ6M2wj4cbn7Hq',   // £11.99/year (early adopter £0.99/mo)
+      monthly: 'price_1SkkrmB6IBiJ6M2wKHKGA2WV',  // £2.99/month (standard)
+    };
+    
+    // Handle plan-based checkout
+    if (!priceId && plan) {
+      if (plan === 'yearly' || plan === 'early') {
+        finalPriceId = ANPLEXA_PRICES.yearly;
+      } else if (plan === 'monthly' || plan === 'standard' || plan === 'unlimited') {
+        finalPriceId = ANPLEXA_PRICES.monthly;
+      } else {
+        // Try to find in database as fallback
+        const result = await db.execute(
+          sql`
+            SELECT pr.id as price_id
+            FROM stripe.products p
+            JOIN stripe.prices pr ON pr.product = p.id
+            WHERE (p.name ILIKE '%Anplexa%' OR p.name ILIKE '%Unlimited%') AND p.active = true AND pr.active = true
+            LIMIT 1
+          `
+        );
+        
+        if (result.rows.length > 0) {
+          finalPriceId = result.rows[0].price_id as string;
+        }
       }
-      
-      finalPriceId = result.rows[0].price_id;
     }
     
     if (!finalPriceId) {
-      return res.status(400).json({ error: 'priceId or plan is required' });
+      return res.status(400).json({ error: 'priceId or plan is required. Valid plans: yearly, monthly' });
     }
     
     const userResult = await db.execute(
