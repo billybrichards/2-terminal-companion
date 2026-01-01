@@ -19,6 +19,7 @@ export class StripeService {
       customerEmail?: string;
       customerCreation?: 'always' | 'if_required';
       billingAddressCollection?: 'auto' | 'required';
+      userId?: string;
     }
   ) {
     const stripe = await getUncachableStripeClient();
@@ -30,6 +31,8 @@ export class StripeService {
       success_url: successUrl,
       cancel_url: cancelUrl,
       billing_address_collection: options?.billingAddressCollection || 'auto',
+      client_reference_id: options?.userId,
+      metadata: options?.userId ? { userId: options.userId } : undefined,
     });
   }
 

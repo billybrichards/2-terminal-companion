@@ -132,6 +132,7 @@ router.post('/checkout', authMiddleware, async (req: Request, res: Response) => 
         customerEmail: user.email,
         customerCreation: 'always',
         billingAddressCollection: 'required',
+        userId: userId,
       }
     );
     
@@ -172,6 +173,101 @@ router.post('/portal', authMiddleware, async (req: Request, res: Response) => {
   } catch (error: any) {
     console.error('Error creating portal session:', error);
     res.status(500).json({ error: 'Failed to create portal session' });
+  }
+});
+
+router.post('/verify-checkout', authMiddleware, async (req: Request, res: Response) => {
+  try {
+    const { sessionId } = req.body;
+    const userId = req.user!.sub;
+
+    if (!sessionId) {
+      return res.status(400).json({ error: 'sessionId is required' });
+    }
+
+    const stripe = await getUncachableStripeClient();
+    const session = await stripe.checkout.sessions.retrieve(sessionId, {
+      expand: ['subscription', 'customer'],
+    });
+
+    // Security: Validate that this session belongs to the requesting user
+    const sessionUserId = session.client_reference_id || session.metadata?.userId;
+    if (sessionUserId && sessionUserId !== userId) {
+      console.warn(`[Stripe] User ${userId} attempted to verify session belonging to ${sessionUserId}`);
+      return res.status(403).json({ error: 'Session does not belong to this user' });
+    }
+
+    // Also validate customer ID matches if user already has one
+    const userResult = await db.execute(
+      sql`SELECT stripe_customer_id FROM users WHERE id = ${userId}`
+    );
+    const existingCustomerId = (userResult.rows[0] as any)?.stripe_customer_id;
+    const sessionCustomerId = typeof session.customer === 'string' 
+      ? session.customer 
+      : session.customer?.id;
+    
+    if (existingCustomerId && sessionCustomerId && existingCustomerId !== sessionCustomerId) {
+      console.warn(`[Stripe] Customer ID mismatch for user ${userId}: expected ${existingCustomerId}, got ${sessionCustomerId}`);
+      return res.status(403).json({ error: 'Customer ID mismatch' });
+    }
+
+    // Handle different payment statuses
+    if (session.payment_status === 'unpaid') {
+      return res.json({
+        success: false,
+        subscriptionStatus: 'not_subscribed',
+        message: 'Payment not completed',
+      });
+    }
+
+    // payment_status can be 'paid' or 'no_payment_required' (for trials)
+    const subscriptionId = typeof session.subscription === 'string' 
+      ? session.subscription 
+      : session.subscription?.id;
+    
+    const customerId = sessionCustomerId;
+
+    if (!subscriptionId || !customerId) {
+      return res.status(400).json({ 
+        error: 'Invalid session: missing subscription or customer data',
+        success: false,
+      });
+    }
+
+    let plan = 'monthly';
+    const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+    const priceId = subscription.items.data[0]?.price?.id;
+    
+    const ANPLEXA_PRICES = {
+      yearly: 'price_1SkBhsHf3F7YsE79UDhlyjdG',
+      monthly: 'price_1Sj3Q4Hf3F7YsE79EfGL6BuF',
+    };
+    
+    if (priceId === ANPLEXA_PRICES.yearly) {
+      plan = 'yearly';
+    }
+
+    await db.execute(
+      sql`UPDATE users SET 
+        subscription_status = 'subscribed',
+        stripe_customer_id = ${customerId},
+        stripe_subscription_id = ${subscriptionId},
+        stage = 'converted'
+      WHERE id = ${userId}`
+    );
+
+    console.log(`[Stripe] Verified checkout for user ${userId}: subscribed to ${plan} plan`);
+
+    res.json({
+      success: true,
+      subscriptionStatus: 'subscribed',
+      plan,
+      customerId,
+      subscriptionId,
+    });
+  } catch (error: any) {
+    console.error('Error verifying checkout:', error);
+    res.status(500).json({ error: 'Failed to verify checkout session' });
   }
 });
 
