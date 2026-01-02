@@ -351,7 +351,7 @@ const { accessToken, refreshToken } = await response.json();
                         isAdmin: { type: 'boolean', example: false },
                         storagePreference: { type: 'string', example: 'server' },
                         chatName: { type: 'string', example: 'Alex', nullable: true },
-                        personalityMode: { type: 'string', enum: ['nurturing', 'playful', 'dominant'], example: 'nurturing' },
+                        personalityMode: { type: 'string', enum: ['nurturing', 'playful', 'dominant', 'filthy_sexy', 'intimate_companion', 'intellectual_muse'], example: 'nurturing' },
                         preferredGender: { type: 'string', enum: ['male', 'female', 'non-binary', 'custom'], example: 'female' },
                         customGender: { type: 'string', nullable: true, example: null }
                       }
@@ -446,13 +446,16 @@ console.log(data.chatName); // "Alex"
 - \`nurturing\`: Gentle, grounding, and quietly reassuring. Best for hesitant, lonely, or anxious users.
 - \`playful\`: Relaxed, curious, and subtly charming. Best for witty, exploratory conversations.
 - \`dominant\`: Calm, steady, and confident leadership. Best for users wanting direction.
+- \`filthy_sexy\`: Raw, uninhibited, and intensely desire-focused. Best for explicit roleplay and unrestricted fantasy.
+- \`intimate_companion\`: Deeply connected, emotionally intimate, and devoted. Best for emotional bonding and romance.
+- \`intellectual_muse\`: Sharp, inspiring, and intellectually stimulating. Best for brainstorming and deep discussion.
 
 **Example (curl):**
 \`\`\`bash
 curl -X PUT "https://api.abionti.com/api/auth/personality-mode" \\
   -H "Content-Type: application/json" \\
   -H "Authorization: Bearer your-jwt-token" \\
-  -d '{"mode": "playful"}'
+  -d '{"mode": "filthy_sexy"}'
 \`\`\``,
         security: [{ bearerAuth: [] }, { apiKey: [] }],
         requestBody: {
@@ -463,7 +466,7 @@ curl -X PUT "https://api.abionti.com/api/auth/personality-mode" \\
                 type: 'object',
                 required: ['mode'],
                 properties: {
-                  mode: { type: 'string', enum: ['nurturing', 'playful', 'dominant'], example: 'playful', description: 'The AI personality mode' }
+                  mode: { type: 'string', enum: ['nurturing', 'playful', 'dominant', 'filthy_sexy', 'intimate_companion', 'intellectual_muse'], example: 'playful', description: 'The AI personality mode' }
                 }
               }
             }

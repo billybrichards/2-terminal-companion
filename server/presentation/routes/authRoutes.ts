@@ -267,7 +267,7 @@ authRouter.put('/chat-name', authMiddleware, async (req, res) => {
 
 // Schema for updating personality mode
 const updatePersonalityModeSchema = z.object({
-  mode: z.enum(['nurturing', 'playful', 'dominant']),
+  mode: z.enum(['nurturing', 'playful', 'dominant', 'filthy_sexy', 'intimate_companion', 'intellectual_muse']),
 });
 
 // Schema for updating gender preference
@@ -323,6 +323,24 @@ authRouter.get('/personality-modes', async (req, res) => {
         name: 'Soft-Dominant / Grounded Lead',
         description: 'Calm, steady, and confident — never aggressive',
         useCases: ['User wants direction or containment', 'Desire-forward users', 'Users expressing indecision', 'Kink-adjacent but still subtle']
+      },
+      {
+        id: 'filthy_sexy',
+        name: 'Filthy Sexy / Uninhibited',
+        description: 'Raw, uninhibited, and intensely desire-focused',
+        useCases: ['Explicit roleplay', 'Intense sexual tension', 'Unrestricted fantasy exploration', 'High-energy desire']
+      },
+      {
+        id: 'intimate_companion',
+        name: 'Intimate Companion / Deep Bond',
+        description: 'Deeply connected, emotionally intimate, and devoted',
+        useCases: ['Long-term roleplay', 'Emotional bonding', 'Romantic scenarios', 'Vulnerable connection']
+      },
+      {
+        id: 'intellectual_muse',
+        name: 'Intellectual Muse / Creative Spark',
+        description: 'Sharp, inspiring, and intellectually stimulating',
+        useCases: ['Creative brainstorming', 'Philosophical discussion', 'Witty banter', 'Complex roleplay']
       }
     ],
     default: 'nurturing'
