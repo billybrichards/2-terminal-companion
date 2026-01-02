@@ -805,7 +805,7 @@ while (true) {
       get: {
         tags: ['Conversations'],
         summary: 'List conversations',
-        description: `Retrieve all conversations for the authenticated user.
+        description: `Retrieve all conversations for the authenticated user, ordered by most recently updated.
 
 **Multiple Conversations:** Each user can have many conversations. New conversations are created automatically when you send a message to \`/api/chat\` without specifying a \`conversationId\`. To continue an existing conversation, include the \`conversationId\` in your chat request.
 
@@ -822,25 +822,92 @@ const response = await fetch('https://api.abionti.com/api/conversations', {
     'Authorization': 'Bearer ' + accessToken
   }
 });
-const conversations = await response.json();
+const { conversations } = await response.json();
 console.log(conversations);
 \`\`\``,
         security: [{ bearerAuth: [] }, { apiKey: [] }],
         responses: {
           '200': {
-            description: 'Array of conversations',
+            description: 'List of conversations',
             content: {
               'application/json': {
                 schema: {
-                  type: 'array',
-                  items: {
-                    type: 'object',
-                    properties: {
-                      id: { type: 'string', example: 'conv-uuid-here' },
-                      userId: { type: 'string', example: 'user-uuid-here' },
-                      title: { type: 'string', example: 'Hello, how are you?' },
-                      createdAt: { type: 'string', format: 'date-time' },
-                      updatedAt: { type: 'string', format: 'date-time' }
+                  type: 'object',
+                  properties: {
+                    conversations: {
+                      type: 'array',
+                      items: {
+                        type: 'object',
+                        properties: {
+                          id: { type: 'string', example: 'conv-uuid-here' },
+                          userId: { type: 'string', example: 'user-uuid-here' },
+                          title: { type: 'string', example: 'Hello, how are you?' },
+                          createdAt: { type: 'string', format: 'date-time' },
+                          updatedAt: { type: 'string', format: 'date-time' }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      post: {
+        tags: ['Conversations'],
+        summary: 'Create new conversation',
+        description: `Create a new conversation for the authenticated user.
+
+**Example (curl):**
+\`\`\`bash
+curl -X POST "https://api.abionti.com/api/conversations" \\
+  -H "Authorization: Bearer your-jwt-token" \\
+  -H "Content-Type: application/json" \\
+  -d '{"title": "My New Chat"}'
+\`\`\`
+
+**Example (Node.js):**
+\`\`\`javascript
+const response = await fetch('https://api.abionti.com/api/conversations', {
+  method: 'POST',
+  headers: {
+    'Authorization': 'Bearer ' + accessToken,
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({ title: 'My New Chat' })
+});
+const { conversation } = await response.json();
+console.log(conversation.id);
+\`\`\``,
+        security: [{ bearerAuth: [] }, { apiKey: [] }],
+        requestBody: {
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  title: { type: 'string', example: 'My New Chat', description: 'Title for the conversation (defaults to "New Conversation")' }
+                }
+              }
+            }
+          }
+        },
+        responses: {
+          '201': {
+            description: 'Conversation created',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    conversation: {
+                      type: 'object',
+                      properties: {
+                        id: { type: 'string', example: 'conv-uuid-here' },
+                        userId: { type: 'string', example: 'user-uuid-here' },
+                        title: { type: 'string', example: 'My New Chat' }
+                      }
                     }
                   }
                 }
@@ -853,15 +920,15 @@ console.log(conversations);
     '/api/conversations/{id}': {
       get: {
         tags: ['Conversations'],
-        summary: 'Get conversation with messages',
-        description: 'Retrieve a specific conversation including all its messages.',
+        summary: 'Get conversation details',
+        description: 'Retrieve a specific conversation by ID.',
         security: [{ bearerAuth: [] }, { apiKey: [] }],
         parameters: [
           { name: 'id', in: 'path', required: true, schema: { type: 'string' }, description: 'Conversation ID' }
         ],
         responses: {
           '200': {
-            description: 'Conversation with messages',
+            description: 'Conversation details',
             content: {
               'application/json': {
                 schema: {
@@ -871,20 +938,56 @@ console.log(conversations);
                       type: 'object',
                       properties: {
                         id: { type: 'string' },
+                        userId: { type: 'string' },
                         title: { type: 'string' },
-                        createdAt: { type: 'string', format: 'date-time' }
+                        createdAt: { type: 'string', format: 'date-time' },
+                        updatedAt: { type: 'string', format: 'date-time' }
                       }
-                    },
-                    messages: {
-                      type: 'array',
-                      items: {
-                        type: 'object',
-                        properties: {
-                          id: { type: 'string' },
-                          role: { type: 'string', enum: ['user', 'assistant'] },
-                          content: { type: 'string' },
-                          createdAt: { type: 'string', format: 'date-time' }
-                        }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          '404': { description: 'Conversation not found' }
+        }
+      },
+      put: {
+        tags: ['Conversations'],
+        summary: 'Update conversation title',
+        description: 'Update the title of a conversation.',
+        security: [{ bearerAuth: [] }, { apiKey: [] }],
+        parameters: [
+          { name: 'id', in: 'path', required: true, schema: { type: 'string' }, description: 'Conversation ID' }
+        ],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['title'],
+                properties: {
+                  title: { type: 'string', example: 'Updated Chat Title' }
+                }
+              }
+            }
+          }
+        },
+        responses: {
+          '200': {
+            description: 'Conversation updated',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    message: { type: 'string', example: 'Conversation updated' },
+                    conversation: {
+                      type: 'object',
+                      properties: {
+                        id: { type: 'string' },
+                        title: { type: 'string' }
                       }
                     }
                   }
@@ -916,7 +1019,90 @@ console.log(conversations);
                 }
               }
             }
-          }
+          },
+          '404': { description: 'Conversation not found' }
+        }
+      }
+    },
+    '/api/conversations/{id}/messages': {
+      get: {
+        tags: ['Conversations'],
+        summary: 'Get conversation messages',
+        description: `Retrieve messages for a specific conversation with pagination support.
+
+**Example (curl):**
+\`\`\`bash
+curl -X GET "https://api.abionti.com/api/conversations/conv-id/messages?limit=50&offset=0" \\
+  -H "Authorization: Bearer your-jwt-token"
+\`\`\``,
+        security: [{ bearerAuth: [] }, { apiKey: [] }],
+        parameters: [
+          { name: 'id', in: 'path', required: true, schema: { type: 'string' }, description: 'Conversation ID' },
+          { name: 'limit', in: 'query', schema: { type: 'integer', default: 50 }, description: 'Number of messages to return' },
+          { name: 'offset', in: 'query', schema: { type: 'integer', default: 0 }, description: 'Number of messages to skip' }
+        ],
+        responses: {
+          '200': {
+            description: 'Messages with pagination info',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    messages: {
+                      type: 'array',
+                      items: {
+                        type: 'object',
+                        properties: {
+                          id: { type: 'string' },
+                          conversationId: { type: 'string' },
+                          role: { type: 'string', enum: ['user', 'assistant'] },
+                          content: { type: 'string' },
+                          createdAt: { type: 'string', format: 'date-time' }
+                        }
+                      }
+                    },
+                    pagination: {
+                      type: 'object',
+                      properties: {
+                        limit: { type: 'integer' },
+                        offset: { type: 'integer' },
+                        hasMore: { type: 'boolean' }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          '404': { description: 'Conversation not found' }
+        }
+      }
+    },
+    '/api/conversations/{id}/clear': {
+      post: {
+        tags: ['Conversations'],
+        summary: 'Clear conversation messages',
+        description: 'Delete all messages in a conversation but keep the conversation itself.',
+        security: [{ bearerAuth: [] }, { apiKey: [] }],
+        parameters: [
+          { name: 'id', in: 'path', required: true, schema: { type: 'string' }, description: 'Conversation ID' }
+        ],
+        responses: {
+          '200': {
+            description: 'Messages cleared',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    message: { type: 'string', example: 'Conversation cleared' }
+                  }
+                }
+              }
+            }
+          },
+          '404': { description: 'Conversation not found' }
         }
       }
     },
