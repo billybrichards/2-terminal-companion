@@ -5,7 +5,7 @@ export const docsRouter = Router();
 const apiDocs = {
   openapi: '3.0.0',
   info: {
-    title: 'Abionti Unrestricted API',
+    title: 'Anplexa API',
     version: '1.0.0',
     description: `# Unrestricted AI Companion API
 
@@ -45,7 +45,7 @@ Obtain tokens via the \`/api/auth/login\` endpoint.
 
 ### Chat with AI (curl)
 \`\`\`bash
-curl -X POST "https://api.abionti.com/api/chat" \\
+curl -X POST "https://api.anplexa.com/api/chat" \\
   -H "Content-Type: application/json" \\
   -H "X-API-Key: your-api-key" \\
   -d '{"message": "Hello, how are you?"}'
@@ -53,7 +53,7 @@ curl -X POST "https://api.abionti.com/api/chat" \\
 
 ### Chat with AI (Node.js)
 \`\`\`javascript
-const response = await fetch('https://api.abionti.com/api/chat', {
+const response = await fetch('https://api.anplexa.com/api/chat', {
   method: 'POST',
   headers: {
     'Content-Type': 'application/json',
@@ -84,7 +84,7 @@ while (true) {
     { name: 'Stripe', description: 'Subscription management and payment processing' },
     { name: 'Public', description: 'Public endpoints for landing pages and lead capture (no authentication required)' },
     { name: 'Funnel', description: 'External funnel integration endpoints - create users, manage subscriptions (requires funnel API key)' },
-    { name: 'Admin', description: 'Administrative endpoints (requires admin role)' },
+    { name: 'Admin 🔐', description: '⚠️ ADMIN ONLY - Administrative endpoints (requires admin role). These endpoints require admin authentication.' },
     { name: 'Health', description: 'System health checks' },
     { name: 'Webhooks', description: 'External webhook integrations' }
   ],
@@ -97,14 +97,14 @@ while (true) {
 
 **Example (curl):**
 \`\`\`bash
-curl -X POST "https://api.abionti.com/api/auth/register" \\
+curl -X POST "https://api.anplexa.com/api/auth/register" \\
   -H "Content-Type: application/json" \\
   -d '{"email": "user@example.com", "password": "securepass123", "displayName": "John Doe"}'
 \`\`\`
 
 **Example (Node.js):**
 \`\`\`javascript
-const response = await fetch('https://api.abionti.com/api/auth/register', {
+const response = await fetch('https://api.anplexa.com/api/auth/register', {
   method: 'POST',
   headers: { 'Content-Type': 'application/json' },
   body: JSON.stringify({
@@ -181,14 +181,14 @@ console.log(data.accessToken);
 
 **Example (curl):**
 \`\`\`bash
-curl -X POST "https://api.abionti.com/api/auth/login" \\
+curl -X POST "https://api.anplexa.com/api/auth/login" \\
   -H "Content-Type: application/json" \\
   -d '{"email": "user@example.com", "password": "password123"}'
 \`\`\`
 
 **Example (Node.js):**
 \`\`\`javascript
-const response = await fetch('https://api.abionti.com/api/auth/login', {
+const response = await fetch('https://api.anplexa.com/api/auth/login', {
   method: 'POST',
   headers: { 'Content-Type': 'application/json' },
   body: JSON.stringify({
@@ -382,7 +382,7 @@ const { accessToken, refreshToken } = await response.json();
 
 **Example (curl):**
 \`\`\`bash
-curl -X PUT "https://api.abionti.com/api/auth/chat-name" \\
+curl -X PUT "https://api.anplexa.com/api/auth/chat-name" \\
   -H "Content-Type: application/json" \\
   -H "Authorization: Bearer your-jwt-token" \\
   -d '{"name": "Alex"}'
@@ -390,7 +390,7 @@ curl -X PUT "https://api.abionti.com/api/auth/chat-name" \\
 
 **Example (Node.js):**
 \`\`\`javascript
-const response = await fetch('https://api.abionti.com/api/auth/chat-name', {
+const response = await fetch('https://api.anplexa.com/api/auth/chat-name', {
   method: 'PUT',
   headers: {
     'Content-Type': 'application/json',
@@ -452,7 +452,7 @@ console.log(data.chatName); // "Alex"
 
 **Example (curl):**
 \`\`\`bash
-curl -X PUT "https://api.abionti.com/api/auth/personality-mode" \\
+curl -X PUT "https://api.anplexa.com/api/auth/personality-mode" \\
   -H "Content-Type: application/json" \\
   -H "Authorization: Bearer your-jwt-token" \\
   -d '{"mode": "filthy_sexy"}'
@@ -540,7 +540,7 @@ curl -X PUT "https://api.abionti.com/api/auth/personality-mode" \\
 
 **Example (curl):**
 \`\`\`bash
-curl -X PUT "https://api.abionti.com/api/auth/gender" \\
+curl -X PUT "https://api.anplexa.com/api/auth/gender" \\
   -H "Content-Type: application/json" \\
   -H "Authorization: Bearer your-jwt-token" \\
   -d '{"gender": "male"}'
@@ -548,7 +548,7 @@ curl -X PUT "https://api.abionti.com/api/auth/gender" \\
 
 **Custom gender example:**
 \`\`\`bash
-curl -X PUT "https://api.abionti.com/api/auth/gender" \\
+curl -X PUT "https://api.anplexa.com/api/auth/gender" \\
   -H "Content-Type: application/json" \\
   -H "Authorization: Bearer your-jwt-token" \\
   -d '{"gender": "custom", "customGender": "agender companion"}'
@@ -635,7 +635,7 @@ curl -X PUT "https://api.abionti.com/api/auth/gender" \\
 
 **Example (curl):**
 \`\`\`bash
-curl -X POST "https://api.abionti.com/api/chat" \\
+curl -X POST "https://api.anplexa.com/api/chat" \\
   -H "Content-Type: application/json" \\
   -H "X-API-Key: your-api-key" \\
   -d '{"message": "Hello, how are you?", "preferences": {"length": "moderate", "style": "casual"}}'
@@ -643,7 +643,7 @@ curl -X POST "https://api.abionti.com/api/chat" \\
 
 **Example (Node.js with streaming):**
 \`\`\`javascript
-const response = await fetch('https://api.abionti.com/api/chat', {
+const response = await fetch('https://api.anplexa.com/api/chat', {
   method: 'POST',
   headers: {
     'Content-Type': 'application/json',
@@ -814,13 +814,13 @@ while (true) {
 
 **Example (curl):**
 \`\`\`bash
-curl -X GET "https://api.abionti.com/api/conversations" \\
+curl -X GET "https://api.anplexa.com/api/conversations" \\
   -H "Authorization: Bearer your-jwt-token"
 \`\`\`
 
 **Example (Node.js):**
 \`\`\`javascript
-const response = await fetch('https://api.abionti.com/api/conversations', {
+const response = await fetch('https://api.anplexa.com/api/conversations', {
   headers: {
     'Authorization': 'Bearer ' + accessToken
   }
@@ -864,7 +864,7 @@ console.log(conversations);
 
 **Example (curl):**
 \`\`\`bash
-curl -X POST "https://api.abionti.com/api/conversations" \\
+curl -X POST "https://api.anplexa.com/api/conversations" \\
   -H "Authorization: Bearer your-jwt-token" \\
   -H "Content-Type: application/json" \\
   -d '{"title": "My New Chat"}'
@@ -872,7 +872,7 @@ curl -X POST "https://api.abionti.com/api/conversations" \\
 
 **Example (Node.js):**
 \`\`\`javascript
-const response = await fetch('https://api.abionti.com/api/conversations', {
+const response = await fetch('https://api.anplexa.com/api/conversations', {
   method: 'POST',
   headers: {
     'Authorization': 'Bearer ' + accessToken,
@@ -1035,7 +1035,7 @@ console.log(conversation.id);
 
 **Example (curl):**
 \`\`\`bash
-curl -X GET "https://api.abionti.com/api/conversations/conv-id/messages?limit=50&offset=0" \\
+curl -X GET "https://api.anplexa.com/api/conversations/conv-id/messages?limit=50&offset=0" \\
   -H "Authorization: Bearer your-jwt-token"
 \`\`\``,
         security: [{ bearerAuth: [] }, { apiKey: [] }],
@@ -1173,7 +1173,7 @@ curl -X GET "https://api.abionti.com/api/conversations/conv-id/messages?limit=50
 
 **Example (curl):**
 \`\`\`bash
-curl -X POST "https://api.abionti.com/api/stripe/checkout" \\
+curl -X POST "https://api.anplexa.com/api/stripe/checkout" \\
   -H "Content-Type: application/json" \\
   -H "Authorization: Bearer your-jwt-token" \\
   -d '{"plan": "monthly"}'
@@ -1181,7 +1181,7 @@ curl -X POST "https://api.abionti.com/api/stripe/checkout" \\
 
 **Example (Node.js):**
 \`\`\`javascript
-const response = await fetch('https://api.abionti.com/api/stripe/checkout', {
+const response = await fetch('https://api.anplexa.com/api/stripe/checkout', {
   method: 'POST',
   headers: {
     'Content-Type': 'application/json',
@@ -1244,7 +1244,7 @@ window.location.href = url; // Redirect to Stripe checkout
 
 **Example (curl):**
 \`\`\`bash
-curl -X POST "https://api.abionti.com/api/stripe/verify-checkout" \\
+curl -X POST "https://api.anplexa.com/api/stripe/verify-checkout" \\
   -H "Content-Type: application/json" \\
   -H "Authorization: Bearer your-jwt-token" \\
   -d '{"sessionId": "cs_test_xxx"}'
@@ -1256,7 +1256,7 @@ curl -X POST "https://api.abionti.com/api/stripe/verify-checkout" \\
 const urlParams = new URLSearchParams(window.location.search);
 const sessionId = urlParams.get('session_id');
 
-const response = await fetch('https://api.abionti.com/api/stripe/verify-checkout', {
+const response = await fetch('https://api.anplexa.com/api/stripe/verify-checkout', {
   method: 'POST',
   headers: {
     'Content-Type': 'application/json',
@@ -1434,7 +1434,7 @@ if (success) {
     },
     '/api/admin/config': {
       get: {
-        tags: ['Admin'],
+        tags: ['Admin 🔐'],
         summary: 'Get companion config (admin)',
         security: [{ bearerAuth: [] }],
         responses: {
@@ -1442,7 +1442,7 @@ if (success) {
         }
       },
       put: {
-        tags: ['Admin'],
+        tags: ['Admin 🔐'],
         summary: 'Update companion config',
         security: [{ bearerAuth: [] }],
         responses: {
@@ -1452,7 +1452,7 @@ if (success) {
     },
     '/api/admin/system-prompts': {
       get: {
-        tags: ['Admin'],
+        tags: ['Admin 🔐'],
         summary: 'List all system prompts',
         description: 'Retrieve all system prompt versions with metadata. Only one prompt can be active at a time.',
         security: [{ bearerAuth: [] }],
@@ -1489,7 +1489,7 @@ if (success) {
         }
       },
       post: {
-        tags: ['Admin'],
+        tags: ['Admin 🔐'],
         summary: 'Create new system prompt version',
         description: 'Create a new version of the system prompt. The prompt will be inactive by default.',
         security: [{ bearerAuth: [] }],
@@ -1538,7 +1538,7 @@ if (success) {
     },
     '/api/admin/system-prompts/{id}': {
       get: {
-        tags: ['Admin'],
+        tags: ['Admin 🔐'],
         summary: 'Get system prompt by ID',
         description: 'Retrieve a specific system prompt with full content.',
         security: [{ bearerAuth: [] }],
@@ -1574,7 +1574,7 @@ if (success) {
         }
       },
       delete: {
-        tags: ['Admin'],
+        tags: ['Admin 🔐'],
         summary: 'Delete system prompt',
         description: 'Delete a system prompt version. Cannot delete the currently active prompt.',
         security: [{ bearerAuth: [] }],
@@ -1602,7 +1602,7 @@ if (success) {
     },
     '/api/admin/system-prompts/{id}/activate': {
       put: {
-        tags: ['Admin'],
+        tags: ['Admin 🔐'],
         summary: 'Activate system prompt',
         description: 'Set a system prompt as the active prompt. This will deactivate any other active prompt.',
         security: [{ bearerAuth: [] }],
@@ -1637,7 +1637,7 @@ if (success) {
     },
     '/api/admin/users': {
       get: {
-        tags: ['Admin'],
+        tags: ['Admin 🔐'],
         summary: 'List all users',
         security: [{ bearerAuth: [] }],
         responses: {
@@ -1647,7 +1647,7 @@ if (success) {
     },
     '/api/admin/users/{id}/subscription': {
       put: {
-        tags: ['Admin'],
+        tags: ['Admin 🔐'],
         summary: 'Update user subscription status',
         description: 'Set user subscription to subscribed or not_subscribed.',
         security: [{ bearerAuth: [] }],
@@ -1676,7 +1676,7 @@ if (success) {
     },
     '/api/admin/users/{id}/credits': {
       put: {
-        tags: ['Admin'],
+        tags: ['Admin 🔐'],
         summary: 'Update user credits',
         description: 'Set, add, or subtract credits for a user.',
         security: [{ bearerAuth: [] }],
@@ -1706,7 +1706,7 @@ if (success) {
     },
     '/api/admin/users/{id}/billing': {
       get: {
-        tags: ['Admin'],
+        tags: ['Admin 🔐'],
         summary: 'Get user billing info',
         description: 'Get subscription status and credits for a user.',
         security: [{ bearerAuth: [] }],
@@ -1721,7 +1721,7 @@ if (success) {
     },
     '/api/admin/ollama/test': {
       post: {
-        tags: ['Admin'],
+        tags: ['Admin 🔐'],
         summary: 'Test Ollama connection',
         security: [{ bearerAuth: [] }],
         responses: {
@@ -1871,7 +1871,7 @@ New leads are automatically enrolled in email retention sequences:
 
 **Example (curl):**
 \`\`\`bash
-curl -X POST "https://api.abionti.com/api/register-subscriber" \\
+curl -X POST "https://api.anplexa.com/api/register-subscriber" \\
   -H "Content-Type: application/json" \\
   -d '{"email": "user@example.com", "funnelType": "waitlist", "persona": "curious"}'
 \`\`\`
@@ -1973,7 +1973,7 @@ When creating users, you can pass additional CRM fields to segment them for emai
 
 **Example (curl) - Waitlist user:**
 \`\`\`bash
-curl -X POST "https://api.abionti.com/api/funnel/users" \\
+curl -X POST "https://api.anplexa.com/api/funnel/users" \\
   -H "Content-Type: application/json" \\
   -H "Authorization: Bearer fk_your_key_here" \\
   -d '{"email": "user@example.com", "password": "securepass123", "displayName": "John", "funnelType": "waitlist", "persona": "curious", "entrySource": "landing_page"}'
@@ -1981,7 +1981,7 @@ curl -X POST "https://api.abionti.com/api/funnel/users" \\
 
 **Example (curl) - Direct signup:**
 \`\`\`bash
-curl -X POST "https://api.abionti.com/api/funnel/users" \\
+curl -X POST "https://api.anplexa.com/api/funnel/users" \\
   -H "Content-Type: application/json" \\
   -H "Authorization: Bearer fk_your_key_here" \\
   -d '{"email": "user@example.com", "password": "securepass123", "funnelType": "direct"}'
@@ -1989,7 +1989,7 @@ curl -X POST "https://api.abionti.com/api/funnel/users" \\
 
 **Example (curl) - Pre-subscribed user (paid via funnel):**
 \`\`\`bash
-curl -X POST "https://api.abionti.com/api/funnel/users" \\
+curl -X POST "https://api.anplexa.com/api/funnel/users" \\
   -H "Content-Type: application/json" \\
   -H "Authorization: Bearer fk_your_key_here" \\
   -d '{"email": "user@example.com", "password": "securepass123", "subscriptionStatus": "subscribed", "stripeCustomerId": "cus_xxx", "stripeSubscriptionId": "sub_xxx"}'
@@ -2082,7 +2082,7 @@ curl -X POST "https://api.abionti.com/api/funnel/users" \\
 
 **Example (curl) - Early adopter yearly:**
 \`\`\`bash
-curl -X POST "https://api.abionti.com/api/funnel/checkout" \\
+curl -X POST "https://api.anplexa.com/api/funnel/checkout" \\
   -H "Content-Type: application/json" \\
   -H "Authorization: Bearer fk_your_key_here" \\
   -d '{"userId": "user-uuid-here", "plan": "yearly"}'
@@ -2090,7 +2090,7 @@ curl -X POST "https://api.abionti.com/api/funnel/checkout" \\
 
 **Example (curl) - Standard monthly:**
 \`\`\`bash
-curl -X POST "https://api.abionti.com/api/funnel/checkout" \\
+curl -X POST "https://api.anplexa.com/api/funnel/checkout" \\
   -H "Content-Type: application/json" \\
   -H "Authorization: Bearer fk_your_key_here" \\
   -d '{"userId": "user-uuid-here", "plan": "monthly"}'
@@ -2146,7 +2146,7 @@ curl -X POST "https://api.abionti.com/api/funnel/checkout" \\
 
 **Example (curl):**
 \`\`\`bash
-curl -X GET "https://api.abionti.com/api/funnel/subscription/user-uuid-here" \\
+curl -X GET "https://api.anplexa.com/api/funnel/subscription/user-uuid-here" \\
   -H "Authorization: Bearer fk_your_key_here"
 \`\`\``,
         security: [{ funnelAuth: [] }],
@@ -2190,7 +2190,7 @@ curl -X GET "https://api.abionti.com/api/funnel/subscription/user-uuid-here" \\
 
 **Example (curl):**
 \`\`\`bash
-curl -X PUT "https://api.abionti.com/api/funnel/subscription" \\
+curl -X PUT "https://api.anplexa.com/api/funnel/subscription" \\
   -H "Content-Type: application/json" \\
   -H "Authorization: Bearer fk_your_key_here" \\
   -d '{"userId": "user-uuid-here", "subscriptionStatus": "subscribed"}'
@@ -2347,7 +2347,7 @@ curl -X PUT "https://api.abionti.com/api/funnel/subscription" \\
 
 **Example (curl):**
 \`\`\`bash
-curl -X POST "https://api.abionti.com/api/funnel/profile" \\
+curl -X POST "https://api.anplexa.com/api/funnel/profile" \\
   -H "Content-Type: application/json" \\
   -H "Authorization: Bearer fk_your_key_here" \\
   -d '{
@@ -2480,127 +2480,356 @@ const swaggerHtml = `<!DOCTYPE html>
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Abionti Unrestricted API - Documentation</title>
+  <title>Anplexa API - Documentation</title>
   <link rel="stylesheet" href="https://unpkg.com/swagger-ui-dist@5.9.0/swagger-ui.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
-    body { 
-      margin: 0; 
-      padding: 0; 
-      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      padding: 0;
+      background: linear-gradient(135deg, #0f0f1a 0%, #1a1a2e 50%, #252545 100%);
       min-height: 100vh;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     }
-    .swagger-ui .topbar { display: none; }
-    .swagger-ui .info { margin: 30px 0; }
-    .swagger-ui .info .title { 
-      color: #e94560; 
-      font-size: 2.5rem;
+
+    /* Header Banner */
+    .anplexa-header {
+      background: linear-gradient(90deg, #6366f1 0%, #8b5cf6 50%, #a855f7 100%);
+      padding: 24px 40px;
+      color: white;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      box-shadow: 0 4px 20px rgba(99, 102, 241, 0.3);
+    }
+    .anplexa-header h1 {
+      margin: 0;
+      font-size: 1.8rem;
       font-weight: 700;
+      letter-spacing: -0.5px;
     }
-    .swagger-ui .info .description { 
-      color: #eaeaea;
+    .anplexa-header .version-badge {
+      background: rgba(255,255,255,0.2);
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-size: 0.85rem;
+      font-weight: 500;
     }
-    .swagger-ui .info .description p { 
-      color: #b8b8b8;
-      line-height: 1.6;
+    .anplexa-header nav a {
+      color: white;
+      text-decoration: none;
+      margin-left: 24px;
+      font-weight: 500;
+      opacity: 0.9;
+      transition: opacity 0.2s;
+    }
+    .anplexa-header nav a:hover { opacity: 1; }
+
+    /* Hide Swagger topbar */
+    .swagger-ui .topbar { display: none; }
+
+    /* Info section */
+    .swagger-ui .info {
+      margin: 40px 0 30px 0;
+    }
+    .swagger-ui .info .title {
+      color: #a78bfa;
+      font-size: 2.2rem;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+    }
+    .swagger-ui .info .description {
+      color: #f1f5f9;
+    }
+    .swagger-ui .info .description p {
+      color: #e2e8f0;
+      line-height: 1.7;
+      font-size: 1rem;
     }
     .swagger-ui .info .description h1,
     .swagger-ui .info .description h2,
-    .swagger-ui .info .description h3 { 
-      color: #e94560;
-      border-bottom: 1px solid #e94560;
-      padding-bottom: 8px;
+    .swagger-ui .info .description h3 {
+      color: #a78bfa;
+      border-bottom: 2px solid #6366f1;
+      padding-bottom: 10px;
+      margin-top: 28px;
     }
-    .swagger-ui .info .description code { 
-      background: #1a1a2e;
-      color: #00d9ff;
-      padding: 2px 6px;
-      border-radius: 4px;
+    .swagger-ui .info .description code {
+      background: #312e81;
+      color: #c4b5fd;
+      padding: 3px 8px;
+      border-radius: 6px;
+      font-size: 0.9em;
     }
-    .swagger-ui .info .description pre { 
-      background: #1a1a2e;
-      border: 1px solid #333;
-      border-radius: 8px;
-      padding: 16px;
+    .swagger-ui .info .description pre {
+      background: #1e1b4b;
+      border: 1px solid #4c1d95;
+      border-radius: 10px;
+      padding: 18px;
+      overflow-x: auto;
     }
-    .swagger-ui .info .description pre code { 
+    .swagger-ui .info .description pre code {
       background: transparent;
-      color: #00ff88;
+      color: #86efac;
+      padding: 0;
     }
     .swagger-ui .info .description table {
       border-collapse: collapse;
       width: 100%;
-      margin: 16px 0;
+      margin: 20px 0;
+      border-radius: 8px;
+      overflow: hidden;
     }
     .swagger-ui .info .description th,
     .swagger-ui .info .description td {
-      border: 1px solid #444;
-      padding: 12px;
+      border: 1px solid #4c1d95;
+      padding: 14px 16px;
       text-align: left;
     }
     .swagger-ui .info .description th {
-      background: #e94560;
+      background: linear-gradient(90deg, #6366f1, #8b5cf6);
       color: white;
+      font-weight: 600;
     }
     .swagger-ui .info .description td {
-      background: #1a1a2e;
+      background: #1e1b4b;
+      color: #e2e8f0;
     }
-    .swagger-ui .scheme-container { 
-      background: #16213e; 
+
+    /* Scheme container */
+    .swagger-ui .scheme-container {
+      background: #1e1b4b;
       box-shadow: none;
+      border-radius: 10px;
+      padding: 16px;
+      margin: 20px 0;
     }
-    .swagger-ui .opblock-tag { 
-      color: #eaeaea;
-      border-bottom: 1px solid #333;
+    .swagger-ui .scheme-container .schemes > label { color: #e2e8f0; }
+
+    /* Tag sections */
+    .swagger-ui .opblock-tag {
+      color: #f1f5f9;
+      border-bottom: 1px solid #4c1d95;
+      font-weight: 600;
+      padding: 14px 0;
     }
-    .swagger-ui .opblock { 
-      background: #16213e;
-      border-color: #333;
+    .swagger-ui .opblock-tag small {
+      color: #a5b4fc;
     }
-    .swagger-ui .opblock .opblock-summary { 
-      border-color: #333;
+
+    /* Admin tag special styling */
+    .swagger-ui .opblock-tag[data-tag*="Admin"] {
+      background: linear-gradient(90deg, rgba(239, 68, 68, 0.15), rgba(220, 38, 38, 0.1));
+      border-left: 4px solid #ef4444;
+      padding-left: 16px;
+      margin-left: -20px;
+      padding-right: 20px;
     }
-    .swagger-ui .opblock .opblock-summary-description { 
-      color: #b8b8b8;
+
+    /* Operation blocks */
+    .swagger-ui .opblock {
+      background: #1e1b4b;
+      border-color: #4c1d95;
+      border-radius: 10px;
+      margin-bottom: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
     }
-    .swagger-ui .opblock.opblock-post { 
-      border-color: #49cc90;
-      background: rgba(73, 204, 144, 0.1);
+    .swagger-ui .opblock .opblock-summary {
+      border-color: transparent;
+      padding: 12px 16px;
     }
-    .swagger-ui .opblock.opblock-get { 
-      border-color: #61affe;
-      background: rgba(97, 175, 254, 0.1);
+    .swagger-ui .opblock .opblock-summary-path {
+      color: #f1f5f9;
+      font-weight: 500;
     }
-    .swagger-ui .opblock.opblock-delete { 
-      border-color: #f93e3e;
-      background: rgba(249, 62, 62, 0.1);
+    .swagger-ui .opblock .opblock-summary-description {
+      color: #cbd5e1;
+      font-size: 0.95rem;
     }
-    .swagger-ui .opblock.opblock-put { 
-      border-color: #fca130;
-      background: rgba(252, 161, 48, 0.1);
+
+    /* HTTP method colors with better contrast */
+    .swagger-ui .opblock.opblock-post {
+      border-color: #22c55e;
+      background: linear-gradient(135deg, rgba(34, 197, 94, 0.15) 0%, rgba(34, 197, 94, 0.05) 100%);
     }
-    .swagger-ui .btn { 
-      border-radius: 4px;
+    .swagger-ui .opblock.opblock-post .opblock-summary-method {
+      background: #22c55e;
     }
-    .swagger-ui .btn.authorize { 
-      background: #e94560;
-      border-color: #e94560;
+    .swagger-ui .opblock.opblock-get {
+      border-color: #3b82f6;
+      background: linear-gradient(135deg, rgba(59, 130, 246, 0.15) 0%, rgba(59, 130, 246, 0.05) 100%);
+    }
+    .swagger-ui .opblock.opblock-get .opblock-summary-method {
+      background: #3b82f6;
+    }
+    .swagger-ui .opblock.opblock-delete {
+      border-color: #ef4444;
+      background: linear-gradient(135deg, rgba(239, 68, 68, 0.15) 0%, rgba(239, 68, 68, 0.05) 100%);
+    }
+    .swagger-ui .opblock.opblock-delete .opblock-summary-method {
+      background: #ef4444;
+    }
+    .swagger-ui .opblock.opblock-put {
+      border-color: #f59e0b;
+      background: linear-gradient(135deg, rgba(245, 158, 11, 0.15) 0%, rgba(245, 158, 11, 0.05) 100%);
+    }
+    .swagger-ui .opblock.opblock-put .opblock-summary-method {
+      background: #f59e0b;
+    }
+    .swagger-ui .opblock.opblock-patch {
+      border-color: #06b6d4;
+      background: linear-gradient(135deg, rgba(6, 182, 212, 0.15) 0%, rgba(6, 182, 212, 0.05) 100%);
+    }
+
+    /* Operation body content */
+    .swagger-ui .opblock-body {
+      background: #0f0f1a;
+      border-top: 1px solid #4c1d95;
+    }
+    .swagger-ui .opblock-body pre {
+      background: #1e1b4b;
+      color: #86efac;
+    }
+    .swagger-ui .opblock-section-header {
+      background: #1e1b4b;
+      border-bottom: 1px solid #4c1d95;
+    }
+    .swagger-ui .opblock-section-header h4 { color: #e2e8f0; }
+    .swagger-ui table.parameters { color: #e2e8f0; }
+    .swagger-ui .parameters-col_description { color: #cbd5e1; }
+    .swagger-ui .parameter__name { color: #a78bfa; }
+    .swagger-ui .parameter__type { color: #94a3b8; }
+    .swagger-ui .parameter__in { color: #64748b; }
+
+    /* Response section */
+    .swagger-ui .responses-wrapper { background: transparent; }
+    .swagger-ui .response-col_status { color: #22c55e; font-weight: 600; }
+    .swagger-ui .response-col_description { color: #e2e8f0; }
+    .swagger-ui .responses-inner { background: #1e1b4b; border-radius: 8px; }
+
+    /* Buttons */
+    .swagger-ui .btn {
+      border-radius: 8px;
+      font-weight: 500;
+      transition: all 0.2s;
+    }
+    .swagger-ui .btn.authorize {
+      background: linear-gradient(90deg, #6366f1, #8b5cf6);
+      border-color: transparent;
       color: white;
+      padding: 10px 20px;
+      font-size: 0.95rem;
     }
-    .swagger-ui .btn.authorize:hover { 
-      background: #c73a52;
+    .swagger-ui .btn.authorize:hover {
+      background: linear-gradient(90deg, #4f46e5, #7c3aed);
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);
     }
-    .swagger-ui section.models { 
-      border-color: #333;
+    .swagger-ui .btn.execute {
+      background: linear-gradient(90deg, #22c55e, #16a34a);
+      border-color: transparent;
     }
-    .swagger-ui .model-container { 
-      background: #16213e;
+    .swagger-ui .btn.cancel {
+      background: #4c1d95;
+      border-color: transparent;
     }
-    .swagger-ui .wrapper { 
+
+    /* Models section */
+    .swagger-ui section.models {
+      border-color: #4c1d95;
+      border-radius: 10px;
+      background: #1e1b4b;
+    }
+    .swagger-ui section.models h4 { color: #e2e8f0; }
+    .swagger-ui .model-container {
+      background: #0f0f1a;
+      border-radius: 8px;
+      margin: 10px 0;
+    }
+    .swagger-ui .model { color: #e2e8f0; }
+    .swagger-ui .model-title { color: #a78bfa; }
+
+    /* Filter input */
+    .swagger-ui .filter-container input {
+      background: #1e1b4b;
+      border: 1px solid #4c1d95;
+      color: #f1f5f9;
+      border-radius: 8px;
+      padding: 10px 16px;
+    }
+    .swagger-ui .filter-container input::placeholder { color: #64748b; }
+    .swagger-ui .filter-container input:focus {
+      border-color: #6366f1;
+      outline: none;
+      box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+    }
+
+    /* Wrapper */
+    .swagger-ui .wrapper {
       max-width: 1400px;
+      padding: 0 40px;
     }
+
+    /* Scrollbar styling */
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-track { background: #1e1b4b; }
+    ::-webkit-scrollbar-thumb { background: #6366f1; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #8b5cf6; }
+
+    /* Links */
+    .swagger-ui a { color: #a78bfa; }
+    .swagger-ui a:hover { color: #c4b5fd; }
+
+    /* Form elements */
+    .swagger-ui select {
+      background: #1e1b4b;
+      color: #f1f5f9;
+      border: 1px solid #4c1d95;
+      border-radius: 6px;
+    }
+    .swagger-ui input[type="text"],
+    .swagger-ui textarea {
+      background: #1e1b4b;
+      color: #f1f5f9;
+      border: 1px solid #4c1d95;
+      border-radius: 6px;
+    }
+
+    /* Loading */
+    .swagger-ui .loading-container { background: #0f0f1a; }
+
+    /* Try it out section */
+    .swagger-ui .try-out__btn {
+      border-color: #6366f1;
+      color: #a78bfa;
+    }
+    .swagger-ui .try-out__btn:hover {
+      background: rgba(99, 102, 241, 0.1);
+    }
+
+    /* Highlighted text */
+    .swagger-ui .highlight-code { background: #1e1b4b; }
+
+    /* Server dropdown */
+    .swagger-ui .servers > label { color: #e2e8f0; }
+    .swagger-ui .servers-title { color: #a78bfa; }
   </style>
 </head>
 <body>
+  <div class="anplexa-header">
+    <div style="display: flex; align-items: center; gap: 16px;">
+      <h1>🔮 Anplexa API</h1>
+      <span class="version-badge">v1.0.0</span>
+    </div>
+    <nav>
+      <a href="/">Home</a>
+      <a href="/docs/export">Export Spec</a>
+      <a href="/admin">Admin Panel</a>
+    </nav>
+  </div>
   <div id="swagger-ui"></div>
   <script src="https://unpkg.com/swagger-ui-dist@5.9.0/swagger-ui-bundle.js"></script>
   <script>
@@ -2623,6 +2852,30 @@ const swaggerHtml = `<!DOCTYPE html>
         tagsSorter: 'alpha',
         operationsSorter: 'alpha'
       });
+
+      // Add admin badge to admin-related routes
+      setTimeout(() => {
+        document.querySelectorAll('.opblock-tag').forEach(tag => {
+          if (tag.getAttribute('data-tag')?.includes('Admin')) {
+            const badge = document.createElement('span');
+            badge.innerHTML = ' 🔐 ADMIN ONLY';
+            badge.style.cssText = 'background: #ef4444; color: white; padding: 4px 10px; border-radius: 12px; font-size: 0.7rem; font-weight: 600; margin-left: 12px;';
+            tag.querySelector('a')?.appendChild(badge);
+          }
+        });
+
+        // Mark admin routes in path
+        document.querySelectorAll('.opblock').forEach(block => {
+          const path = block.querySelector('.opblock-summary-path span')?.textContent || '';
+          if (path.includes('/admin/') || path.includes('/api/admin')) {
+            const summary = block.querySelector('.opblock-summary');
+            if (summary) {
+              summary.style.borderLeft = '4px solid #ef4444';
+              summary.style.paddingLeft = '12px';
+            }
+          }
+        });
+      }, 500);
     };
   </script>
 </body>
@@ -2634,7 +2887,7 @@ docsRouter.get('/', (req, res) => {
 });
 
 docsRouter.get('/openapi.json', (req, res) => {
-  res.setHeader('Content-Disposition', 'attachment; filename="abionti-api-openapi.json"');
+  res.setHeader('Content-Disposition', 'attachment; filename="anplexa-api-openapi.json"');
   res.json(apiDocs);
 });
 
@@ -2644,90 +2897,199 @@ docsRouter.get('/export', (req, res) => {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Export API Documentation - Abionti</title>
+  <title>Export API Documentation - Anplexa</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { 
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      background: #0a0a0a; 
-      color: #e0e0e0; 
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #0f0f1a 0%, #1a1a2e 50%, #252545 100%);
+      color: #f1f5f9;
       min-height: 100vh;
-      padding: 40px 20px;
+      padding: 0;
     }
-    .container { max-width: 800px; margin: 0 auto; }
-    h1 { color: #ff6b35; margin-bottom: 10px; }
-    .subtitle { color: #888; margin-bottom: 40px; }
-    .export-options { display: grid; gap: 20px; }
-    .export-card {
-      background: #1a1a1a;
-      border: 1px solid #2a2a2a;
-      border-radius: 12px;
-      padding: 25px;
+    .header {
+      background: linear-gradient(90deg, #6366f1 0%, #8b5cf6 50%, #a855f7 100%);
+      padding: 24px 40px;
+      color: white;
       display: flex;
       justify-content: space-between;
       align-items: center;
+      box-shadow: 0 4px 20px rgba(99, 102, 241, 0.3);
     }
-    .export-card h3 { color: #fff; margin-bottom: 5px; }
-    .export-card p { color: #888; font-size: 0.9rem; }
+    .header h1 {
+      margin: 0;
+      font-size: 1.8rem;
+      font-weight: 700;
+    }
+    .header nav a {
+      color: white;
+      text-decoration: none;
+      margin-left: 24px;
+      font-weight: 500;
+      opacity: 0.9;
+    }
+    .header nav a:hover { opacity: 1; }
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 60px 40px;
+    }
+    .page-title {
+      color: #a78bfa;
+      margin-bottom: 12px;
+      font-size: 2.2rem;
+      font-weight: 700;
+    }
+    .subtitle {
+      color: #cbd5e1;
+      margin-bottom: 50px;
+      font-size: 1.1rem;
+    }
+    .export-options { display: grid; gap: 24px; }
+    .export-card {
+      background: #1e1b4b;
+      border: 1px solid #4c1d95;
+      border-radius: 16px;
+      padding: 28px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      transition: all 0.2s;
+    }
+    .export-card:hover {
+      border-color: #6366f1;
+      box-shadow: 0 4px 20px rgba(99, 102, 241, 0.2);
+      transform: translateY(-2px);
+    }
+    .export-card h3 {
+      color: #f1f5f9;
+      margin-bottom: 8px;
+      font-size: 1.2rem;
+      font-weight: 600;
+    }
+    .export-card p {
+      color: #a5b4fc;
+      font-size: 0.95rem;
+      line-height: 1.5;
+    }
     .btn {
-      padding: 12px 24px;
-      background: #ff6b35;
-      color: #0a0a0a;
+      padding: 14px 28px;
+      background: linear-gradient(90deg, #6366f1, #8b5cf6);
+      color: white;
       border: none;
-      border-radius: 6px;
+      border-radius: 10px;
       font-weight: 600;
       cursor: pointer;
       text-decoration: none;
+      transition: all 0.2s;
+      white-space: nowrap;
+      font-size: 0.95rem;
     }
-    .btn:hover { background: #ff8c5a; }
-    .btn-secondary { background: #2a2a2a; color: #e0e0e0; }
-    .btn-secondary:hover { background: #3a3a3a; }
-    .back-link { display: inline-block; margin-top: 30px; color: #ff6b35; }
+    .btn:hover {
+      background: linear-gradient(90deg, #4f46e5, #7c3aed);
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);
+    }
+    .btn-secondary {
+      background: #312e81;
+      color: #c4b5fd;
+    }
+    .btn-secondary:hover {
+      background: #3730a3;
+      box-shadow: 0 4px 12px rgba(99, 102, 241, 0.2);
+    }
+    .back-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 40px;
+      color: #a78bfa;
+      text-decoration: none;
+      font-weight: 500;
+      transition: color 0.2s;
+    }
+    .back-link:hover { color: #c4b5fd; }
+    .icon {
+      width: 48px;
+      height: 48px;
+      background: #312e81;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-right: 16px;
+      font-size: 1.4rem;
+    }
+    .card-content { display: flex; align-items: center; }
+    .card-text { flex: 1; }
   </style>
 </head>
 <body>
+  <div class="header">
+    <h1>🔮 Anplexa API</h1>
+    <nav>
+      <a href="/">Home</a>
+      <a href="/docs">Documentation</a>
+      <a href="/admin">Admin Panel</a>
+    </nav>
+  </div>
   <div class="container">
-    <h1>Export API Documentation</h1>
-    <p class="subtitle">Download the Abionti API specification in your preferred format</p>
-    
+    <h2 class="page-title">Export API Specification</h2>
+    <p class="subtitle">Download the Anplexa API specification to import into your favorite tools</p>
+
     <div class="export-options">
       <div class="export-card">
-        <div>
-          <h3>OpenAPI JSON</h3>
-          <p>Standard OpenAPI 3.0 specification in JSON format. Import into Postman, Insomnia, or any API tool.</p>
+        <div class="card-content">
+          <div class="icon">📥</div>
+          <div class="card-text">
+            <h3>Download OpenAPI JSON</h3>
+            <p>Standard OpenAPI 3.0 specification in JSON format. Import into Postman, Insomnia, or any API tool.</p>
+          </div>
         </div>
-        <a href="/docs/openapi.json" class="btn" download>Download JSON</a>
+        <a href="/docs/openapi.json" class="btn" download>Download</a>
       </div>
-      
+
       <div class="export-card">
-        <div>
-          <h3>Copy JSON to Clipboard</h3>
-          <p>Copy the full OpenAPI spec to your clipboard for pasting into code generators.</p>
+        <div class="card-content">
+          <div class="icon">📋</div>
+          <div class="card-text">
+            <h3>Copy to Clipboard</h3>
+            <p>Copy the full OpenAPI spec to your clipboard for pasting into code generators.</p>
+          </div>
         </div>
         <button onclick="copySpec()" class="btn btn-secondary" id="copyBtn">Copy JSON</button>
       </div>
-      
+
       <div class="export-card">
-        <div>
-          <h3>View Raw JSON</h3>
-          <p>View the raw JSON specification in your browser.</p>
+        <div class="card-content">
+          <div class="icon">👁️</div>
+          <div class="card-text">
+            <h3>View Raw JSON</h3>
+            <p>View the raw JSON specification directly in your browser.</p>
+          </div>
         </div>
         <a href="/docs/openapi.json" target="_blank" class="btn btn-secondary">View Raw</a>
       </div>
     </div>
-    
-    <a href="/docs" class="back-link">&larr; Back to API Documentation</a>
+
+    <a href="/docs" class="back-link">← Back to API Documentation</a>
   </div>
-  
+
   <script>
     const spec = ${JSON.stringify(JSON.stringify(apiDocs))};
-    
+
     async function copySpec() {
       try {
         await navigator.clipboard.writeText(spec);
-        document.getElementById('copyBtn').textContent = 'Copied!';
+        const btn = document.getElementById('copyBtn');
+        btn.textContent = '✓ Copied!';
+        btn.style.background = '#22c55e';
         setTimeout(() => {
-          document.getElementById('copyBtn').textContent = 'Copy JSON';
+          btn.textContent = 'Copy JSON';
+          btn.style.background = '';
         }, 2000);
       } catch (err) {
         alert('Failed to copy');
