@@ -253,12 +253,18 @@ chatRouter.post('/', optionalAuthMiddleware, async (req, res) => {
     const storeLocally = body.storeLocally || false;
     const isNewChat = body.newChat || false;
 
+    // Log incoming chat request with personality mode
+    console.log(`[Chat Request] User: ${userId || 'anonymous'}, personalityMode in request: ${body.personalityMode || 'not specified'}, newChat: ${isNewChat}`);
+
     // Get user info for new chat ice-breaker
     let user: any = null;
     if (userId) {
       user = await db.query.users.findFirst({
         where: eq(users.id, userId),
       });
+      if (user) {
+        console.log(`[Chat Request] User's saved personalityMode: ${(user as any).personalityMode || 'not set'}, chatName: ${user.chatName || 'not set'}`);
+      }
     }
 
     // Check message limit for free users (resets weekly) - skip for newChat ice-breakers
