@@ -220,5 +220,5 @@ ${userName ? `Remember: Address the user as "${userName}" when appropriate.` : '
 }
 
 export function isValidPersonalityMode(mode: string): mode is PersonalityMode {
-  return mode === 'nurturing' || mode === 'playful' || mode === 'dominant';
+  return mode === 'nurturing' || mode === 'playful' || mode === 'dominant' || mode === 'filthy_sexy' || mode === 'intimate_companion' || mode === 'intellectual_muse';
 }

@@ -292,12 +292,16 @@ authRouter.put('/personality-mode', authMiddleware, async (req, res) => {
     const body = updatePersonalityModeSchema.parse(req.body);
     const userId = req.user!.sub;
 
+    console.log(`[Personality] User ${userId} updating personality mode to: ${body.mode}`);
+
     await db.update(users)
       .set({
         personalityMode: body.mode,
         updatedAt: new Date().toISOString(),
       })
       .where(eq(users.id, userId));
+
+    console.log(`[Personality] User ${userId} personality mode saved: ${body.mode}`);
 
     res.json({
       message: 'Personality mode updated successfully',

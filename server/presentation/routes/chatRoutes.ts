@@ -54,12 +54,17 @@ async function buildCompleteSystemPrompt(
       userName = user.chatName || undefined;
       if (personalityModeOverride && isValidPersonalityMode(personalityModeOverride)) {
         personalityMode = personalityModeOverride;
+        console.log(`[Chat] User ${userId} using override personality mode: ${personalityMode}`);
       } else if ((user as any).personalityMode && isValidPersonalityMode((user as any).personalityMode)) {
         personalityMode = (user as any).personalityMode as PersonalityMode;
+        console.log(`[Chat] User ${userId} using saved personality mode: ${personalityMode}`);
+      } else {
+        console.log(`[Chat] User ${userId} using default personality mode: ${personalityMode}`);
       }
     }
   } else if (personalityModeOverride && isValidPersonalityMode(personalityModeOverride)) {
     personalityMode = personalityModeOverride;
+    console.log(`[Chat] Anonymous user using override personality mode: ${personalityMode}`);
   }
   
   // Build the personality overlay
@@ -79,7 +84,7 @@ const chatSchema = z.object({
     length: z.enum(['brief', 'moderate', 'detailed']).optional(),
     style: z.enum(['casual', 'thoughtful', 'creative']).optional(),
   }).optional(),
-  personalityMode: z.enum(['nurturing', 'playful', 'dominant']).optional(),
+  personalityMode: z.enum(['nurturing', 'playful', 'dominant', 'filthy_sexy', 'intimate_companion', 'intellectual_muse']).optional(),
   storeLocally: z.boolean().optional(),
   newChat: z.boolean().optional(),
 });
