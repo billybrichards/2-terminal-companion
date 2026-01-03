@@ -993,8 +993,8 @@ console.log(conversation.id);
                       properties: {
                         id: { type: 'string' },
                         title: { type: 'string' },
-                        createdAt: { type: 'string', format: 'date-time', example: '2024-01-01T12:00:00Z' },
-                        updatedAt: { type: 'string', format: 'date-time', example: '2024-01-01T12:30:00Z' }
+                        createdAt: { type: 'string', format: 'date-time', example: '2024-01-01T12:00:00.000Z' },
+                        updatedAt: { type: 'string', format: 'date-time', example: '2024-01-01T12:30:00.000Z' }
                       }
                     }
                   }
