@@ -9,6 +9,7 @@ set -e
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 # Default values
@@ -20,6 +21,76 @@ echo "Deployment Validation Test"
 echo "============================================"
 echo "Backend URL: $BACKEND_URL"
 echo "Frontend Origin: $FRONTEND_ORIGIN"
+echo "============================================"
+echo ""
+
+# Environment Configuration Check
+echo -e "${BLUE}--- Environment Configuration Check ---${NC}"
+echo ""
+
+check_env() {
+    local var_name=$1
+    local required=$2
+    local value="${!var_name}"
+
+    if [ -n "$value" ]; then
+        # Mask sensitive values
+        if [[ "$var_name" == *"SECRET"* ]] || [[ "$var_name" == *"KEY"* ]] || [[ "$var_name" == *"PASSWORD"* ]]; then
+            local masked="${value:0:4}****${value: -4}"
+            echo -e "  $var_name: ${GREEN}$masked${NC}"
+        else
+            echo -e "  $var_name: ${GREEN}$value${NC}"
+        fi
+        return 0
+    else
+        if [ "$required" = "required" ]; then
+            echo -e "  $var_name: ${RED}(not set - REQUIRED)${NC}"
+            return 1
+        else
+            echo -e "  $var_name: ${YELLOW}(not set - optional)${NC}"
+            return 0
+        fi
+    fi
+}
+
+ENV_ERRORS=0
+
+echo "Server Configuration:"
+check_env "PORT" "optional" || ((ENV_ERRORS++))
+check_env "NODE_ENV" "optional" || ((ENV_ERRORS++))
+echo ""
+
+echo "Database Configuration:"
+check_env "DATABASE_URL" "required" || ((ENV_ERRORS++))
+echo ""
+
+echo "Ollama Configuration:"
+check_env "OLLAMA_BASE_URL" "required" || ((ENV_ERRORS++))
+check_env "OLLAMA_API_KEY" "required" || ((ENV_ERRORS++))
+check_env "OLLAMA_GENERAL_MODEL" "optional" || ((ENV_ERRORS++))
+check_env "OLLAMA_LONGFORM_MODEL" "optional" || ((ENV_ERRORS++))
+echo ""
+
+echo "JWT Configuration:"
+check_env "JWT_SECRET" "required" || ((ENV_ERRORS++))
+check_env "JWT_ACCESS_EXPIRES" "optional" || ((ENV_ERRORS++))
+check_env "JWT_REFRESH_EXPIRES" "optional" || ((ENV_ERRORS++))
+echo ""
+
+echo "Optional Configuration:"
+check_env "FRONTEND_URL" "optional" || ((ENV_ERRORS++))
+check_env "ADMIN_EMAIL" "optional" || ((ENV_ERRORS++))
+check_env "REPLIT_DOMAINS" "optional" || ((ENV_ERRORS++))
+echo ""
+
+if [ $ENV_ERRORS -gt 0 ]; then
+    echo -e "${RED}Environment configuration has $ENV_ERRORS missing required variable(s)${NC}"
+    echo ""
+else
+    echo -e "${GREEN}Environment configuration looks good!${NC}"
+    echo ""
+fi
+
 echo "============================================"
 echo ""
 
