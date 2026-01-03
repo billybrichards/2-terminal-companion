@@ -1,0 +1,44 @@
+Let me check the logs and investigate what's happening with the password reset and magic link functionality:
+Based on my investigation, I can see a few potential reasons why the password reset and magic link might not be working:
+What I Found
+Your setup looks correct:
+* ANPLEXA_RESEND_API_KEY secret is configured ✓
+* BACKEND_API_KEY secret is configured ✓
+* API endpoints point to https://api.anplexa.com ✓
+* Email functions are set up in lib/email.ts ✓
+Likely Causes
+1. Backend API might not support the expected endpoints or token format
+    * The frontend calls /api/auth/magic-link and /api/auth/forgot-password
+    * It expects the response to contain a token or resetToken field
+    * If the backend returns a different structure, the email won't be sent
+2. Resend domain verification
+    * Emails are sent from noreply@updates.anplexa.com
+    * If this domain isn't verified in Resend, emails won't be delivered
+3. Silent failures
+    * If the backend returns an error, the frontend might show a generic message
+    * Emails might be failing without clear error logging
+How to Debug
+Could you tell me:
+1. What happens when you try? - Do you see an error message, or does it say "sent" but no email arrives?
+2. Do you have access to backend logs? - We can check if the API is returning the expected token
+3. Is the Resend domain verified? - Check your Resend dashboard for updates.anplexa.com
+
+
+Can you check your frontend's network tab to see if the magic-link request is actually being sent, and if so, what response it gets? Also, what email address did you use for the password reset? I can check if that token was created and if the email should have gone out.
+
+Good idea - let me restart the server and test the magic link flow directly to see what's happening:
+I found the issue! I tested the magic-link endpoint and got this response:
+{"message":"If an account exists with this email, a magic link has been sent"}
+
+The Problem: Your backend API at api.anplexa.com is designed to send emails directly - it doesn't return a token to the frontend. But the frontend code expects a token back so it can send the email via Resend.
+What's happening:
+1. Frontend calls /api/auth/magic-link on the backend
+2. Backend sends email internally and returns {"message": "..."}
+3. Frontend looks for data.token but it doesn't exist
+4. Frontend's sendMagicLinkEmail() never runs (or runs with undefined token)
+Two possible solutions:
+1. Let the backend handle emails (simpler) - Remove the Resend email sending from the frontend and just forward the backend's success message
+2. Have backend return the token - Modify your backend to return the token so the frontend can send branded emails via Resend
+Which approach would you prefer? If you want me to update the frontend to simply rely on your backend's email sending, I can do that quickly.
+
+
