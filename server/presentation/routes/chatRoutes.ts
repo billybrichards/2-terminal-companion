@@ -70,7 +70,12 @@ async function buildCompleteSystemPrompt(
   // Build the personality overlay
   const overlay = buildPersonalityOverlay(personalityMode, userName);
   
-  // Combine base prompt with personality overlay
+  // Inject personality overlay into the placeholder if it exists, otherwise append
+  if (basePrompt.includes('{{PERSONALITY_OVERLAY}}')) {
+    return basePrompt.replace('{{PERSONALITY_OVERLAY}}', overlay);
+  }
+  
+  // Fallback: append at end if no placeholder found
   return `${basePrompt}\n\n${overlay}`;
 }
 
