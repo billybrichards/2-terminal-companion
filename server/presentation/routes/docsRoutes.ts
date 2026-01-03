@@ -909,7 +909,9 @@ console.log(conversation.id);
                       properties: {
                         id: { type: 'string', example: 'conv-uuid-here' },
                         userId: { type: 'string', example: 'user-uuid-here' },
-                        title: { type: 'string', example: 'My New Chat' }
+                        title: { type: 'string', example: 'My New Chat' },
+                        createdAt: { type: 'string', format: 'date-time', example: '2024-01-01T12:00:00.000Z' },
+                        updatedAt: { type: 'string', format: 'date-time', example: '2024-01-01T12:00:00.000Z' }
                       }
                     }
                   }
@@ -990,7 +992,9 @@ console.log(conversation.id);
                       type: 'object',
                       properties: {
                         id: { type: 'string' },
-                        title: { type: 'string' }
+                        title: { type: 'string' },
+                        createdAt: { type: 'string', format: 'date-time', example: '2024-01-01T12:00:00.000Z' },
+                        updatedAt: { type: 'string', format: 'date-time', example: '2024-01-01T12:30:00.000Z' }
                       }
                     }
                   }

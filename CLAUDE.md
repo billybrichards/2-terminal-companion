@@ -67,11 +67,11 @@ All conversation endpoints require authentication.
 |--------|----------|-------------|
 | `GET` | `/api/conversations` | List user's conversations (ordered by updatedAt desc) |
 | `POST` | `/api/conversations` | Create new conversation (body: `{ title }`) |
-| `GET` | `/api/conversations/:id` | Get conversation details |
-| `GET` | `/api/conversations/:id/messages` | Get messages (query: `limit`, `offset`) |
-| `PUT` | `/api/conversations/:id` | Update conversation title |
-| `DELETE` | `/api/conversations/:id` | Delete conversation and its messages |
-| `POST` | `/api/conversations/:id/clear` | Clear messages but keep conversation |
+| `GET` | `/api/conversations/{id}` | Get conversation details |
+| `GET` | `/api/conversations/{id}/messages` | Get messages (query: `limit`, `offset`) |
+| `PUT` | `/api/conversations/{id}` | Update conversation title |
+| `DELETE` | `/api/conversations/{id}` | Delete conversation and its messages |
+| `POST` | `/api/conversations/{id}/clear` | Clear messages but keep conversation |
 
 ### Database
 
