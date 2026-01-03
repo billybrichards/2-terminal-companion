@@ -448,9 +448,11 @@ adminUiRouter.post('/users/:id', async (req: Request, res: Response) => {
     // Log the update for debugging
     console.log(`[Admin UI] Updating user ${id}: subscriptionStatus=${subscriptionStatus}, credits=${credits}`);
 
+    // Set manual override flag so Stripe webhooks won't change this status
     await db.update(users)
       .set({
         subscriptionStatus: subscriptionStatus || 'not_subscribed',
+        manualSubscriptionOverride: true, // Prevent Stripe from overriding this manual change
         credits: parseInt(credits) || 0,
         updatedAt: new Date().toISOString(),
       })
@@ -460,7 +462,7 @@ adminUiRouter.post('/users/:id', async (req: Request, res: Response) => {
     const updated = await db.query.users.findFirst({
       where: eq(users.id, id),
     });
-    console.log(`[Admin UI] User ${id} updated. New status: ${(updated as any)?.subscriptionStatus}, credits: ${updated?.credits}`);
+    console.log(`[Admin UI] User ${id} updated. New status: ${(updated as any)?.subscriptionStatus}, manualOverride: ${(updated as any)?.manualSubscriptionOverride}, credits: ${updated?.credits}`);
 
     res.redirect('/admin/users?success=1');
   } catch (error) {

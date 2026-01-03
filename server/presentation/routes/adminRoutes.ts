@@ -624,17 +624,22 @@ adminRouter.put('/users/:id/subscription', async (req, res) => {
       return res.status(404).json({ error: 'User not found' });
     }
 
+    // Set manual override flag so Stripe webhooks won't change this status
     await db.update(users)
       .set({
         subscriptionStatus: body.subscriptionStatus,
+        manualSubscriptionOverride: true, // Prevent Stripe from overriding this manual change
         updatedAt: new Date().toISOString(),
       })
       .where(eq(users.id, id));
 
+    console.log(`[Admin API] User ${id} subscription set to ${body.subscriptionStatus} with manual override enabled`);
+
     res.json({
-      message: 'Subscription status updated',
+      message: 'Subscription status updated (manual override enabled)',
       userId: id,
       subscriptionStatus: body.subscriptionStatus,
+      manualOverride: true,
     });
   } catch (error) {
     if (error instanceof z.ZodError) {

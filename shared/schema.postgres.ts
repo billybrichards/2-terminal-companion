@@ -16,6 +16,7 @@ export const users = pgTable('users', {
   updatedAt: text('updated_at').default('CURRENT_TIMESTAMP'),
   isAdmin: boolean('is_admin').default(false),
   subscriptionStatus: text('subscription_status').default('not_subscribed'), // 'subscribed' | 'not_subscribed'
+  manualSubscriptionOverride: boolean('manual_subscription_override').default(false), // When true, Stripe webhooks won't change subscription status
   credits: integer('credits').default(0),
   stripeCustomerId: text('stripe_customer_id'),
   stripeSubscriptionId: text('stripe_subscription_id'),

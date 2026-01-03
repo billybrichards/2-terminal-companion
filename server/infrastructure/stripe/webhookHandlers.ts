@@ -135,6 +135,19 @@ export class WebhookHandlers {
       return;
     }
 
+    // Check if admin has set a manual override - skip subscription status update if so
+    if ((user as any).manualSubscriptionOverride) {
+      console.log(`[Webhook] Skipping subscription update for user ${user.id} - manual admin override is active`);
+      // Still update subscription ID for tracking, but don't change status
+      await db.update(users)
+        .set({ 
+          stripeSubscriptionId: subscriptionId,
+          updatedAt: new Date().toISOString()
+        })
+        .where(eq(users.id, user.id));
+      return;
+    }
+
     const isActive = ['active', 'trialing'].includes(status);
     
     await db.update(users)
@@ -171,6 +184,12 @@ export class WebhookHandlers {
       return;
     }
 
+    // Check if admin has set a manual override - skip subscription status update if so
+    if ((user as any).manualSubscriptionOverride) {
+      console.log(`[Webhook] Skipping subscription update for user ${user.id} - manual admin override is active`);
+      return;
+    }
+
     const isActive = ['active', 'trialing'].includes(status);
     const isCanceled = ['canceled', 'unpaid', 'past_due'].includes(status);
     
@@ -197,6 +216,12 @@ export class WebhookHandlers {
     const [user] = await db.select().from(users).where(eq(users.stripeCustomerId, customerId));
 
     if (!user) {
+      return;
+    }
+
+    // Check if admin has set a manual override - skip subscription status update if so
+    if ((user as any).manualSubscriptionOverride) {
+      console.log(`[Webhook] Skipping invoice paid update for user ${user.id} - manual admin override is active`);
       return;
     }
 
@@ -241,6 +266,12 @@ export class WebhookHandlers {
 
     if (!user) {
       console.error('No user found with stripe_customer_id:', customerId);
+      return;
+    }
+
+    // Check if admin has set a manual override - skip subscription status update if so
+    if ((user as any).manualSubscriptionOverride) {
+      console.log(`[Webhook] Skipping subscription deletion for user ${user.id} - manual admin override is active. Admin must manually revoke access.`);
       return;
     }
 

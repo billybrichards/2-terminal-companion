@@ -489,7 +489,7 @@ authRouter.get('/subscription-status', authMiddleware, async (req, res) => {
 
     // Fresh database read - bypass any ORM caching
     const result = await db.execute(
-      sql`SELECT subscription_status, credits, stripe_customer_id, stripe_subscription_id FROM users WHERE id = ${req.user!.sub}`
+      sql`SELECT subscription_status, manual_subscription_override, credits, stripe_customer_id, stripe_subscription_id FROM users WHERE id = ${req.user!.sub}`
     );
 
     const user = (result.rows as any[])[0];
@@ -505,6 +505,7 @@ authRouter.get('/subscription-status', authMiddleware, async (req, res) => {
       subscriptionStatus,
       // Consider 'subscribed', 'active', 'trialing' as subscribed states
       isSubscribed: ['subscribed', 'active', 'trialing'].includes(subscriptionStatus),
+      manualOverride: user.manual_subscription_override || false,
       credits: user.credits || 0,
       hasStripeCustomer: !!user.stripe_customer_id,
       hasActiveSubscription: !!user.stripe_subscription_id,

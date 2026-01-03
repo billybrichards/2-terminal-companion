@@ -44,6 +44,7 @@ async function initializeDatabase(): Promise<void> {
       -- Add new columns if they don't exist (for existing databases)
       DO $$ BEGIN
         ALTER TABLE users ADD COLUMN IF NOT EXISTS subscription_status TEXT DEFAULT 'not_subscribed';
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS manual_subscription_override BOOLEAN DEFAULT FALSE;
         ALTER TABLE users ADD COLUMN IF NOT EXISTS credits INTEGER DEFAULT 0;
         ALTER TABLE users ADD COLUMN IF NOT EXISTS stripe_customer_id TEXT;
         ALTER TABLE users ADD COLUMN IF NOT EXISTS stripe_subscription_id TEXT;

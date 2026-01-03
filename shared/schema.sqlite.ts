@@ -14,6 +14,7 @@ export const users = sqliteTable('users', {
   updatedAt: text('updated_at').default('CURRENT_TIMESTAMP'),
   isAdmin: integer('is_admin', { mode: 'boolean' }).default(false),
   subscriptionStatus: text('subscription_status').default('not_subscribed'), // 'subscribed' | 'not_subscribed'
+  manualSubscriptionOverride: integer('manual_subscription_override', { mode: 'boolean' }).default(false), // When true, Stripe webhooks won't change subscription status
   credits: integer('credits').default(0),
   stripeCustomerId: text('stripe_customer_id'),
   stripeSubscriptionId: text('stripe_subscription_id'),
