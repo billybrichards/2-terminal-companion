@@ -8,7 +8,7 @@ import { authMiddleware } from '../middleware/authMiddleware.js';
 import { authRateLimiter, registrationRateLimiter } from '../middleware/rateLimitMiddleware.js';
 import { emailService } from '../../infrastructure/email/resendService.js';
 import { emailTemplates } from '../../infrastructure/email/emailTemplates.js';
-import { eq, and, isNull, gt } from 'drizzle-orm';
+import { eq, and, isNull, gt, sql } from 'drizzle-orm';
 
 export const authRouter = Router();
 
@@ -473,6 +473,46 @@ authRouter.get('/me', authMiddleware, async (req, res) => {
   } catch (error) {
     console.error('Get user error:', error);
     res.status(500).json({ error: 'Failed to get user' });
+  }
+});
+
+// GET /api/auth/subscription-status - Fresh subscription status check with no caching
+authRouter.get('/subscription-status', authMiddleware, async (req, res) => {
+  try {
+    // Set aggressive no-cache headers to prevent any caching
+    res.set({
+      'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0',
+      'Pragma': 'no-cache',
+      'Expires': '0',
+      'Surrogate-Control': 'no-store',
+    });
+
+    // Fresh database read - bypass any ORM caching
+    const result = await db.execute(
+      sql`SELECT subscription_status, credits, stripe_customer_id, stripe_subscription_id FROM users WHERE id = ${req.user!.sub}`
+    );
+
+    const user = (result.rows as any[])[0];
+
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Return raw status from DB without forcing values
+    const subscriptionStatus = user.subscription_status || 'not_subscribed';
+
+    res.json({
+      subscriptionStatus,
+      // Consider 'subscribed', 'active', 'trialing' as subscribed states
+      isSubscribed: ['subscribed', 'active', 'trialing'].includes(subscriptionStatus),
+      credits: user.credits || 0,
+      hasStripeCustomer: !!user.stripe_customer_id,
+      hasActiveSubscription: !!user.stripe_subscription_id,
+      timestamp: new Date().toISOString(),
+    });
+  } catch (error) {
+    console.error('Get subscription status error:', error);
+    res.status(500).json({ error: 'Failed to get subscription status' });
   }
 });
 

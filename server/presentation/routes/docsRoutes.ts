@@ -809,6 +809,65 @@ curl -X POST "https://api.anplexa.com/api/auth/magic-link/verify" \\
         }
       }
     },
+    '/api/auth/subscription-status': {
+      get: {
+        tags: ['Authentication'],
+        summary: 'Get fresh subscription status (no caching)',
+        description: `Get the current user's subscription status with aggressive no-cache headers. Use this endpoint for real-time status checks after payment or admin updates.
+
+**Key Features:**
+- Fresh database read (bypasses ORM caching)
+- No-cache headers prevent browser/proxy caching
+- Returns timestamp for cache validation
+
+**Use Cases:**
+- After Stripe checkout completion
+- Manual refresh button in UI
+- Periodic polling for status updates
+- After admin manually updates subscription
+
+**Example (curl):**
+\`\`\`bash
+curl -X GET "https://api.anplexa.com/api/auth/subscription-status" \\
+  -H "Authorization: Bearer your-access-token"
+\`\`\`
+
+**Example (JavaScript with cache bypass):**
+\`\`\`javascript
+const response = await fetch('/api/auth/subscription-status', {
+  headers: {
+    'Authorization': \`Bearer \${accessToken}\`,
+    'Cache-Control': 'no-cache'
+  },
+  cache: 'no-store'
+});
+const { subscriptionStatus, isSubscribed, credits } = await response.json();
+\`\`\``,
+        security: [{ bearerAuth: [] }],
+        responses: {
+          '200': {
+            description: 'Subscription status retrieved',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    subscriptionStatus: { type: 'string', enum: ['subscribed', 'not_subscribed', 'trialing', 'active', 'canceled'], example: 'subscribed', description: 'Current subscription status from database' },
+                    isSubscribed: { type: 'boolean', example: true, description: 'True if subscribed, active, or trialing' },
+                    credits: { type: 'integer', example: 50 },
+                    hasStripeCustomer: { type: 'boolean', example: true },
+                    hasActiveSubscription: { type: 'boolean', example: true },
+                    timestamp: { type: 'string', format: 'date-time', example: '2026-01-03T22:00:00.000Z' }
+                  }
+                }
+              }
+            }
+          },
+          '401': { description: 'Unauthorized - invalid or missing token' },
+          '404': { description: 'User not found' }
+        }
+      }
+    },
     '/api/chat': {
       post: {
         tags: ['Chat'],

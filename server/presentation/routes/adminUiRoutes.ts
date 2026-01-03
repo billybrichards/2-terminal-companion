@@ -445,6 +445,9 @@ adminUiRouter.post('/users/:id', async (req: Request, res: Response) => {
     const { id } = req.params;
     const { subscriptionStatus, credits } = req.body;
 
+    // Log the update for debugging
+    console.log(`[Admin UI] Updating user ${id}: subscriptionStatus=${subscriptionStatus}, credits=${credits}`);
+
     await db.update(users)
       .set({
         subscriptionStatus: subscriptionStatus || 'not_subscribed',
@@ -452,6 +455,12 @@ adminUiRouter.post('/users/:id', async (req: Request, res: Response) => {
         updatedAt: new Date().toISOString(),
       })
       .where(eq(users.id, id));
+
+    // Verify the update was applied
+    const updated = await db.query.users.findFirst({
+      where: eq(users.id, id),
+    });
+    console.log(`[Admin UI] User ${id} updated. New status: ${(updated as any)?.subscriptionStatus}, credits: ${updated?.credits}`);
 
     res.redirect('/admin/users?success=1');
   } catch (error) {
