@@ -155,6 +155,16 @@ export const passwordResetTokens = pgTable('password_reset_tokens', {
   createdAt: text('created_at').default('CURRENT_TIMESTAMP'),
 });
 
+// Magic link tokens (passwordless auth)
+export const magicLinkTokens = pgTable('magic_link_tokens', {
+  id: text('id').primaryKey(),
+  email: text('email').notNull(),
+  tokenHash: text('token_hash').notNull(),
+  expiresAt: text('expires_at').notNull(),
+  usedAt: text('used_at'),
+  createdAt: text('created_at').default('CURRENT_TIMESTAMP'),
+});
+
 // User preferences (overrides companion defaults)
 export const userPreferences = pgTable('user_preferences', {
   id: text('id').primaryKey(),
@@ -307,6 +317,7 @@ export type ApiKey = typeof apiKeys.$inferSelect;
 export type ApiUsage = typeof apiUsage.$inferSelect;
 export type ApiUsageDaily = typeof apiUsageDaily.$inferSelect;
 export type PasswordResetToken = typeof passwordResetTokens.$inferSelect;
+export type MagicLinkToken = typeof magicLinkTokens.$inferSelect;
 export type SystemPrompt = typeof systemPrompts.$inferSelect;
 export type EmailQueue = typeof emailQueue.$inferSelect;
 export type EmailLog = typeof emailLogs.$inferSelect;

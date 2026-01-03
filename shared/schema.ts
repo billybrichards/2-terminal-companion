@@ -7,7 +7,7 @@ const isPostgres = process.env.DATABASE_URL?.startsWith('postgres');
 export * from './schema.sqlite.js';
 
 // Export PostgreSQL-specific tables that may not exist in SQLite
-export { emailQueue, emailLogs, funnelApiKeys } from './schema.postgres.js';
+export { emailQueue, emailLogs, funnelApiKeys, magicLinkTokens } from './schema.postgres.js';
 
 // Note: The actual schema used at runtime is determined in database/index.ts
 // This file provides type definitions that work for both dialects

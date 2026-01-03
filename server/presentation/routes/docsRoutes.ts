@@ -623,6 +623,192 @@ curl -X PUT "https://api.anplexa.com/api/auth/gender" \\
         }
       }
     },
+    '/api/auth/forgot-password': {
+      post: {
+        tags: ['Authentication'],
+        summary: 'Request password reset',
+        description: `Request a password reset email. If an account exists with the provided email, a reset link will be sent.
+
+**Example (curl):**
+\`\`\`bash
+curl -X POST "https://api.anplexa.com/api/auth/forgot-password" \\
+  -H "Content-Type: application/json" \\
+  -d '{"email": "user@example.com"}'
+\`\`\``,
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['email'],
+                properties: {
+                  email: { type: 'string', format: 'email', example: 'user@example.com' }
+                }
+              }
+            }
+          }
+        },
+        responses: {
+          '200': {
+            description: 'Password reset email sent (always returns success to prevent email enumeration)',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    message: { type: 'string', example: 'If an account exists with this email, a password reset link has been sent' }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    '/api/auth/reset-password': {
+      post: {
+        tags: ['Authentication'],
+        summary: 'Reset password with token',
+        description: `Reset the user's password using the token from the password reset email.
+
+**Example (curl):**
+\`\`\`bash
+curl -X POST "https://api.anplexa.com/api/auth/reset-password" \\
+  -H "Content-Type: application/json" \\
+  -d '{"token": "reset-token-from-email", "newPassword": "newSecurePassword123"}'
+\`\`\``,
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['token', 'newPassword'],
+                properties: {
+                  token: { type: 'string', example: 'abc123def456...' },
+                  newPassword: { type: 'string', minLength: 6, example: 'newSecurePassword123' }
+                }
+              }
+            }
+          }
+        },
+        responses: {
+          '200': {
+            description: 'Password reset successful',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    message: { type: 'string', example: 'Password reset successful' }
+                  }
+                }
+              }
+            }
+          },
+          '400': { description: 'Invalid or expired reset token' }
+        }
+      }
+    },
+    '/api/auth/magic-link': {
+      post: {
+        tags: ['Authentication'],
+        summary: 'Request magic link login',
+        description: `Request a magic link email for passwordless authentication. Click the link in the email to sign in without a password.
+
+**Example (curl):**
+\`\`\`bash
+curl -X POST "https://api.anplexa.com/api/auth/magic-link" \\
+  -H "Content-Type: application/json" \\
+  -d '{"email": "user@example.com"}'
+\`\`\``,
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['email'],
+                properties: {
+                  email: { type: 'string', format: 'email', example: 'user@example.com' }
+                }
+              }
+            }
+          }
+        },
+        responses: {
+          '200': {
+            description: 'Magic link sent (always returns success to prevent email enumeration)',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    message: { type: 'string', example: 'If an account exists with this email, a magic link has been sent' }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    '/api/auth/magic-link/verify': {
+      post: {
+        tags: ['Authentication'],
+        summary: 'Verify magic link token',
+        description: `Verify a magic link token and receive authentication tokens. The token expires after 15 minutes.
+
+**Example (curl):**
+\`\`\`bash
+curl -X POST "https://api.anplexa.com/api/auth/magic-link/verify" \\
+  -H "Content-Type: application/json" \\
+  -d '{"token": "magic-link-token-from-email"}'
+\`\`\``,
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['token'],
+                properties: {
+                  token: { type: 'string', example: 'abc123def456...' }
+                }
+              }
+            }
+          }
+        },
+        responses: {
+          '200': {
+            description: 'Login successful',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    message: { type: 'string', example: 'Login successful' },
+                    user: {
+                      type: 'object',
+                      properties: {
+                        id: { type: 'string', example: 'uuid-here' },
+                        email: { type: 'string', example: 'user@example.com' },
+                        displayName: { type: 'string', example: 'John Doe' },
+                        isAdmin: { type: 'boolean', example: false }
+                      }
+                    },
+                    accessToken: { type: 'string', example: 'eyJhbGciOiJIUzI1NiIs...' },
+                    refreshToken: { type: 'string', example: 'eyJhbGciOiJIUzI1NiIs...' }
+                  }
+                }
+              }
+            }
+          },
+          '400': { description: 'Invalid or expired magic link' }
+        }
+      }
+    },
     '/api/chat': {
       post: {
         tags: ['Chat'],

@@ -301,6 +301,20 @@ export const emailTemplates = {
       <p class="muted">Or copy this link: ${resetLink}</p>
     `),
   }),
+
+  magic_link: (email: string, magicLink: string) => ({
+    subject: "Your login link",
+    html: wrapEmail(`
+      <h1>Your login link</h1>
+      <p>Click below to sign in to Anplexa. No password needed.</p>
+      <a href="${magicLink}" class="btn">Sign In</a>
+      <div class="highlight">
+        <p><strong>This link expires in 15 minutes.</strong></p>
+        <p class="muted">If you didn't request this, you can safely ignore this email.</p>
+      </div>
+      <p class="muted">Or copy this link: ${magicLink}</p>
+    `),
+  }),
 };
 
 export function getW3Template(persona: string | null, userId: string) {
@@ -334,6 +348,10 @@ export function getEmailPreview(template: string, userId: string = 'preview-user
     return templateFn(userId, 'https://anplexa.com/reset-password?token=preview');
   }
   
+  if (template === 'magic_link') {
+    return templateFn('preview@example.com', 'https://anplexa.com/auth/magic-link/verify?token=preview');
+  }
+  
   return templateFn(userId);
 }
 
@@ -351,4 +369,5 @@ export const TEMPLATE_LIST = [
   { id: 'welcome', name: 'General Welcome', sequence: 'system', delay: 'on signup' },
   { id: 'subscription_confirmed', name: 'Subscription Confirmed', sequence: 'system', delay: 'on payment' },
   { id: 'password_reset', name: 'Password Reset', sequence: 'system', delay: 'on request' },
+  { id: 'magic_link', name: 'Magic Link Login', sequence: 'system', delay: 'on request' },
 ];

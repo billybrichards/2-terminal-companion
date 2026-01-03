@@ -138,6 +138,16 @@ export const passwordResetTokens = sqliteTable('password_reset_tokens', {
   createdAt: text('created_at').default('CURRENT_TIMESTAMP'),
 });
 
+// Magic link tokens (passwordless auth)
+export const magicLinkTokens = sqliteTable('magic_link_tokens', {
+  id: text('id').primaryKey(),
+  email: text('email').notNull(),
+  tokenHash: text('token_hash').notNull(),
+  expiresAt: text('expires_at').notNull(),
+  usedAt: text('used_at'),
+  createdAt: text('created_at').default('CURRENT_TIMESTAMP'),
+});
+
 // User preferences (overrides companion defaults)
 export const userPreferences = sqliteTable('user_preferences', {
   id: text('id').primaryKey(),

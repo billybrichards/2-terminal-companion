@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import crypto from 'crypto';
 import { db } from '../../infrastructure/database/index.js';
-import { users, sessions, userPreferences, passwordResetTokens } from '../../../shared/schema.js';
+import { users, sessions, userPreferences, passwordResetTokens, magicLinkTokens } from '../../../shared/schema.js';
 import { jwtAdapter } from '../../infrastructure/auth/JWTAdapter.js';
 import { authMiddleware } from '../middleware/authMiddleware.js';
 import { authRateLimiter, registrationRateLimiter } from '../middleware/rateLimitMiddleware.js';
@@ -29,6 +29,8 @@ authRouter.get('/forgot-password', postOnlyHandler('/api/auth/forgot-password'))
 authRouter.get('/reset-password', postOnlyHandler('/api/auth/reset-password'));
 authRouter.get('/refresh', postOnlyHandler('/api/auth/refresh'));
 authRouter.get('/logout', postOnlyHandler('/api/auth/logout'));
+authRouter.get('/magic-link', postOnlyHandler('/api/auth/magic-link'));
+authRouter.get('/magic-link/verify', postOnlyHandler('/api/auth/magic-link/verify'));
 
 // Validation schemas
 const registerSchema = z.object({
@@ -49,6 +51,14 @@ const forgotPasswordSchema = z.object({
 const resetPasswordSchema = z.object({
   token: z.string(),
   newPassword: z.string().min(6),
+});
+
+const magicLinkSchema = z.object({
+  email: z.string().email(),
+});
+
+const magicLinkVerifySchema = z.object({
+  token: z.string(),
 });
 
 // POST /api/auth/register
@@ -583,5 +593,143 @@ authRouter.post('/reset-password', authRateLimiter, async (req, res) => {
     }
     console.error('Reset password error:', error);
     res.status(500).json({ error: 'Password reset failed' });
+  }
+});
+
+// POST /api/auth/magic-link - Send magic link email for passwordless login
+authRouter.post('/magic-link', authRateLimiter, async (req, res) => {
+  try {
+    const body = magicLinkSchema.parse(req.body);
+
+    // Always return success to prevent email enumeration
+    const successMessage = 'If an account exists with this email, a magic link has been sent';
+
+    // Find user by email
+    const user = await db.query.users.findFirst({
+      where: eq(users.email, body.email),
+    });
+
+    if (!user) {
+      return res.json({ message: successMessage });
+    }
+
+    // Generate a secure random token
+    const token = crypto.randomBytes(32).toString('hex');
+
+    // Hash the token before storing
+    const tokenHash = await jwtAdapter.hashPassword(token);
+
+    // Set expiry to 15 minutes from now
+    const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString();
+
+    // Store the token
+    await db.insert(magicLinkTokens).values({
+      id: jwtAdapter.generateId(),
+      email: body.email,
+      tokenHash,
+      expiresAt,
+    });
+
+    // Send magic link email
+    const BASE_URL = process.env.REPLIT_DOMAINS 
+      ? `https://${process.env.REPLIT_DOMAINS.split(',')[0]}`
+      : 'https://anplexa.com';
+    const magicLink = `${BASE_URL}/auth/magic-link/verify?token=${token}`;
+    const template = emailTemplates.magic_link(body.email, magicLink);
+    emailService.sendRawEmail(body.email, template.subject, template.html).catch(err => {
+      console.error('Failed to send magic link email:', err);
+    });
+
+    res.json({ message: successMessage });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({ error: 'Validation error', details: error.errors });
+    }
+    console.error('Magic link error:', error);
+    res.status(500).json({ error: 'Magic link request failed' });
+  }
+});
+
+// POST /api/auth/magic-link/verify - Verify magic link token and login
+authRouter.post('/magic-link/verify', authRateLimiter, async (req, res) => {
+  try {
+    const body = magicLinkVerifySchema.parse(req.body);
+
+    // Find all non-expired, unused tokens
+    const now = new Date().toISOString();
+    const magicTokens = await db.select()
+      .from(magicLinkTokens)
+      .where(
+        and(
+          isNull(magicLinkTokens.usedAt),
+          gt(magicLinkTokens.expiresAt, now)
+        )
+      );
+
+    // Find matching token by verifying hash
+    let validToken = null;
+    for (const magicToken of magicTokens) {
+      const isMatch = await jwtAdapter.verifyPassword(body.token, magicToken.tokenHash);
+      if (isMatch) {
+        validToken = magicToken;
+        break;
+      }
+    }
+
+    if (!validToken) {
+      return res.status(400).json({ error: 'Invalid or expired magic link' });
+    }
+
+    // Atomically mark token as used to prevent race conditions
+    const updateResult = await db.update(magicLinkTokens)
+      .set({ usedAt: new Date().toISOString() })
+      .where(
+        and(
+          eq(magicLinkTokens.id, validToken.id),
+          isNull(magicLinkTokens.usedAt)
+        )
+      );
+
+    // Check if another request already used this token
+    if (!updateResult || (updateResult as any).rowCount === 0) {
+      return res.status(400).json({ error: 'Magic link already used' });
+    }
+
+    // Find the user
+    const user = await db.query.users.findFirst({
+      where: eq(users.email, validToken.email),
+    });
+
+    if (!user) {
+      return res.status(400).json({ error: 'User not found' });
+    }
+
+    // Generate tokens
+    const tokens = jwtAdapter.generateTokenPair(user.id, user.email, user.isAdmin || false);
+
+    // Store refresh token
+    await db.insert(sessions).values({
+      id: jwtAdapter.generateId(),
+      userId: user.id,
+      refreshToken: tokens.refreshToken,
+      expiresAt: jwtAdapter.getRefreshExpiryDate().toISOString(),
+    });
+
+    res.json({
+      message: 'Login successful',
+      user: {
+        id: user.id,
+        email: user.email,
+        displayName: user.displayName,
+        isAdmin: user.isAdmin,
+      },
+      ...tokens,
+    });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({ error: 'Validation error', details: error.errors });
+    }
+    console.error('Magic link verify error:', error);
+    res.status(500).json({ error: 'Magic link verification failed' });
   }
 });
