@@ -7,6 +7,10 @@ import { config } from 'dotenv';
 // Load environment variables
 config();
 
+// Validate and log environment configuration
+import { logEnvConfig, validateEnv } from './infrastructure/config/envValidator.js';
+logEnvConfig();
+
 import { runMigrations } from 'stripe-replit-sync';
 import { db, initializeDatabase } from './infrastructure/database/index.js';
 import { getStripeSync } from './infrastructure/stripe/stripeClient.js';
