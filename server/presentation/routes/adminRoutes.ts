@@ -1,10 +1,12 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { v4 as uuidv4 } from 'uuid';
+import crypto from 'crypto';
 import { db } from '../../infrastructure/database/index.js';
 import { companionConfig, users, userFeedback, messages, conversations, systemPrompts } from '../../../shared/schema.js';
 import { authMiddleware, adminMiddleware } from '../middleware/authMiddleware.js';
 import { getOllamaGateway } from '../../infrastructure/adapters/OllamaGateway.js';
+import { jwtAdapter } from '../../infrastructure/auth/JWTAdapter.js';
 import { eq, desc, count } from 'drizzle-orm';
 import { ANPLEXA_DEFAULT_PROMPT } from '../../config/anplexaPrompt.js';
 
@@ -561,6 +563,95 @@ adminRouter.get('/users/:id/billing', async (req, res) => {
   } catch (error) {
     console.error('Get billing error:', error);
     res.status(500).json({ error: 'Failed to get billing info' });
+  }
+});
+
+// ============== USER PASSWORD MANAGEMENT ==============
+
+const setPasswordSchema = z.object({
+  password: z.string().min(6).max(100),
+});
+
+// Helper to generate secure random password using rejection sampling
+function generateSecurePassword(length: number = 16): string {
+  const charset = 'abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789!@#$%&*';
+  let password = '';
+  for (let i = 0; i < length; i++) {
+    password += charset[crypto.randomInt(0, charset.length)];
+  }
+  return password;
+}
+
+// PUT /api/admin/users/:id/password - Manually set a user's password
+adminRouter.put('/users/:id/password', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const body = setPasswordSchema.parse(req.body);
+
+    const user = await db.query.users.findFirst({
+      where: eq(users.id, id),
+    });
+
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const passwordHash = await jwtAdapter.hashPassword(body.password);
+
+    await db.update(users)
+      .set({
+        passwordHash,
+        updatedAt: new Date().toISOString(),
+      })
+      .where(eq(users.id, id));
+
+    res.json({
+      message: 'Password updated successfully',
+      userId: id,
+      email: user.email,
+    });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({ error: 'Validation error', details: error.errors });
+    }
+    console.error('Set password error:', error);
+    res.status(500).json({ error: 'Failed to set password' });
+  }
+});
+
+// POST /api/admin/users/:id/password/generate - Auto-generate a new password for user
+adminRouter.post('/users/:id/password/generate', async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const user = await db.query.users.findFirst({
+      where: eq(users.id, id),
+    });
+
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const newPassword = generateSecurePassword(16);
+    const passwordHash = await jwtAdapter.hashPassword(newPassword);
+
+    await db.update(users)
+      .set({
+        passwordHash,
+        updatedAt: new Date().toISOString(),
+      })
+      .where(eq(users.id, id));
+
+    res.json({
+      message: 'Password generated successfully',
+      userId: id,
+      email: user.email,
+      newPassword: newPassword,
+      note: 'Save this password now - it cannot be retrieved later',
+    });
+  } catch (error) {
+    console.error('Generate password error:', error);
+    res.status(500).json({ error: 'Failed to generate password' });
   }
 });
 
