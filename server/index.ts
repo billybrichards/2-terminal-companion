@@ -50,10 +50,21 @@ const strictCorsOptions = {
       return callback(null, true);
     }
     
+    // Allow Replit domains
     if (origin.includes('.replit.dev') || origin.includes('.repl.co') || origin.includes('.replit.app')) {
       return callback(null, true);
     }
-    
+
+    // Allow Vercel domains
+    if (origin.includes('.vercel.app')) {
+      return callback(null, true);
+    }
+
+    // Allow Anplexa subdomains
+    if (origin.includes('.anplexa.com') || origin.includes('.anplexa.io') || origin.includes('.anplexa.')) {
+      return callback(null, true);
+    }
+
     return callback(new Error('Not allowed by CORS'));
   },
   credentials: true,
