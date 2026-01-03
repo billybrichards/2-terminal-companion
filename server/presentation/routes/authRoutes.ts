@@ -466,6 +466,7 @@ authRouter.get('/me', authMiddleware, async (req, res) => {
         customGender: (user as any).customGender || null,
         isAdmin: user.isAdmin,
         storagePreference: user.storagePreference,
+        subscriptionStatus: (user as any).subscriptionStatus || 'not_subscribed',
       },
       preferences: prefs || null,
     });

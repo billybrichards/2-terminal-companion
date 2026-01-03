@@ -1,0 +1,32 @@
+Cookie “dmn_chk_019b859a-b955-7060-a38d-ad4d727ab8a7” has been rejected for invalid domain. anplexa.com
+[Auth] Refreshing subscription status... posthog-recorder.js:1:199385
+[Auth] Subscription data received: 
+Object { subscriptionStatus: "not_subscribed" }
+posthog-recorder.js:1:199385
+[Auth] Updated user status to: not_subscribed posthog-recorder.js:1:199385
+[Dash] Loading most recent conversation... posthog-recorder.js:1:199385
+[ConversationService] Loaded 13 conversations from backend posthog-recorder.js:1:199385
+[ConversationService] Most recent conversation: b718b9a4-a1e9-4c94-9138-8d7a4400d551 posthog-recorder.js:1:199385
+[ConversationService] Fetching full conversation details... posthog-recorder.js:1:199385
+[ConversationService] Loaded conversation from backend: b718b9a4-a1e9-4c94-9138-8d7a4400d551 with 0 messages posthog-recorder.js:1:199385
+[Dash] No existing conversation found posthog-recorder.js:1:199385
+[Chat] Status changed: ready Error: undefined posthog-recorder.js:1:199385
+[useConversation] Migrated legacy messages to conversation: legacy-conversation posthog-recorder.js:1:199385
+[Chat] Found existing messages from conversation service, skipping ice-breaker posthog-recorder.js:1:199385
+The resource at “https://anplexa.com/_next/static/media/b8b552e8609c5636-s.p.25aba60b.woff2” preloaded with link preload was not used within a few seconds. Make sure all attributes of the preload tag are set correctly. anplexa.com
+[Dash] User has no stored gender, forcing setup 19a84270411c1e7e.js:51:161793
+[Dash] Loading most recent conversation... 19a84270411c1e7e.js:51:161990
+[ConversationService] Loaded 6 conversations from backend posthog-recorder.js:1:199385
+[ConversationService] Most recent conversation: 594d0851-ed05-4fdd-9828-72444cd3f547 posthog-recorder.js:1:199385
+[ConversationService] Fetching full conversation details... posthog-recorder.js:1:199385
+[ConversationService] Loaded conversation from backend: 594d0851-ed05-4fdd-9828-72444cd3f547 with 0 messages posthog-recorder.js:1:199385
+[Dash] No existing conversation found posthog-recorder.js:1:199385
+downloadable font: glyf: empty gid 1 used as component in glyph 627 (font-family: "Roboto Mono" style:normal weight:500 stretch:100 src index:0) source: moz-extension://bf12f1c7-7d5e-47f6-8475-576bf75c4eee/assets/RobotoMono-Medium.ttf
+[Chat] Status changed: ready Error: undefined posthog-recorder.js:1:199385
+[useConversation] Migrated legacy messages to conversation: legacy-conversation posthog-recorder.js:1:199385
+[Chat] Found existing messages from conversation service, skipping ice-breaker posthog-recorder.js:1:199385
+Uncaught Error: Permission denied to access property "nodeType"
+    rn rrweb-record.js:11300
+    nn rrweb-record.js:11310
+    a rrweb-record.js:13101
+posthog-recorder.js:1:138040

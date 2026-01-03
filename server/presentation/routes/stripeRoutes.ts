@@ -309,6 +309,7 @@ router.get('/subscription', authMiddleware, async (req: Request, res: Response) 
     
     res.json({
       status: user.subscription_status || 'not_subscribed',
+      subscriptionStatus: user.subscription_status || 'not_subscribed',
       subscription,
     });
   } catch (error: any) {
