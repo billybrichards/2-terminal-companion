@@ -228,7 +228,164 @@ adminRouter.get('/users', async (req, res) => {
       createdAt: user.createdAt,
     }));
 
-    res.json({ users: safeUsers });
+    if (req.query.format === 'json') {
+      return res.json({ users: safeUsers });
+    }
+
+    // Simple HTML UI for user management
+    const html = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin - User Management</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    body { background-color: #0a0a0a; color: #e0e1dd; font-family: 'Inter', sans-serif; }
+    .card { background-color: #1a1a1a; border: 1px solid #333; color: #e0e1dd; }
+    .table { color: #e0e1dd; }
+    .btn-primary { background-color: #7b2cbf; border: none; }
+    .btn-primary:hover { background-color: #6a25a4; }
+    .badge-sub { background-color: #7b2cbf; }
+    .password-display { background: #000; padding: 10px; border-radius: 4px; font-family: monospace; border: 1px solid #7b2cbf; color: #7b2cbf; margin-top: 10px; }
+  </style>
+</head>
+<body class="p-4">
+  <div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+      <h1>User Management</h1>
+      <a href="/admin/stats" class="btn btn-outline-light btn-sm">Back to Dashboard</a>
+    </div>
+
+    ${req.query.success ? '<div class="alert alert-success">Action completed successfully</div>' : ''}
+    
+    <div id="passwordAlert" class="alert alert-info d-none">
+      <strong>New Password Generated:</strong>
+      <div id="newPasswordValue" class="password-display"></div>
+      <small class="d-block mt-2">Please copy this password now. It cannot be shown again.</small>
+    </div>
+
+    <div class="card shadow">
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-dark table-hover mb-0">
+            <thead>
+              <tr>
+                <th>Name/Email</th>
+                <th>Status</th>
+                <th>Credits</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${safeUsers.map(u => `
+                <tr>
+                  <td>
+                    <strong>${u.displayName || 'No Name'}</strong><br>
+                    <small class="text-muted">${u.email}</small>
+                  </td>
+                  <td>
+                    <span class="badge ${u.subscriptionStatus === 'subscribed' ? 'badge-sub' : 'bg-secondary'}">
+                      ${u.subscriptionStatus}
+                    </span>
+                  </td>
+                  <td>${u.credits}</td>
+                  <td>
+                    <div class="btn-group btn-group-sm">
+                      <button onclick="generatePassword('${u.id}')" class="btn btn-outline-primary">Auto-Gen Pwd</button>
+                      <button onclick="showSetPassword('${u.id}', '${u.email}')" class="btn btn-outline-secondary">Set Pwd</button>
+                    </div>
+                  </td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Set Password Modal -->
+  <div class="modal fade" id="setPasswordModal" tabindex="-1">
+    <div class="modal-dialog">
+      <div class="modal-content bg-dark text-light border-secondary">
+        <div class="modal-header border-secondary">
+          <h5 class="modal-title">Set Password for <span id="modalUserEmail"></span></h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <input type="password" id="newPasswordInput" class="form-control bg-dark text-light border-secondary" placeholder="Enter new password (min 6 chars)">
+          <input type="hidden" id="modalUserId">
+        </div>
+        <div class="modal-footer border-secondary">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" onclick="submitNewPassword()" class="btn btn-primary">Update Password</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    const modal = new bootstrap.Modal(document.getElementById('setPasswordModal'));
+    
+    async function generatePassword(userId) {
+      if(!confirm('Are you sure you want to generate a new password for this user?')) return;
+      
+      try {
+        const res = await fetch(\`/api/admin/users/\${userId}/password/generate\`, { method: 'POST' });
+        const data = await res.json();
+        if (data.newPassword) {
+          document.getElementById('newPasswordValue').innerText = data.newPassword;
+          document.getElementById('passwordAlert').classList.remove('d-none');
+          window.scrollTo(0,0);
+        } else {
+          alert('Error: ' + (data.error || 'Failed to generate password'));
+        }
+      } catch (e) {
+        alert('Network error');
+      }
+    }
+
+    function showSetPassword(userId, email) {
+      document.getElementById('modalUserId').value = userId;
+      document.getElementById('modalUserEmail').innerText = email;
+      document.getElementById('newPasswordInput').value = '';
+      modal.show();
+    }
+
+    async function submitNewPassword() {
+      const userId = document.getElementById('modalUserId').value;
+      const password = document.getElementById('newPasswordInput').value;
+      
+      if (password.length < 6) {
+        alert('Password must be at least 6 characters');
+        return;
+      }
+
+      try {
+        const res = await fetch(\`/api/admin/users/\${userId}/password\`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ password })
+        });
+        const data = await res.json();
+        if (res.ok) {
+          modal.hide();
+          location.href = '/api/admin/users?success=1';
+        } else {
+          alert('Error: ' + (data.error || 'Failed to update password'));
+        }
+      } catch (e) {
+        alert('Network error');
+      }
+    }
+  </script>
+</body>
+</html>
+    `;
+    res.send(html);
   } catch (error) {
     console.error('List users error:', error);
     res.status(500).json({ error: 'Failed to list users' });
