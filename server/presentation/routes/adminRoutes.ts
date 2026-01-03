@@ -279,7 +279,7 @@ adminRouter.get('/users', async (req, res) => {
               </tr>
             </thead>
             <tbody>
-              ${safeUsers.map(u => `
+              ${safeUsers.map((u: any) => `
                 <tr>
                   <td>
                     <strong>${u.displayName || 'No Name'}</strong><br>
