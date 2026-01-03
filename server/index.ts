@@ -158,6 +158,83 @@ app.use((err: Error, req: express.Request, res: express.Response, next: express.
   });
 });
 
+// API Health Tests - runs on startup
+async function runStartupApiTests(port: number | string): Promise<void> {
+  console.log('\n🧪 Running API Health Tests...\n');
+
+  const baseUrl = `http://localhost:${port}`;
+  const tests: { name: string; endpoint: string; method: string; expectedStatus: number }[] = [
+    { name: 'Health Check', endpoint: '/api/health', method: 'GET', expectedStatus: 200 },
+    { name: 'Health DB Check', endpoint: '/api/health/db', method: 'GET', expectedStatus: 200 },
+    { name: 'Docs Page', endpoint: '/docs', method: 'GET', expectedStatus: 200 },
+    { name: 'OpenAPI Spec', endpoint: '/docs/openapi.json', method: 'GET', expectedStatus: 200 },
+    { name: 'Auth (no token)', endpoint: '/api/auth/me', method: 'GET', expectedStatus: 401 },
+    { name: 'Chat Config', endpoint: '/api/chat/config', method: 'GET', expectedStatus: 200 },
+    { name: 'Landing Page', endpoint: '/', method: 'GET', expectedStatus: 200 },
+  ];
+
+  const results: { name: string; status: string; time: number; details?: string }[] = [];
+  let passed = 0;
+  let failed = 0;
+
+  for (const test of tests) {
+    const startTime = Date.now();
+    try {
+      const response = await fetch(`${baseUrl}${test.endpoint}`, {
+        method: test.method,
+        headers: { 'Accept': 'application/json, text/html' },
+      });
+
+      const time = Date.now() - startTime;
+
+      if (response.status === test.expectedStatus) {
+        results.push({ name: test.name, status: '✅ PASS', time });
+        passed++;
+      } else {
+        results.push({
+          name: test.name,
+          status: '❌ FAIL',
+          time,
+          details: `Expected ${test.expectedStatus}, got ${response.status}`
+        });
+        failed++;
+      }
+    } catch (error: any) {
+      const time = Date.now() - startTime;
+      results.push({
+        name: test.name,
+        status: '❌ ERROR',
+        time,
+        details: error.message
+      });
+      failed++;
+    }
+  }
+
+  // Print results in a nice table format
+  console.log('┌──────────────────────────────────────────────────────────────┐');
+  console.log('│                    API HEALTH TEST RESULTS                   │');
+  console.log('├──────────────────────────────────────────────────────────────┤');
+
+  for (const result of results) {
+    const name = result.name.padEnd(20);
+    const status = result.status.padEnd(10);
+    const time = `${result.time}ms`.padStart(6);
+    const details = result.details ? ` - ${result.details}` : '';
+    console.log(`│ ${name} ${status} ${time}${details.substring(0, 25)}`.padEnd(63) + '│');
+  }
+
+  console.log('├──────────────────────────────────────────────────────────────┤');
+  console.log(`│ Summary: ${passed} passed, ${failed} failed, ${tests.length} total`.padEnd(63) + '│');
+  console.log('└──────────────────────────────────────────────────────────────┘');
+
+  if (failed > 0) {
+    console.log('\n⚠️  Some API tests failed. Check the results above.\n');
+  } else {
+    console.log('\n✨ All API tests passed!\n');
+  }
+}
+
 async function initStripe() {
   const databaseUrl = process.env.DATABASE_URL;
 
@@ -209,19 +286,25 @@ async function start() {
     startEmailProcessor(5);
 
     // Start server
-    app.listen(PORT, () => {
+    app.listen(PORT, async () => {
       const isPostgres = process.env.DATABASE_URL?.startsWith('postgres');
-      console.log(`\n🚀 Terminal Companion API running on http://localhost:${PORT}`);
+      console.log(`\n🚀 Anplexa API running on http://localhost:${PORT}`);
       console.log(`📦 Environment: ${process.env.NODE_ENV || 'development'}`);
       console.log(`🗄️  Database: ${isPostgres ? 'PostgreSQL' : 'SQLite (./data/companion.db)'}`);
       console.log(`🤖 Ollama: ${process.env.OLLAMA_BASE_URL}`);
-      console.log(`\n📡 Endpoints:`);
+      console.log(`\n📡 Key Endpoints:`);
       console.log(`   POST /api/auth/register`);
       console.log(`   POST /api/auth/login`);
       console.log(`   POST /api/chat`);
       console.log(`   GET  /api/health`);
+      console.log(`   GET  /docs              (API Documentation)`);
       console.log(`   POST /api/stripe/webhook`);
-      console.log('');
+
+      // Run API health tests after server is ready
+      // Small delay to ensure server is fully ready
+      setTimeout(async () => {
+        await runStartupApiTests(PORT);
+      }, 1000);
     });
   } catch (error) {
     console.error('Failed to start server:', error);
