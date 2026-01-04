@@ -219,6 +219,30 @@ function layout(title: string, content: string, showNav: boolean = true): string
     </footer>
     ` : ''}
   </div>
+  <script>
+    (function() {
+      // Handle forms with data-confirm attribute
+      document.addEventListener('submit', function(e) {
+        var form = e.target;
+        if (form.dataset && form.dataset.confirm) {
+          if (!confirm(form.dataset.confirm)) {
+            e.preventDefault();
+          }
+        }
+      });
+      // Handle copy to clipboard button
+      var copyBtn = document.getElementById('copyKeyBtn');
+      if (copyBtn) {
+        copyBtn.addEventListener('click', function() {
+          var keyDisplay = document.getElementById('newKeyDisplay');
+          if (keyDisplay) {
+            navigator.clipboard.writeText(keyDisplay.textContent);
+            copyBtn.textContent = 'Copied!';
+          }
+        });
+      }
+    })();
+  </script>
 </body>
 </html>`;
 }
@@ -397,8 +421,7 @@ adminUiRouter.get('/users', async (req: Request, res: Response) => {
             <input type="number" name="credits" value="${user.credits || 0}" style="width: 80px;">
             <button type="submit" class="btn btn-sm">Update</button>
           </form>
-          <form method="POST" action="/admin/users/${user.id}/delete" style="display: inline; margin-left: 5px;"
-                onsubmit="return confirm('Delete this user and all their data?')">
+          <form method="POST" action="/admin/users/${user.id}/delete" style="display: inline; margin-left: 5px;" data-confirm="Delete this user and all their data?">
             <button type="submit" class="btn btn-sm btn-danger">Delete</button>
           </form>
         </td>
@@ -520,8 +543,7 @@ adminUiRouter.get('/api-keys', async (req: Request, res: Response) => {
         <td>${key.createdAt}</td>
         <td>
           ${key.isActive ? `
-            <form method="POST" action="/admin/api-keys/${key.id}/delete" style="display: inline;"
-                  onsubmit="return confirm('Revoke this API key?')">
+            <form method="POST" action="/admin/api-keys/${key.id}/delete" style="display: inline;" data-confirm="Revoke this API key?">
               <button type="submit" class="btn btn-sm btn-danger">Revoke</button>
             </form>
           ` : '-'}
@@ -834,9 +856,9 @@ adminUiRouter.get('/system-prompts', async (req: Request, res: Response) => {
                 <span style="color: #888;">by ${creator?.email || 'System'}</span>
               </td>
               <td>
-                <button class="btn btn-sm" onclick="viewPrompt('${p.id}')">View</button>
-                ${!p.isActive ? `<button class="btn btn-sm" style="margin-left: 5px;" onclick="activatePrompt('${p.id}')">Activate</button>` : ''}
-                ${!p.isActive ? `<button class="btn btn-sm btn-danger" style="margin-left: 5px;" onclick="deletePrompt('${p.id}')">Delete</button>` : ''}
+                <button class="btn btn-sm" data-action="view" data-id="${p.id}">View</button>
+                ${!p.isActive ? `<button class="btn btn-sm" style="margin-left: 5px;" data-action="activate" data-id="${p.id}">Activate</button>` : ''}
+                ${!p.isActive ? `<button class="btn btn-sm btn-danger" style="margin-left: 5px;" data-action="delete" data-id="${p.id}">Delete</button>` : ''}
               </td>
             </tr>
           `;
@@ -907,8 +929,8 @@ adminUiRouter.get('/system-prompts', async (req: Request, res: Response) => {
       </div>
 
       <div style="margin-bottom: 20px;">
-        <button class="btn" onclick="showCreateModal()">Create New Prompt Version</button>
-        <button class="btn" style="margin-left: 10px; background: #333; color: #e0e0e0;" onclick="showDefaultPrompt()">View Default Prompt</button>
+        <button class="btn" id="createNewPromptBtn">Create New Prompt Version</button>
+        <button class="btn" style="margin-left: 10px; background: #333; color: #e0e0e0;" id="viewDefaultPromptBtn">View Default Prompt</button>
       </div>
 
       <h2>Prompt History</h2>
@@ -944,8 +966,8 @@ adminUiRouter.get('/system-prompts', async (req: Request, res: Response) => {
             </div>
             <div style="display: flex; gap: 10px;">
               <button type="submit" class="btn">Create Prompt</button>
-              <button type="button" class="btn" style="background: #333; color: #e0e0e0;" onclick="hideCreateModal()">Cancel</button>
-              <button type="button" class="btn" style="background: #555; color: #e0e0e0;" onclick="loadDefaultIntoEditor()">Load Default Template</button>
+              <button type="button" class="btn" style="background: #333; color: #e0e0e0;" id="cancelCreateBtn">Cancel</button>
+              <button type="button" class="btn" style="background: #555; color: #e0e0e0;" id="loadDefaultBtn">Load Default Template</button>
             </div>
           </form>
         </div>
@@ -956,115 +978,147 @@ adminUiRouter.get('/system-prompts', async (req: Request, res: Response) => {
           <h2 id="viewModalTitle">View Prompt</h2>
           <pre id="viewModalContent" style="background: #0a0a0a; padding: 20px; border-radius: 4px; white-space: pre-wrap; max-height: 60vh; overflow-y: auto;"></pre>
           <div style="margin-top: 20px;">
-            <button class="btn" style="background: #333; color: #e0e0e0;" onclick="hideViewModal()">Close</button>
+            <button class="btn" style="background: #333; color: #e0e0e0;" id="closeViewModalBtn">Close</button>
           </div>
         </div>
       </div>
 
       <script>
-        const defaultPrompt = ${JSON.stringify(ANPLEXA_DEFAULT_PROMPT)};
-        
-        function showCreateModal() {
-          document.getElementById('createModal').classList.add('show');
-        }
-        
-        function hideCreateModal() {
-          document.getElementById('createModal').classList.remove('show');
-        }
-        
-        function showViewModal() {
-          document.getElementById('viewModal').classList.add('show');
-        }
-        
-        function hideViewModal() {
-          document.getElementById('viewModal').classList.remove('show');
-        }
-        
-        function loadDefaultIntoEditor() {
-          document.getElementById('promptContent').value = defaultPrompt;
-        }
-        
-        function showDefaultPrompt() {
-          document.getElementById('viewModalTitle').textContent = 'Anplexa Default Prompt (Built-in)';
-          document.getElementById('viewModalContent').textContent = defaultPrompt;
-          showViewModal();
-        }
-        
-        async function viewPrompt(id) {
-          try {
-            const res = await fetch('/api/admin/system-prompts/' + id, {
-              credentials: 'include'
-            });
-            const data = await res.json();
-            if (data.prompt) {
-              document.getElementById('viewModalTitle').textContent = data.prompt.name + ' (v' + data.prompt.version + ')';
-              document.getElementById('viewModalContent').textContent = data.prompt.content;
-              showViewModal();
-            }
-          } catch (err) {
-            alert('Failed to load prompt');
+        (function() {
+          const defaultPrompt = ${JSON.stringify(ANPLEXA_DEFAULT_PROMPT)};
+
+          // DOM elements
+          const createModal = document.getElementById('createModal');
+          const viewModal = document.getElementById('viewModal');
+          const promptContent = document.getElementById('promptContent');
+          const viewModalTitle = document.getElementById('viewModalTitle');
+          const viewModalContent = document.getElementById('viewModalContent');
+
+          // Modal functions
+          function showCreateModal() {
+            // Load default prompt into editor by default for easy editing
+            promptContent.value = defaultPrompt;
+            createModal.classList.add('show');
           }
-        }
-        
-        async function activatePrompt(id) {
-          if (!confirm('Activate this prompt? All chat requests will use this prompt.')) return;
-          try {
-            const res = await fetch('/api/admin/system-prompts/' + id + '/activate', {
-              method: 'PUT',
-              credentials: 'include'
-            });
-            if (res.ok) {
-              location.reload();
-            } else {
+
+          function hideCreateModal() {
+            createModal.classList.remove('show');
+          }
+
+          function showViewModal() {
+            viewModal.classList.add('show');
+          }
+
+          function hideViewModal() {
+            viewModal.classList.remove('show');
+          }
+
+          function loadDefaultIntoEditor() {
+            promptContent.value = defaultPrompt;
+          }
+
+          function showDefaultPrompt() {
+            viewModalTitle.textContent = 'Anplexa Default Prompt (Built-in)';
+            viewModalContent.textContent = defaultPrompt;
+            showViewModal();
+          }
+
+          async function viewPrompt(id) {
+            try {
+              const res = await fetch('/api/admin/system-prompts/' + id, {
+                credentials: 'include'
+              });
               const data = await res.json();
-              alert(data.error || 'Failed to activate');
+              if (data.prompt) {
+                viewModalTitle.textContent = data.prompt.name + ' (v' + data.prompt.version + ')';
+                viewModalContent.textContent = data.prompt.content;
+                showViewModal();
+              }
+            } catch (err) {
+              alert('Failed to load prompt');
             }
-          } catch (err) {
-            alert('Failed to activate prompt');
           }
-        }
-        
-        async function deletePrompt(id) {
-          if (!confirm('Delete this prompt version? This cannot be undone.')) return;
-          try {
-            const res = await fetch('/api/admin/system-prompts/' + id, {
-              method: 'DELETE',
-              credentials: 'include'
-            });
-            if (res.ok) {
-              location.reload();
-            } else {
-              const data = await res.json();
-              alert(data.error || 'Failed to delete');
+
+          async function activatePrompt(id) {
+            if (!confirm('Activate this prompt? All chat requests will use this prompt.')) return;
+            try {
+              const res = await fetch('/api/admin/system-prompts/' + id + '/activate', {
+                method: 'PUT',
+                credentials: 'include'
+              });
+              if (res.ok) {
+                location.reload();
+              } else {
+                const data = await res.json();
+                alert(data.error || 'Failed to activate');
+              }
+            } catch (err) {
+              alert('Failed to activate prompt');
             }
-          } catch (err) {
-            alert('Failed to delete prompt');
           }
-        }
-        
-        document.getElementById('createForm').addEventListener('submit', async (e) => {
-          e.preventDefault();
-          const name = document.getElementById('promptName').value;
-          const notes = document.getElementById('promptNotes').value;
-          const content = document.getElementById('promptContent').value;
-          
-          try {
-            const res = await fetch('/api/admin/system-prompts', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              credentials: 'include',
-              body: JSON.stringify({ name, notes, content })
-            });
-            if (res.ok) {
-              location.reload();
-            } else {
-              const data = await res.json();
-              alert(data.error || 'Failed to create prompt');
+
+          async function deletePrompt(id) {
+            if (!confirm('Delete this prompt version? This cannot be undone.')) return;
+            try {
+              const res = await fetch('/api/admin/system-prompts/' + id, {
+                method: 'DELETE',
+                credentials: 'include'
+              });
+              if (res.ok) {
+                location.reload();
+              } else {
+                const data = await res.json();
+                alert(data.error || 'Failed to delete');
+              }
+            } catch (err) {
+              alert('Failed to delete prompt');
             }
-          } catch (err) {
-            alert('Failed to create prompt');
           }
-        });
+
+          // Event listeners for buttons
+          document.getElementById('createNewPromptBtn').addEventListener('click', showCreateModal);
+          document.getElementById('viewDefaultPromptBtn').addEventListener('click', showDefaultPrompt);
+          document.getElementById('cancelCreateBtn').addEventListener('click', hideCreateModal);
+          document.getElementById('loadDefaultBtn').addEventListener('click', loadDefaultIntoEditor);
+          document.getElementById('closeViewModalBtn').addEventListener('click', hideViewModal);
+
+          // Event delegation for table action buttons
+          document.addEventListener('click', function(e) {
+            const target = e.target;
+            if (target.matches('[data-action="view"]')) {
+              viewPrompt(target.dataset.id);
+            } else if (target.matches('[data-action="activate"]')) {
+              activatePrompt(target.dataset.id);
+            } else if (target.matches('[data-action="delete"]')) {
+              deletePrompt(target.dataset.id);
+            }
+          });
+
+          // Form submission
+          document.getElementById('createForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const name = document.getElementById('promptName').value;
+            const notes = document.getElementById('promptNotes').value;
+            const content = promptContent.value;
+
+            try {
+              const res = await fetch('/api/admin/system-prompts', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({ name: name, notes: notes, content: content })
+              });
+              if (res.ok) {
+                location.reload();
+              } else {
+                const data = await res.json();
+                alert(data.error || 'Failed to create prompt');
+              }
+            } catch (err) {
+              alert('Failed to create prompt');
+            }
+          });
+        })();
       </script>
     `);
 
@@ -1108,8 +1162,8 @@ adminUiRouter.get('/funnel-keys', async (req: Request, res: Response) => {
                   <form method="POST" action="/admin/funnel-keys/${k.id}/toggle" style="display:inline;">
                     <button type="submit" class="btn btn-sm ${k.isActive ? 'btn-danger' : ''}">${k.isActive ? 'Deactivate' : 'Activate'}</button>
                   </form>
-                  <form method="POST" action="/admin/funnel-keys/${k.id}/delete" style="display:inline;margin-left:5px;">
-                    <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Delete this key?')">Delete</button>
+                  <form method="POST" action="/admin/funnel-keys/${k.id}/delete" style="display:inline;margin-left:5px;" data-confirm="Delete this key?">
+                    <button type="submit" class="btn btn-sm btn-danger">Delete</button>
                   </form>
                 </td>
               </tr>
@@ -1128,7 +1182,7 @@ adminUiRouter.get('/funnel-keys', async (req: Request, res: Response) => {
           <h3 style="color: #28a745; margin-bottom: 15px;">New Funnel API Key Created</h3>
           <p style="color: #ff6b35; margin-bottom: 10px;"><strong>Copy this key now - it will not be shown again!</strong></p>
           <div class="api-key-display" id="newKeyDisplay">${escapeHtml(newKeyDisplay)}</div>
-          <button onclick="navigator.clipboard.writeText(document.getElementById('newKeyDisplay').textContent);this.textContent='Copied!'" class="btn" style="margin-top: 15px;">Copy to Clipboard</button>
+          <button id="copyKeyBtn" class="btn" style="margin-top: 15px;">Copy to Clipboard</button>
         </div>
       ` : ''}
       
