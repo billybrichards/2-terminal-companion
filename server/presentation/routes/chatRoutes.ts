@@ -5,7 +5,7 @@ import { companionConfig, conversations, messages, userPreferences, users, syste
 import { getOllamaGateway, ChatMessage } from '../../infrastructure/adapters/OllamaGateway.js';
 import { authMiddleware, optionalAuthMiddleware } from '../middleware/authMiddleware.js';
 import { jwtAdapter } from '../../infrastructure/auth/JWTAdapter.js';
-import { eq, desc, count, and } from 'drizzle-orm';
+import { eq, desc, count, and, sql } from 'drizzle-orm';
 import { ANPLEXA_DEFAULT_PROMPT, buildSystemPromptWithName } from '../../config/anplexaPrompt.js';
 import { PersonalityMode, buildPersonalityOverlay, isValidPersonalityMode, DEFAULT_PERSONALITY_MODE } from '../../config/personalityProfiles.js';
 
@@ -272,42 +272,42 @@ chatRouter.post('/', optionalAuthMiddleware, async (req, res) => {
       }
     }
 
-    // Check daily credit limit for free users - skip for newChat ice-breakers
+    // Check and atomically decrement credits for free users - skip for newChat ice-breakers
     if (userId && user && !isNewChat) {
       if ((user as any).subscriptionStatus !== 'subscribed') {
-        // Get today's date string (UTC) for comparison
-        const today = new Date().toISOString().split('T')[0]; // e.g., "2024-01-15"
-        const lastRefresh = (user as any).lastCreditRefresh;
-        let currentCredits = (user as any).credits ?? DAILY_FREE_CREDITS;
+        const today = new Date().toISOString().split('T')[0];
         
-        // Check if we need to refresh credits (new day or never refreshed)
-        if (!lastRefresh || lastRefresh < today) {
-          // Reset credits to daily amount (capped at 5 for free users)
-          currentCredits = DAILY_FREE_CREDITS;
-          await db.update(users)
-            .set({ 
-              credits: DAILY_FREE_CREDITS,
-              lastCreditRefresh: today 
-            })
-            .where(eq(users.id, userId));
-          console.log(`[Credits] User ${userId} credits refreshed to ${DAILY_FREE_CREDITS} for ${today}`);
-        }
+        // Try to refresh credits atomically if new day (guard: only if last_credit_refresh < today)
+        const refreshResult = await db.execute(
+          sql`UPDATE users SET credits = ${DAILY_FREE_CREDITS - 1}, last_credit_refresh = ${today}
+              WHERE id = ${userId} AND (last_credit_refresh IS NULL OR last_credit_refresh < ${today})
+              RETURNING credits`
+        );
         
-        // Check if user has credits remaining
-        if (currentCredits <= 0) {
-          // Calculate next reset time (midnight UTC tomorrow)
-          const tomorrow = new Date();
-          tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
-          tomorrow.setUTCHours(0, 0, 0, 0);
-
-          return res.status(403).json({
-            errorCode: 'CREDIT_LIMIT_REACHED',
-            error: 'Credits exhausted',
-            message: 'All used up for today! Subscribe for unlimited messages, or come back tomorrow for 5 more free messages.',
-            credits: 0,
-            maxCredits: DAILY_FREE_CREDITS,
-            resetsAt: tomorrow.toISOString(),
-          });
+        if (refreshResult.rows && refreshResult.rows.length > 0) {
+          // Successfully refreshed and consumed one credit
+          console.log(`[Credits] User ${userId} credits refreshed and decremented to ${(refreshResult.rows[0] as any).credits} for ${today}`);
+        } else {
+          // No refresh needed (same day) - atomically try to decrement credits
+          const decrementResult = await db.execute(
+            sql`UPDATE users SET credits = credits - 1 WHERE id = ${userId} AND credits > 0 RETURNING credits`
+          );
+          
+          // If no rows affected, user has no credits
+          if (!decrementResult.rows || decrementResult.rows.length === 0) {
+            const tomorrow = new Date();
+            tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
+            tomorrow.setUTCHours(0, 0, 0, 0);
+            
+            return res.status(403).json({
+              error: 'Credits exhausted',
+              message: 'All used up for today! Subscribe for unlimited messages, or come back tomorrow for 5 more free messages.',
+              credits: 0,
+              maxCredits: DAILY_FREE_CREDITS,
+              resetsAt: tomorrow.toISOString(),
+            });
+          }
+          console.log(`[Credits] User ${userId} credits atomically decremented to ${(decrementResult.rows[0] as any).credits}`);
         }
       }
     }
@@ -446,15 +446,6 @@ chatRouter.post('/', optionalAuthMiddleware, async (req, res) => {
           .where(eq(conversations.id, conversationId));
       }
 
-      // Decrement credits for free users after successful message
-      if (userId && user && (user as any).subscriptionStatus !== 'subscribed' && !isNewChat) {
-        const newCredits = Math.max(0, ((user as any).credits ?? DAILY_FREE_CREDITS) - 1);
-        await db.update(users)
-          .set({ credits: newCredits })
-          .where(eq(users.id, userId));
-        console.log(`[Credits] User ${userId} credits decremented to ${newCredits}`);
-      }
-
       // Send done event
       res.write(`data: ${JSON.stringify({
         type: 'done',
@@ -498,33 +489,38 @@ chatRouter.post('/non-streaming', optionalAuthMiddleware, async (req, res) => {
       });
     }
 
-    // Check daily credit limit for free users - skip for newChat ice-breakers
+    // Check and atomically decrement credits for free users - skip for newChat ice-breakers
     if (userId && user && !isNewChat) {
       if ((user as any).subscriptionStatus !== 'subscribed') {
         const today = new Date().toISOString().split('T')[0];
-        const lastRefresh = (user as any).lastCreditRefresh;
-        let currentCredits = (user as any).credits ?? DAILY_FREE_CREDITS;
         
-        if (!lastRefresh || lastRefresh < today) {
-          currentCredits = DAILY_FREE_CREDITS;
-          await db.update(users)
-            .set({ credits: DAILY_FREE_CREDITS, lastCreditRefresh: today })
-            .where(eq(users.id, userId));
-        }
+        // Try to refresh credits atomically if new day (guard: only if last_credit_refresh < today)
+        const refreshResult = await db.execute(
+          sql`UPDATE users SET credits = ${DAILY_FREE_CREDITS - 1}, last_credit_refresh = ${today}
+              WHERE id = ${userId} AND (last_credit_refresh IS NULL OR last_credit_refresh < ${today})
+              RETURNING credits`
+        );
         
-        if (currentCredits <= 0) {
-          const tomorrow = new Date();
-          tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
-          tomorrow.setUTCHours(0, 0, 0, 0);
-
-          return res.status(403).json({
-            errorCode: 'CREDIT_LIMIT_REACHED',
-            error: 'Credits exhausted',
-            message: 'All used up for today! Subscribe for unlimited messages, or come back tomorrow for 5 more free messages.',
-            credits: 0,
-            maxCredits: DAILY_FREE_CREDITS,
-            resetsAt: tomorrow.toISOString(),
-          });
+        if (!refreshResult.rows || refreshResult.rows.length === 0) {
+          // No refresh needed (same day) - atomically try to decrement credits
+          const decrementResult = await db.execute(
+            sql`UPDATE users SET credits = credits - 1 WHERE id = ${userId} AND credits > 0 RETURNING credits`
+          );
+          
+          // If no rows affected, user has no credits
+          if (!decrementResult.rows || decrementResult.rows.length === 0) {
+            const tomorrow = new Date();
+            tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
+            tomorrow.setUTCHours(0, 0, 0, 0);
+            
+            return res.status(403).json({
+              error: 'Credits exhausted',
+              message: 'All used up for today! Subscribe for unlimited messages, or come back tomorrow for 5 more free messages.',
+              credits: 0,
+              maxCredits: DAILY_FREE_CREDITS,
+              resetsAt: tomorrow.toISOString(),
+            });
+          }
         }
       }
     }
@@ -586,14 +582,6 @@ chatRouter.post('/non-streaming', optionalAuthMiddleware, async (req, res) => {
       temperature: config.temperature || 0.8,
       maxTokens,
     });
-
-    // Decrement credits for free users after successful message
-    if (userId && user && (user as any).subscriptionStatus !== 'subscribed' && !isNewChat) {
-      const newCredits = Math.max(0, ((user as any).credits ?? DAILY_FREE_CREDITS) - 1);
-      await db.update(users)
-        .set({ credits: newCredits })
-        .where(eq(users.id, userId));
-    }
 
     res.json({
       response,

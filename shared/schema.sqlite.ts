@@ -16,7 +16,6 @@ export const users = sqliteTable('users', {
   subscriptionStatus: text('subscription_status').default('not_subscribed'), // 'subscribed' | 'not_subscribed'
   manualSubscriptionOverride: integer('manual_subscription_override', { mode: 'boolean' }).default(false), // When true, Stripe webhooks won't change subscription status
   credits: integer('credits').default(0),
-  lastCreditRefresh: text('last_credit_refresh'), // ISO date string of last daily credit refresh
   stripeCustomerId: text('stripe_customer_id'),
   stripeSubscriptionId: text('stripe_subscription_id'),
   accountSource: text('account_source').default('frontend'), // 'frontend' | 'api'
