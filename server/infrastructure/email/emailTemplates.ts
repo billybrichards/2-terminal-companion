@@ -207,7 +207,7 @@ export const emailTemplates = {
     html: wrapEmail(`
       <h1>You're in.</h1>
       <p>You can start immediately.</p>
-      <p>You'll get three messages to see if it feels right.</p>
+      <p>You'll get ten messages to see if it feels right.</p>
       <div class="highlight">
         <p>After that:</p>
         <p><span class="price">£2.99/month</span> — Standard</p>
