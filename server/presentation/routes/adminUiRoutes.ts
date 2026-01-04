@@ -1293,76 +1293,92 @@ adminUiRouter.get('/api-reference', (req: Request, res: Response) => {
 
   const endpoints = [
     { category: 'Authentication', endpoints: [
-      { method: 'POST', path: '/api/auth/register', description: 'Register a new user account', auth: 'None' },
-      { method: 'POST', path: '/api/auth/login', description: 'Login with email/password, returns JWT tokens', auth: 'None' },
-      { method: 'POST', path: '/api/auth/refresh', description: 'Refresh access token using refresh token', auth: 'None' },
-      { method: 'POST', path: '/api/auth/logout', description: 'Logout and invalidate session', auth: 'JWT' },
-      { method: 'GET', path: '/api/auth/me', description: 'Get current user profile and preferences', auth: 'JWT/API Key' },
-      { method: 'GET', path: '/api/auth/credits', description: 'Check remaining daily message credits', auth: 'JWT/API Key' },
-      { method: 'GET', path: '/api/auth/subscription-status', description: 'Get fresh subscription status (no cache)', auth: 'JWT' },
-      { method: 'PUT', path: '/api/auth/chat-name', description: 'Update user\'s preferred chat name', auth: 'JWT/API Key' },
+      { method: 'POST', path: '/api/auth/register', description: 'Register a new user account', auth: 'None', req: '{email*, password*, displayName?}', res: '{user, accessToken, refreshToken}' },
+      { method: 'POST', path: '/api/auth/login', description: 'Login with email/password, returns JWT tokens', auth: 'None', req: '{email*, password*}', res: '{user, accessToken, refreshToken}' },
+      { method: 'POST', path: '/api/auth/refresh', description: 'Refresh access token using refresh token', auth: 'None', req: '{refreshToken*}', res: '{accessToken, refreshToken}' },
+      { method: 'POST', path: '/api/auth/logout', description: 'Logout and invalidate session', auth: 'JWT', req: '{refreshToken?}', res: '{message}' },
+      { method: 'GET', path: '/api/auth/me', description: 'Get current user profile and preferences', auth: 'JWT/API Key', res: '{user, preferences}' },
+      { method: 'GET', path: '/api/auth/credits', description: 'Check remaining daily message credits', auth: 'JWT/API Key', res: '{credits, maxCredits, unlimited, resetsAt}' },
+      { method: 'GET', path: '/api/auth/subscription-status', description: 'Get fresh subscription status (no cache)', auth: 'JWT', res: '{subscriptionStatus, isSubscribed, credits}' },
+      { method: 'PUT', path: '/api/auth/chat-name', description: 'Update user\'s preferred chat name', auth: 'JWT/API Key', req: '{name*}', res: '{chatName}' },
+      { method: 'PUT', path: '/api/auth/personality-mode', description: 'Update AI personality mode', auth: 'JWT/API Key', req: '{personalityMode*: nurturing|playful|dominant|...}', res: '{personalityMode}' },
+      { method: 'PUT', path: '/api/auth/preferred-gender', description: 'Update preferred AI gender', auth: 'JWT/API Key', req: '{gender*: male|female|non-binary|custom}', res: '{gender}' },
     ]},
     { category: 'Chat (AI Companion)', endpoints: [
-      { method: 'POST', path: '/api/chat', description: 'Send message with streaming SSE response', auth: 'JWT/API Key' },
-      { method: 'POST', path: '/api/chat/non-streaming', description: 'Send message, get complete JSON response', auth: 'JWT/API Key' },
-      { method: 'GET', path: '/api/chat/config', description: 'Get chat configuration (models, limits)', auth: 'None' },
+      { method: 'POST', path: '/api/chat', description: 'Send message with streaming SSE response', auth: 'JWT/API Key', req: '{message*, conversationId?, preferences?, personalityMode?, storeLocally?, newChat?}', res: 'SSE: {type:text|done, content}' },
+      { method: 'POST', path: '/api/chat/non-streaming', description: 'Send message, get complete JSON response', auth: 'JWT/API Key', req: '{message*, preferences?, newChat?}', res: '{response, model, length, style}' },
+      { method: 'GET', path: '/api/chat/config', description: 'Get chat configuration (models, limits)', auth: 'None', res: '{name, defaultGender, defaultLength, defaultStyle, welcomeTitle, welcomeMessage}' },
     ]},
     { category: 'Conversations', endpoints: [
-      { method: 'GET', path: '/api/conversations', description: 'List all user conversations', auth: 'JWT/API Key' },
-      { method: 'POST', path: '/api/conversations', description: 'Create a new conversation', auth: 'JWT/API Key' },
-      { method: 'GET', path: '/api/conversations/:id', description: 'Get conversation with messages', auth: 'JWT/API Key' },
-      { method: 'DELETE', path: '/api/conversations/:id', description: 'Delete a conversation', auth: 'JWT/API Key' },
+      { method: 'GET', path: '/api/conversations', description: 'List all user conversations', auth: 'JWT/API Key', res: '{conversations: [{id, title, createdAt, updatedAt}]}' },
+      { method: 'POST', path: '/api/conversations', description: 'Create a new conversation', auth: 'JWT/API Key', req: '{title?}', res: '{conversation}' },
+      { method: 'GET', path: '/api/conversations/:id', description: 'Get conversation with messages', auth: 'JWT/API Key', res: '{conversation, messages: [{id, role, content, createdAt}]}' },
+      { method: 'PUT', path: '/api/conversations/:id', description: 'Update conversation title', auth: 'JWT/API Key', req: '{title}', res: '{message}' },
+      { method: 'DELETE', path: '/api/conversations/:id', description: 'Delete a conversation', auth: 'JWT/API Key', res: '{message}' },
+      { method: 'DELETE', path: '/api/conversations/:id/messages', description: 'Clear all messages in conversation', auth: 'JWT/API Key', res: '{message}' },
     ]},
     { category: 'User Settings', endpoints: [
-      { method: 'GET', path: '/api/settings', description: 'Get user preferences', auth: 'JWT/API Key' },
-      { method: 'PUT', path: '/api/settings', description: 'Update user preferences', auth: 'JWT/API Key' },
-      { method: 'PUT', path: '/api/settings/personality', description: 'Update personality mode', auth: 'JWT/API Key' },
-      { method: 'PUT', path: '/api/settings/gender', description: 'Update preferred AI gender', auth: 'JWT/API Key' },
+      { method: 'GET', path: '/api/settings', description: 'Get user preferences', auth: 'JWT/API Key', res: '{user, preferences: {gender, preferredLength, preferredStyle, themeHue}}' },
+      { method: 'PUT', path: '/api/settings', description: 'Update general settings', auth: 'JWT/API Key', req: '{displayName?}', res: '{message}' },
+      { method: 'PUT', path: '/api/settings/storage', description: 'Toggle storage preference', auth: 'JWT/API Key', req: '{storagePreference*: local|cloud}', res: '{storagePreference}' },
+      { method: 'PUT', path: '/api/settings/gender', description: 'Update preferred AI gender', auth: 'JWT/API Key', req: '{gender*, customGender?}', res: '{gender, customGender}' },
+      { method: 'PUT', path: '/api/settings/response', description: 'Update response length/style', auth: 'JWT/API Key', req: '{preferredLength*, preferredStyle*}', res: '{preferredLength, preferredStyle}' },
+      { method: 'PUT', path: '/api/settings/theme', description: 'Sync theme preferences', auth: 'JWT/API Key', req: '{themeHue*, useOrangeAccent*}', res: '{themeHue, useOrangeAccent}' },
+      { method: 'POST', path: '/api/settings/feedback', description: 'Submit user feedback', auth: 'JWT/API Key', req: '{type*: feedback|feature, content*}', res: '{message}' },
+      { method: 'GET', path: '/api/settings/api-key', description: 'Get API key info (prefix only)', auth: 'JWT/API Key', res: '{apiKey: {id, name, keyPrefix, createdAt}}' },
+      { method: 'POST', path: '/api/settings/api-key', description: 'Create/regenerate API key (returns full key once)', auth: 'JWT/API Key', res: '{apiKey: {key, keyPrefix}}' },
+      { method: 'DELETE', path: '/api/settings/api-key', description: 'Revoke API key', auth: 'JWT/API Key', res: '{message}' },
+      { method: 'GET', path: '/api/settings/usage', description: 'Get API usage for current month', auth: 'JWT/API Key', res: '{callsThisMonth, monthStart}' },
     ]},
     { category: 'Stripe (Payments)', endpoints: [
-      { method: 'GET', path: '/api/stripe/products', description: 'List available subscription products', auth: 'None' },
-      { method: 'POST', path: '/api/stripe/checkout', description: 'Create Stripe checkout session', auth: 'JWT' },
-      { method: 'POST', path: '/api/stripe/verify-checkout', description: 'Verify checkout and update subscription', auth: 'JWT' },
-      { method: 'POST', path: '/api/stripe/portal', description: 'Create customer portal session', auth: 'JWT' },
-      { method: 'GET', path: '/api/stripe/subscription', description: 'Get user subscription details', auth: 'JWT' },
-      { method: 'POST', path: '/api/stripe/webhook', description: 'Stripe webhook handler', auth: 'Stripe Signature' },
+      { method: 'GET', path: '/api/stripe/products', description: 'List available subscription products', auth: 'None', res: '{products: [{id, name, description, price}]}' },
+      { method: 'POST', path: '/api/stripe/checkout', description: 'Create Stripe checkout session', auth: 'JWT', req: '{priceId*, successUrl?, cancelUrl?}', res: '{url, sessionId}' },
+      { method: 'POST', path: '/api/stripe/verify-checkout', description: 'Verify checkout and update subscription immediately', auth: 'JWT', req: '{sessionId*}', res: '{success, subscriptionStatus}' },
+      { method: 'POST', path: '/api/stripe/portal', description: 'Create customer portal session', auth: 'JWT', req: '{returnUrl?}', res: '{url}' },
+      { method: 'GET', path: '/api/stripe/subscription', description: 'Get user subscription details', auth: 'JWT', res: '{hasSubscription, subscriptionStatus, currentPeriodEnd, cancelAtPeriodEnd}' },
+      { method: 'POST', path: '/api/stripe/webhook', description: 'Stripe webhook handler', auth: 'Stripe Signature', res: '{received: true}' },
     ]},
     { category: 'Public (No Auth)', endpoints: [
-      { method: 'POST', path: '/api/register-subscriber', description: 'Waitlist/landing page signup', auth: 'None' },
-      { method: 'GET', path: '/api/health', description: 'Server health check', auth: 'None' },
-      { method: 'GET', path: '/api/health/database', description: 'Database connection check', auth: 'None' },
-      { method: 'GET', path: '/api/health/ollama', description: 'Ollama LLM connection check', auth: 'None' },
-      { method: 'GET', path: '/api/health/full', description: 'Full system health check', auth: 'None' },
+      { method: 'POST', path: '/api/register-subscriber', description: 'Waitlist/landing page signup', auth: 'None', req: '{email*, displayName?, chatName?, funnelType?, persona?, entrySource?, utm_*}', res: '{message, email, isNewUser}' },
+      { method: 'GET', path: '/api/health', description: 'Server health check', auth: 'None', res: '{status: ok, timestamp}' },
+      { method: 'GET', path: '/api/health/database', description: 'Database connection check', auth: 'None', res: '{status, database}' },
+      { method: 'GET', path: '/api/health/ollama', description: 'Ollama LLM connection check', auth: 'None', res: '{status, ollama, models[]}' },
+      { method: 'GET', path: '/api/health/full', description: 'Full system health check', auth: 'None', res: '{status, server, database, ollama, timestamp}' },
     ]},
     { category: 'Funnel Integration', endpoints: [
-      { method: 'POST', path: '/api/funnel/users', description: 'Create user via external funnel', auth: 'Funnel API Key' },
-      { method: 'POST', path: '/api/funnel/checkout', description: 'Create checkout for funnel user', auth: 'Funnel API Key' },
-      { method: 'GET', path: '/api/funnel/subscription/:userId', description: 'Get user subscription status', auth: 'Funnel API Key' },
-      { method: 'POST', path: '/api/funnel/amplexa/complete', description: 'Complete Amplexa funnel flow', auth: 'Funnel API Key' },
+      { method: 'POST', path: '/api/funnel/users', description: 'Create user via external funnel', auth: 'Funnel API Key', req: '{email*, password*, displayName?, chatName?, funnelType?, persona?, entrySource?}', res: '{user, apiKey, accessToken, refreshToken}' },
+      { method: 'POST', path: '/api/funnel/checkout', description: 'Create checkout for funnel user', auth: 'Funnel API Key', req: '{userId*, priceId*, successUrl?, cancelUrl?}', res: '{url, sessionId}' },
+      { method: 'GET', path: '/api/funnel/subscription/:userId', description: 'Get user subscription status', auth: 'Funnel API Key', res: '{userId, subscriptionStatus, credits}' },
+      { method: 'POST', path: '/api/funnel/amplexa/complete', description: 'Complete Amplexa funnel flow with profiling', auth: 'Funnel API Key', req: '{userId*, funnelName?, responses?, primaryNeed?, communicationStyle?, pace?, tags[]}', res: '{message, userId}' },
     ]},
     { category: 'Webhooks', endpoints: [
-      { method: 'POST', path: '/api/webhooks/stripe', description: 'Stripe event webhook', auth: 'Webhook Secret' },
-      { method: 'POST', path: '/api/webhooks/email', description: 'Email event webhook (bounces, opens)', auth: 'Webhook Secret' },
+      { method: 'POST', path: '/api/webhooks/stripe', description: 'Stripe event webhook', auth: 'stripe-signature header', res: '{received: true}' },
+      { method: 'POST', path: '/api/webhooks/subscription', description: 'Internal subscription update', auth: 'WEBHOOK_SECRET header', req: '{userId*, subscriptionStatus*}', res: '{message}' },
+      { method: 'POST', path: '/api/webhooks/credits', description: 'Internal credits update', auth: 'WEBHOOK_SECRET header', req: '{userId*, credits*, operation?}', res: '{message}' },
     ]},
     { category: 'Admin API', endpoints: [
-      { method: 'GET', path: '/api/admin/users', description: 'List all users with filters', auth: 'Admin JWT' },
-      { method: 'GET', path: '/api/admin/users/:id', description: 'Get user details', auth: 'Admin JWT' },
-      { method: 'PUT', path: '/api/admin/users/:id', description: 'Update user (subscription, credits)', auth: 'Admin JWT' },
-      { method: 'DELETE', path: '/api/admin/users/:id', description: 'Delete user and all data', auth: 'Admin JWT' },
-      { method: 'GET', path: '/api/admin/stats', description: 'Get system statistics', auth: 'Admin JWT' },
-      { method: 'GET', path: '/api/admin/stats/source-channels', description: 'Get funnel/source analytics', auth: 'Admin JWT' },
-      { method: 'GET', path: '/api/admin/contact-submissions', description: 'View contact audit log', auth: 'Admin JWT' },
-      { method: 'GET', path: '/api/admin/api-keys', description: 'List API keys', auth: 'Admin JWT' },
-      { method: 'POST', path: '/api/admin/api-keys', description: 'Generate new API key', auth: 'Admin JWT' },
-      { method: 'DELETE', path: '/api/admin/api-keys/:id', description: 'Revoke API key', auth: 'Admin JWT' },
-      { method: 'GET', path: '/api/admin/system-prompts', description: 'List system prompts', auth: 'Admin JWT' },
-      { method: 'POST', path: '/api/admin/system-prompts', description: 'Create/update system prompt', auth: 'Admin JWT' },
+      { method: 'GET', path: '/api/admin/users', description: 'List all users with filters', auth: 'Admin JWT', res: '{users: [{id, email, displayName, subscriptionStatus, credits, sourceChannel}]}' },
+      { method: 'GET', path: '/api/admin/users/:id', description: 'Get user details', auth: 'Admin JWT', res: '{user, billing}' },
+      { method: 'PUT', path: '/api/admin/users/:id/subscription', description: 'Update user subscription status (manual override)', auth: 'Admin JWT', req: '{subscriptionStatus*: subscribed|not_subscribed}', res: '{subscriptionStatus, manualOverride}' },
+      { method: 'PUT', path: '/api/admin/users/:id/credits', description: 'Update user credits', auth: 'Admin JWT', req: '{credits*, operation?: set|add|subtract}', res: '{previousCredits, newCredits}' },
+      { method: 'PUT', path: '/api/admin/users/:id/password', description: 'Reset user password', auth: 'Admin JWT', req: '{password*}', res: '{message, tempPassword}' },
+      { method: 'DELETE', path: '/api/admin/users/:id', description: 'Delete user and all data', auth: 'Admin JWT', res: '{message}' },
+      { method: 'GET', path: '/api/admin/stats', description: 'Get system statistics', auth: 'Admin JWT', res: '{stats: {totalUsers, totalConversations, totalMessages, totalFeedback}}' },
+      { method: 'GET', path: '/api/admin/stats/source-channels', description: 'Get funnel/source analytics', auth: 'Admin JWT', res: '{sourceChannels: {channel: count}}' },
+      { method: 'GET', path: '/api/admin/contact-submissions', description: 'View contact audit log', auth: 'Admin JWT', res: '{submissions: [{email, sourceChannel, createdAt}]}' },
+      { method: 'GET', path: '/api/admin/feedback', description: 'List all user feedback', auth: 'Admin JWT', res: '{feedback: [{userId, type, content, createdAt}]}' },
+      { method: 'GET', path: '/api/admin/companion', description: 'Get companion config', auth: 'Admin JWT', res: '{config: {name, defaultGender, ...}}' },
+      { method: 'PUT', path: '/api/admin/companion', description: 'Update companion config', auth: 'Admin JWT', req: '{...config fields}', res: '{message}' },
+      { method: 'POST', path: '/api/admin/test-ollama', description: 'Test Ollama connection', auth: 'Admin JWT', res: '{success, generalModel, longFormModel}' },
+      { method: 'GET', path: '/api/admin/models', description: 'List available Ollama models', auth: 'Admin JWT', res: '{models[]}' },
+      { method: 'GET', path: '/api/admin/system-prompts', description: 'List system prompts', auth: 'Admin JWT', res: '{prompts: [{id, name, content, isActive}]}' },
+      { method: 'POST', path: '/api/admin/system-prompts', description: 'Create/update system prompt', auth: 'Admin JWT', req: '{name*, content*, isActive?}', res: '{prompt}' },
     ]},
     { category: 'CRM', endpoints: [
-      { method: 'GET', path: '/admin/crm', description: 'CRM dashboard', auth: 'Admin Session' },
-      { method: 'GET', path: '/admin/crm/sequences', description: 'Email sequences list', auth: 'Admin Session' },
-      { method: 'GET', path: '/admin/crm/queue', description: 'Email queue status', auth: 'Admin Session' },
-      { method: 'GET', path: '/admin/crm/analytics', description: 'Email analytics', auth: 'Admin Session' },
+      { method: 'GET', path: '/admin/crm', description: 'CRM dashboard', auth: 'Admin Session', res: 'HTML page' },
+      { method: 'GET', path: '/admin/crm/sequences', description: 'Email sequences list', auth: 'Admin Session', res: 'HTML page' },
+      { method: 'GET', path: '/admin/crm/queue', description: 'Email queue status', auth: 'Admin Session', res: 'HTML page' },
+      { method: 'GET', path: '/admin/crm/analytics', description: 'Email analytics', auth: 'Admin Session', res: 'HTML page' },
     ]},
   ];
 
@@ -1377,14 +1393,16 @@ adminUiRouter.get('/api-reference', (req: Request, res: Response) => {
   let tableHtml = '';
   for (const cat of endpoints) {
     tableHtml += `<h2 style="margin-top: 30px; color: #ff6b35; border-bottom: 1px solid #333; padding-bottom: 8px;">${cat.category}</h2>`;
-    tableHtml += '<table style="width: 100%; margin-bottom: 20px;"><thead><tr><th style="width: 80px;">Method</th><th>Endpoint</th><th>Description</th><th style="width: 120px;">Auth</th></tr></thead><tbody>';
-    for (const ep of cat.endpoints) {
+    tableHtml += '<table style="width: 100%; margin-bottom: 20px;"><thead><tr><th style="width: 70px;">Method</th><th>Endpoint</th><th>Description</th><th style="width: 100px;">Auth</th><th>Request</th><th>Response</th></tr></thead><tbody>';
+    for (const ep of cat.endpoints as any[]) {
       const color = methodColors[ep.method] || '#888';
       tableHtml += `<tr>
-        <td><span style="background: ${color}; color: white; padding: 2px 8px; border-radius: 3px; font-size: 11px; font-weight: bold;">${ep.method}</span></td>
-        <td><code style="background: #2a2a2a; padding: 4px 8px; border-radius: 3px;">${ep.path}</code></td>
-        <td>${ep.description}</td>
-        <td><span style="color: #888; font-size: 12px;">${ep.auth}</span></td>
+        <td><span style="background: ${color}; color: white; padding: 2px 6px; border-radius: 3px; font-size: 10px; font-weight: bold;">${ep.method}</span></td>
+        <td><code style="background: #2a2a2a; padding: 3px 6px; border-radius: 3px; font-size: 11px;">${ep.path}</code></td>
+        <td style="font-size: 12px;">${ep.description}</td>
+        <td><span style="color: #888; font-size: 11px;">${ep.auth}</span></td>
+        <td><code style="font-size: 10px; color: #fbbf24; word-break: break-all;">${ep.req || '-'}</code></td>
+        <td><code style="font-size: 10px; color: #86efac; word-break: break-all;">${ep.res || '-'}</code></td>
       </tr>`;
     }
     tableHtml += '</tbody></table>';

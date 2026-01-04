@@ -784,210 +784,976 @@ docsRouter.get('/openapi.json', (req, res) => {
 });
 
 docsRouter.get('/1384/endpoints-public', (req, res) => {
-  const endpoints = [
-    { category: 'Authentication', endpoints: [
-      { method: 'POST', path: '/api/auth/register', description: 'Register a new user account', auth: 'None' },
-      { method: 'POST', path: '/api/auth/login', description: 'Login with email/password, returns JWT tokens', auth: 'None' },
-      { method: 'POST', path: '/api/auth/refresh', description: 'Refresh access token using refresh token', auth: 'None' },
-      { method: 'POST', path: '/api/auth/logout', description: 'Logout and invalidate session', auth: 'JWT' },
-      { method: 'GET', path: '/api/auth/me', description: 'Get current user profile and preferences', auth: 'JWT/API Key' },
-      { method: 'GET', path: '/api/auth/credits', description: 'Check remaining daily message credits', auth: 'JWT/API Key' },
-      { method: 'GET', path: '/api/auth/subscription-status', description: 'Get fresh subscription status (no cache)', auth: 'JWT' },
-      { method: 'PUT', path: '/api/auth/chat-name', description: 'Update user preferred chat name', auth: 'JWT/API Key' },
-    ]},
-    { category: 'Chat (AI Companion)', endpoints: [
-      { method: 'POST', path: '/api/chat', description: 'Send message with streaming SSE response', auth: 'JWT/API Key' },
-      { method: 'POST', path: '/api/chat/non-streaming', description: 'Send message, get complete JSON response', auth: 'JWT/API Key' },
-      { method: 'GET', path: '/api/chat/config', description: 'Get chat configuration (models, limits)', auth: 'None' },
-    ]},
-    { category: 'Conversations', endpoints: [
-      { method: 'GET', path: '/api/conversations', description: 'List all user conversations', auth: 'JWT/API Key' },
-      { method: 'POST', path: '/api/conversations', description: 'Create a new conversation', auth: 'JWT/API Key' },
-      { method: 'GET', path: '/api/conversations/:id', description: 'Get conversation with messages', auth: 'JWT/API Key' },
-      { method: 'DELETE', path: '/api/conversations/:id', description: 'Delete a conversation', auth: 'JWT/API Key' },
-    ]},
-    { category: 'User Settings', endpoints: [
-      { method: 'GET', path: '/api/settings', description: 'Get user preferences', auth: 'JWT/API Key' },
-      { method: 'PUT', path: '/api/settings', description: 'Update user preferences', auth: 'JWT/API Key' },
-      { method: 'PUT', path: '/api/settings/personality', description: 'Update personality mode', auth: 'JWT/API Key' },
-      { method: 'PUT', path: '/api/settings/gender', description: 'Update preferred AI gender', auth: 'JWT/API Key' },
-    ]},
-    { category: 'Stripe (Payments)', endpoints: [
-      { method: 'GET', path: '/api/stripe/products', description: 'List available subscription products', auth: 'None' },
-      { method: 'POST', path: '/api/stripe/checkout', description: 'Create Stripe checkout session', auth: 'JWT' },
-      { method: 'POST', path: '/api/stripe/verify-checkout', description: 'Verify checkout and update subscription', auth: 'JWT' },
-      { method: 'POST', path: '/api/stripe/portal', description: 'Create customer portal session', auth: 'JWT' },
-      { method: 'GET', path: '/api/stripe/subscription', description: 'Get user subscription details', auth: 'JWT' },
-      { method: 'POST', path: '/api/stripe/webhook', description: 'Stripe webhook handler', auth: 'Stripe Signature' },
-    ]},
-    { category: 'Public (No Auth)', endpoints: [
-      { method: 'POST', path: '/api/register-subscriber', description: 'Waitlist/landing page signup', auth: 'None' },
-      { method: 'GET', path: '/api/health', description: 'Server health check', auth: 'None' },
-      { method: 'GET', path: '/api/health/database', description: 'Database connection check', auth: 'None' },
-      { method: 'GET', path: '/api/health/ollama', description: 'Ollama LLM connection check', auth: 'None' },
-      { method: 'GET', path: '/api/health/full', description: 'Full system health check', auth: 'None' },
-    ]},
-    { category: 'Funnel Integration', endpoints: [
-      { method: 'POST', path: '/api/funnel/users', description: 'Create user via external funnel', auth: 'Funnel API Key' },
-      { method: 'POST', path: '/api/funnel/checkout', description: 'Create checkout for funnel user', auth: 'Funnel API Key' },
-      { method: 'GET', path: '/api/funnel/subscription/:userId', description: 'Get user subscription status', auth: 'Funnel API Key' },
-      { method: 'POST', path: '/api/funnel/amplexa/complete', description: 'Complete Amplexa funnel flow', auth: 'Funnel API Key' },
-    ]},
-    { category: 'Webhooks', endpoints: [
-      { method: 'POST', path: '/api/webhooks/stripe', description: 'Stripe event webhook', auth: 'Webhook Secret' },
-      { method: 'POST', path: '/api/webhooks/email', description: 'Email event webhook (bounces, opens)', auth: 'Webhook Secret' },
-    ]},
-    { category: 'Admin API', endpoints: [
-      { method: 'GET', path: '/api/admin/users', description: 'List all users with filters', auth: 'Admin JWT' },
-      { method: 'GET', path: '/api/admin/users/:id', description: 'Get user details', auth: 'Admin JWT' },
-      { method: 'PUT', path: '/api/admin/users/:id', description: 'Update user (subscription, credits)', auth: 'Admin JWT' },
-      { method: 'DELETE', path: '/api/admin/users/:id', description: 'Delete user and all data', auth: 'Admin JWT' },
-      { method: 'GET', path: '/api/admin/stats', description: 'Get system statistics', auth: 'Admin JWT' },
-      { method: 'GET', path: '/api/admin/stats/source-channels', description: 'Get funnel/source analytics', auth: 'Admin JWT' },
-      { method: 'GET', path: '/api/admin/contact-submissions', description: 'View contact audit log', auth: 'Admin JWT' },
-      { method: 'GET', path: '/api/admin/api-keys', description: 'List API keys', auth: 'Admin JWT' },
-      { method: 'POST', path: '/api/admin/api-keys', description: 'Generate new API key', auth: 'Admin JWT' },
-      { method: 'DELETE', path: '/api/admin/api-keys/:id', description: 'Revoke API key', auth: 'Admin JWT' },
-      { method: 'GET', path: '/api/admin/system-prompts', description: 'List system prompts', auth: 'Admin JWT' },
-      { method: 'POST', path: '/api/admin/system-prompts', description: 'Create/update system prompt', auth: 'Admin JWT' },
-    ]},
-    { category: 'CRM', endpoints: [
-      { method: 'GET', path: '/admin/crm', description: 'CRM dashboard', auth: 'Admin Session' },
-      { method: 'GET', path: '/admin/crm/sequences', description: 'Email sequences list', auth: 'Admin Session' },
-      { method: 'GET', path: '/admin/crm/queue', description: 'Email queue status', auth: 'Admin Session' },
-      { method: 'GET', path: '/admin/crm/analytics', description: 'Email analytics', auth: 'Admin Session' },
-    ]},
+  const fullEndpoints = [
+    { 
+      category: 'Authentication',
+      description: 'User registration, login, and session management',
+      endpoints: [
+        { 
+          method: 'POST', 
+          path: '/api/auth/register', 
+          description: 'Register a new user account. First user automatically becomes admin.',
+          auth: 'None',
+          requestBody: {
+            required: ['email', 'password'],
+            properties: {
+              email: { type: 'string', format: 'email', example: 'user@example.com' },
+              password: { type: 'string', minLength: 6, example: 'password123' },
+              displayName: { type: 'string', example: 'John Doe' }
+            }
+          },
+          response: {
+            '201': {
+              message: 'string',
+              user: { id: 'string (UUID)', email: 'string', displayName: 'string', isAdmin: 'boolean' },
+              accessToken: 'string (JWT)',
+              refreshToken: 'string (JWT)'
+            },
+            '400': { error: 'Email already registered' }
+          }
+        },
+        { 
+          method: 'POST', 
+          path: '/api/auth/login', 
+          description: 'Authenticate with email and password to receive JWT tokens.',
+          auth: 'None',
+          requestBody: {
+            required: ['email', 'password'],
+            properties: {
+              email: { type: 'string', format: 'email', example: 'user@example.com' },
+              password: { type: 'string', example: 'password123' }
+            }
+          },
+          response: {
+            '200': {
+              message: 'Login successful',
+              user: { id: 'string', email: 'string', displayName: 'string', isAdmin: 'boolean' },
+              accessToken: 'string (JWT, 15min expiry)',
+              refreshToken: 'string (JWT, 7day expiry)'
+            },
+            '401': { error: 'Invalid email or password' }
+          }
+        },
+        { 
+          method: 'POST', 
+          path: '/api/auth/refresh', 
+          description: 'Exchange a valid refresh token for a new access token pair.',
+          auth: 'None',
+          requestBody: {
+            required: ['refreshToken'],
+            properties: {
+              refreshToken: { type: 'string', example: 'eyJhbGciOiJIUzI1NiIs...' }
+            }
+          },
+          response: {
+            '200': { message: 'Token refreshed', accessToken: 'string', refreshToken: 'string' },
+            '401': { error: 'Invalid or expired refresh token' }
+          }
+        },
+        { 
+          method: 'POST', 
+          path: '/api/auth/logout', 
+          description: 'Invalidate the current session.',
+          auth: 'JWT',
+          requestBody: {
+            properties: {
+              refreshToken: { type: 'string', description: 'Optional, logs out specific session' }
+            }
+          },
+          response: { '200': { message: 'Logged out successfully' } }
+        },
+        { 
+          method: 'GET', 
+          path: '/api/auth/me', 
+          description: 'Retrieve the authenticated user profile and preferences.',
+          auth: 'JWT / API Key',
+          response: {
+            '200': {
+              user: {
+                id: 'string (UUID)',
+                email: 'string',
+                displayName: 'string | null',
+                isAdmin: 'boolean',
+                storagePreference: '"local" | "cloud"',
+                chatName: 'string | null',
+                personalityMode: '"nurturing" | "playful" | "dominant" | "filthy_sexy" | "intimate_companion" | "intellectual_muse"',
+                preferredGender: '"male" | "female" | "non-binary" | "custom"',
+                subscriptionStatus: '"subscribed" | "not_subscribed"'
+              },
+              preferences: { gender: 'string', preferredLength: 'string', preferredStyle: 'string' }
+            }
+          }
+        },
+        { 
+          method: 'GET', 
+          path: '/api/auth/credits', 
+          description: 'Check remaining daily message credits. Free users get 5/day.',
+          auth: 'JWT / API Key',
+          response: {
+            '200': {
+              credits: 'integer | null (null if unlimited)',
+              maxCredits: 'integer (5 for free users)',
+              unlimited: 'boolean',
+              resetsAt: 'ISO8601 datetime | null'
+            }
+          }
+        },
+        { 
+          method: 'GET', 
+          path: '/api/auth/subscription-status', 
+          description: 'Get fresh subscription status with no-cache headers.',
+          auth: 'JWT',
+          response: {
+            '200': {
+              subscriptionStatus: '"subscribed" | "not_subscribed" | "trialing" | "canceled"',
+              isSubscribed: 'boolean',
+              credits: 'integer',
+              hasStripeCustomer: 'boolean',
+              hasActiveSubscription: 'boolean',
+              timestamp: 'ISO8601 datetime'
+            }
+          }
+        },
+        { 
+          method: 'PUT', 
+          path: '/api/auth/chat-name', 
+          description: 'Update the user preferred name for personalized AI interactions.',
+          auth: 'JWT / API Key',
+          requestBody: {
+            required: ['name'],
+            properties: { name: { type: 'string', maxLength: 50, example: 'Alex' } }
+          },
+          response: { '200': { message: 'Chat name updated', chatName: 'string' } }
+        },
+        { 
+          method: 'PUT', 
+          path: '/api/auth/personality-mode', 
+          description: 'Update the AI personality mode for conversations.',
+          auth: 'JWT / API Key',
+          requestBody: {
+            required: ['personalityMode'],
+            properties: { 
+              personalityMode: { 
+                type: 'string', 
+                enum: ['nurturing', 'playful', 'dominant', 'filthy_sexy', 'intimate_companion', 'intellectual_muse'],
+                example: 'nurturing' 
+              } 
+            }
+          },
+          response: { '200': { message: 'Personality mode updated', personalityMode: 'string' } }
+        },
+        { 
+          method: 'PUT', 
+          path: '/api/auth/preferred-gender', 
+          description: 'Update the preferred AI companion gender.',
+          auth: 'JWT / API Key',
+          requestBody: {
+            required: ['gender'],
+            properties: { 
+              gender: { type: 'string', enum: ['male', 'female', 'non-binary', 'custom'], example: 'female' },
+              customGender: { type: 'string', maxLength: 100, description: 'Required if gender is "custom"' }
+            }
+          },
+          response: { '200': { message: 'Preferred gender updated', gender: 'string' } }
+        },
+      ]
+    },
+    { 
+      category: 'Chat (AI Companion)',
+      description: 'Send messages to the AI companion with streaming or non-streaming responses',
+      endpoints: [
+        { 
+          method: 'POST', 
+          path: '/api/chat', 
+          description: 'Send a message and receive a streaming SSE response from the AI companion. Uses credits for free users.',
+          auth: 'JWT / API Key',
+          requestBody: {
+            required: ['message'],
+            properties: {
+              message: { type: 'string', maxLength: 10000, example: 'Hello, how are you?' },
+              conversationId: { type: 'string (UUID)', description: 'Continue existing conversation' },
+              preferences: {
+                type: 'object',
+                properties: {
+                  length: { type: 'string', enum: ['brief', 'moderate', 'detailed'], default: 'moderate' },
+                  style: { type: 'string', enum: ['casual', 'thoughtful', 'creative'], default: 'thoughtful' }
+                }
+              },
+              personalityMode: { type: 'string', enum: ['nurturing', 'playful', 'dominant', 'filthy_sexy', 'intimate_companion', 'intellectual_muse'] },
+              storeLocally: { type: 'boolean', default: false, description: 'Skip server-side storage' },
+              newChat: { type: 'boolean', default: false, description: 'Trigger ice-breaker response' }
+            }
+          },
+          response: {
+            '200 (SSE Stream)': {
+              'Content-Type': 'text/event-stream',
+              events: [
+                'data: {"type":"text","content":"chunk of response"}',
+                'data: {"type":"done","conversationId":"uuid","userMessageId":"uuid","assistantMessageId":"uuid"}'
+              ]
+            },
+            '403': {
+              errorCode: 'CREDIT_LIMIT_REACHED',
+              error: 'Credits exhausted',
+              message: 'All used up for today...',
+              credits: 0,
+              maxCredits: 5,
+              resetsAt: 'ISO8601 datetime'
+            }
+          }
+        },
+        { 
+          method: 'POST', 
+          path: '/api/chat/non-streaming', 
+          description: 'Send a message and receive the complete response as JSON (no streaming).',
+          auth: 'JWT / API Key',
+          requestBody: {
+            required: ['message'],
+            properties: {
+              message: { type: 'string', maxLength: 10000, example: 'Tell me a joke' },
+              preferences: {
+                type: 'object',
+                properties: {
+                  length: { type: 'string', enum: ['brief', 'moderate', 'detailed'] },
+                  style: { type: 'string', enum: ['casual', 'thoughtful', 'creative'] }
+                }
+              },
+              newChat: { type: 'boolean', default: false }
+            }
+          },
+          response: {
+            '200': {
+              response: 'string (AI response text)',
+              model: 'string (e.g., "darkplanet")',
+              length: '"brief" | "moderate" | "detailed"',
+              style: '"casual" | "thoughtful" | "creative"',
+              isNewChat: 'boolean'
+            }
+          }
+        },
+        { 
+          method: 'GET', 
+          path: '/api/chat/config', 
+          description: 'Get chat configuration including companion name and defaults.',
+          auth: 'None',
+          response: {
+            '200': {
+              name: 'string (companion name)',
+              defaultGender: '"male" | "female" | "non-binary" | "custom"',
+              defaultLength: '"brief" | "moderate" | "detailed"',
+              defaultStyle: '"casual" | "thoughtful" | "creative"',
+              welcomeTitle: 'string',
+              welcomeMessage: 'string'
+            }
+          }
+        },
+      ]
+    },
+    { 
+      category: 'Conversations',
+      description: 'Manage conversation history and messages',
+      endpoints: [
+        { 
+          method: 'GET', 
+          path: '/api/conversations', 
+          description: 'List all conversations for the authenticated user.',
+          auth: 'JWT / API Key',
+          response: {
+            '200': {
+              conversations: [{
+                id: 'string (UUID)',
+                userId: 'string (UUID)',
+                title: 'string',
+                createdAt: 'ISO8601 datetime',
+                updatedAt: 'ISO8601 datetime'
+              }]
+            }
+          }
+        },
+        { 
+          method: 'POST', 
+          path: '/api/conversations', 
+          description: 'Create a new conversation.',
+          auth: 'JWT / API Key',
+          requestBody: {
+            properties: { title: { type: 'string', example: 'My New Chat' } }
+          },
+          response: {
+            '201': {
+              conversation: { id: 'string', userId: 'string', title: 'string', createdAt: 'datetime', updatedAt: 'datetime' }
+            }
+          }
+        },
+        { 
+          method: 'GET', 
+          path: '/api/conversations/:id', 
+          description: 'Get a conversation with all its messages.',
+          auth: 'JWT / API Key',
+          pathParams: { id: 'string (UUID) - Conversation ID' },
+          response: {
+            '200': {
+              conversation: { id: 'string', title: 'string', createdAt: 'datetime' },
+              messages: [{
+                id: 'string',
+                role: '"user" | "assistant"',
+                content: 'string',
+                createdAt: 'datetime'
+              }]
+            },
+            '404': { error: 'Conversation not found' }
+          }
+        },
+        { 
+          method: 'PUT', 
+          path: '/api/conversations/:id', 
+          description: 'Update conversation title.',
+          auth: 'JWT / API Key',
+          pathParams: { id: 'string (UUID)' },
+          requestBody: {
+            properties: { title: { type: 'string', example: 'Updated Title' } }
+          },
+          response: { '200': { message: 'Conversation updated' } }
+        },
+        { 
+          method: 'DELETE', 
+          path: '/api/conversations/:id', 
+          description: 'Delete a conversation and all its messages.',
+          auth: 'JWT / API Key',
+          pathParams: { id: 'string (UUID)' },
+          response: { '200': { message: 'Conversation deleted' } }
+        },
+        { 
+          method: 'DELETE', 
+          path: '/api/conversations/:id/messages', 
+          description: 'Clear all messages in a conversation without deleting it.',
+          auth: 'JWT / API Key',
+          pathParams: { id: 'string (UUID)' },
+          response: { '200': { message: 'Messages cleared' } }
+        },
+      ]
+    },
+    { 
+      category: 'User Settings',
+      description: 'Manage user preferences, themes, and API keys',
+      endpoints: [
+        { 
+          method: 'GET', 
+          path: '/api/settings', 
+          description: 'Get all user settings and preferences.',
+          auth: 'JWT / API Key',
+          response: {
+            '200': {
+              user: { id: 'string', email: 'string', displayName: 'string', storagePreference: '"local" | "cloud"' },
+              preferences: {
+                gender: '"male" | "female" | "non-binary" | "custom" | null',
+                customGender: 'string | null',
+                preferredLength: '"brief" | "moderate" | "detailed"',
+                preferredStyle: '"casual" | "thoughtful" | "creative"',
+                themeHue: 'integer (0-360)',
+                useOrangeAccent: 'boolean'
+              }
+            }
+          }
+        },
+        { 
+          method: 'PUT', 
+          path: '/api/settings', 
+          description: 'Update general settings (display name).',
+          auth: 'JWT / API Key',
+          requestBody: {
+            properties: { displayName: { type: 'string', example: 'John Doe' } }
+          },
+          response: { '200': { message: 'Settings updated' } }
+        },
+        { 
+          method: 'PUT', 
+          path: '/api/settings/storage', 
+          description: 'Toggle storage preference between local and cloud.',
+          auth: 'JWT / API Key',
+          requestBody: {
+            required: ['storagePreference'],
+            properties: { storagePreference: { type: 'string', enum: ['local', 'cloud'] } }
+          },
+          response: { '200': { message: 'Storage preference updated', storagePreference: 'string' } }
+        },
+        { 
+          method: 'PUT', 
+          path: '/api/settings/gender', 
+          description: 'Update preferred AI companion gender.',
+          auth: 'JWT / API Key',
+          requestBody: {
+            required: ['gender'],
+            properties: {
+              gender: { type: 'string', enum: ['male', 'female', 'non-binary', 'custom'] },
+              customGender: { type: 'string', maxLength: 100 }
+            }
+          },
+          response: { '200': { message: 'Gender preference updated', gender: 'string', customGender: 'string | null' } }
+        },
+        { 
+          method: 'PUT', 
+          path: '/api/settings/response', 
+          description: 'Update response length and style preferences.',
+          auth: 'JWT / API Key',
+          requestBody: {
+            required: ['preferredLength', 'preferredStyle'],
+            properties: {
+              preferredLength: { type: 'string', enum: ['brief', 'moderate', 'detailed'] },
+              preferredStyle: { type: 'string', enum: ['casual', 'thoughtful', 'creative'] }
+            }
+          },
+          response: { '200': { message: 'Response preferences updated', preferredLength: 'string', preferredStyle: 'string' } }
+        },
+        { 
+          method: 'PUT', 
+          path: '/api/settings/theme', 
+          description: 'Sync theme preferences (hue and accent color).',
+          auth: 'JWT / API Key',
+          requestBody: {
+            required: ['themeHue', 'useOrangeAccent'],
+            properties: {
+              themeHue: { type: 'integer', min: 0, max: 360, example: 220 },
+              useOrangeAccent: { type: 'boolean', example: false }
+            }
+          },
+          response: { '200': { message: 'Theme preferences updated' } }
+        },
+        { 
+          method: 'POST', 
+          path: '/api/settings/feedback', 
+          description: 'Submit user feedback or feature request.',
+          auth: 'JWT / API Key',
+          requestBody: {
+            required: ['type', 'content'],
+            properties: {
+              type: { type: 'string', enum: ['feedback', 'feature'] },
+              content: { type: 'string', maxLength: 5000 }
+            }
+          },
+          response: { '201': { message: 'Feedback submitted' } }
+        },
+        { 
+          method: 'GET', 
+          path: '/api/settings/api-key', 
+          description: 'Get user API key info (prefix only, not full key).',
+          auth: 'JWT / API Key',
+          response: {
+            '200': {
+              apiKey: {
+                id: 'string',
+                name: 'string',
+                keyPrefix: 'string (first 8 chars)',
+                createdAt: 'datetime',
+                lastUsedAt: 'datetime | null'
+              }
+            }
+          }
+        },
+        { 
+          method: 'POST', 
+          path: '/api/settings/api-key', 
+          description: 'Create or regenerate API key. Returns full key only once.',
+          auth: 'JWT / API Key',
+          response: {
+            '201': {
+              message: 'API key created',
+              apiKey: { key: 'string (SAVE THIS!)', keyPrefix: 'string' }
+            }
+          }
+        },
+        { 
+          method: 'DELETE', 
+          path: '/api/settings/api-key', 
+          description: 'Revoke current API key.',
+          auth: 'JWT / API Key',
+          response: { '200': { message: 'API key revoked' } }
+        },
+        { 
+          method: 'GET', 
+          path: '/api/settings/usage', 
+          description: 'Get API usage for current month.',
+          auth: 'JWT / API Key',
+          response: {
+            '200': { callsThisMonth: 'integer', monthStart: 'ISO8601 datetime' }
+          }
+        },
+      ]
+    },
+    { 
+      category: 'Stripe (Payments)',
+      description: 'Subscription management and payment processing via Stripe',
+      endpoints: [
+        { 
+          method: 'GET', 
+          path: '/api/stripe/products', 
+          description: 'List available subscription products and prices.',
+          auth: 'None',
+          response: {
+            '200': {
+              products: [{
+                id: 'string (Stripe product ID)',
+                name: 'string',
+                description: 'string',
+                price: { id: 'string', amount: 'integer (cents)', currency: 'string', interval: '"month" | "year"' }
+              }]
+            }
+          }
+        },
+        { 
+          method: 'POST', 
+          path: '/api/stripe/checkout', 
+          description: 'Create a Stripe checkout session for subscription.',
+          auth: 'JWT',
+          requestBody: {
+            required: ['priceId'],
+            properties: {
+              priceId: { type: 'string', example: 'price_1234...' },
+              successUrl: { type: 'string', description: 'Redirect URL after success' },
+              cancelUrl: { type: 'string', description: 'Redirect URL if cancelled' }
+            }
+          },
+          response: {
+            '200': { url: 'string (Stripe checkout URL)', sessionId: 'string' }
+          }
+        },
+        { 
+          method: 'POST', 
+          path: '/api/stripe/verify-checkout', 
+          description: 'Verify checkout session and update subscription status immediately (fixes webhook race condition).',
+          auth: 'JWT',
+          requestBody: {
+            required: ['sessionId'],
+            properties: { sessionId: { type: 'string', example: 'cs_test_...' } }
+          },
+          response: {
+            '200': { success: true, subscriptionStatus: '"subscribed"', message: 'Subscription activated' },
+            '400': { success: false, error: 'Session not completed' }
+          }
+        },
+        { 
+          method: 'POST', 
+          path: '/api/stripe/portal', 
+          description: 'Create Stripe customer portal session for subscription management.',
+          auth: 'JWT',
+          requestBody: {
+            properties: { returnUrl: { type: 'string', description: 'URL to return to after portal' } }
+          },
+          response: { '200': { url: 'string (Stripe portal URL)' } }
+        },
+        { 
+          method: 'GET', 
+          path: '/api/stripe/subscription', 
+          description: 'Get user current subscription details.',
+          auth: 'JWT',
+          response: {
+            '200': {
+              hasSubscription: 'boolean',
+              subscriptionStatus: '"subscribed" | "not_subscribed" | "canceled"',
+              currentPeriodEnd: 'ISO8601 datetime | null',
+              cancelAtPeriodEnd: 'boolean'
+            }
+          }
+        },
+        { 
+          method: 'POST', 
+          path: '/api/stripe/webhook', 
+          description: 'Stripe webhook handler for subscription events.',
+          auth: 'Stripe Signature',
+          requestBody: { description: 'Raw Stripe webhook event (signature verified via stripe-signature header)' },
+          response: { '200': { received: true } }
+        },
+      ]
+    },
+    { 
+      category: 'Public (No Auth)',
+      description: 'Public endpoints for landing pages, health checks, and lead capture',
+      endpoints: [
+        { 
+          method: 'POST', 
+          path: '/api/register-subscriber', 
+          description: 'Public waitlist/landing page signup. All submissions logged to audit trail.',
+          auth: 'None',
+          requestBody: {
+            required: ['email'],
+            properties: {
+              email: { type: 'string', format: 'email', example: 'user@example.com' },
+              displayName: { type: 'string', maxLength: 100, example: 'John Doe' },
+              chatName: { type: 'string', maxLength: 50, example: 'John' },
+              funnelType: { type: 'string', enum: ['waitlist', 'direct'], default: 'direct' },
+              persona: { type: 'string', enum: ['lonely', 'curious', 'privacy'] },
+              entrySource: { type: 'string', enum: ['instagram', 'tiktok', 'reddit', 'search', 'retargeting', 'organic', 'landing'] },
+              utm_source: { type: 'string' },
+              utm_medium: { type: 'string' },
+              utm_campaign: { type: 'string' }
+            }
+          },
+          response: {
+            '201': { message: 'Successfully registered', email: 'string', isNewUser: 'boolean' },
+            '200': { message: 'Already registered', email: 'string' }
+          }
+        },
+        { 
+          method: 'GET', 
+          path: '/api/health', 
+          description: 'Basic server health check.',
+          auth: 'None',
+          response: { '200': { status: '"ok"', timestamp: 'ISO8601 datetime' } }
+        },
+        { 
+          method: 'GET', 
+          path: '/api/health/database', 
+          description: 'Database connection health check.',
+          auth: 'None',
+          response: { '200': { status: '"ok"', database: '"connected"' } }
+        },
+        { 
+          method: 'GET', 
+          path: '/api/health/ollama', 
+          description: 'Ollama LLM connection health check.',
+          auth: 'None',
+          response: { '200': { status: '"ok"', ollama: '"connected"', models: ['array of model names'] } }
+        },
+        { 
+          method: 'GET', 
+          path: '/api/health/full', 
+          description: 'Full system health check (server, database, Ollama).',
+          auth: 'None',
+          response: {
+            '200': {
+              status: '"ok" | "degraded"',
+              server: '"ok"',
+              database: '"ok" | "error"',
+              ollama: '"ok" | "error"',
+              timestamp: 'ISO8601 datetime'
+            }
+          }
+        },
+      ]
+    },
+    { 
+      category: 'Funnel Integration',
+      description: 'External funnel integration for creating users and managing subscriptions',
+      endpoints: [
+        { 
+          method: 'POST', 
+          path: '/api/funnel/users', 
+          description: 'Create a user via external funnel. Submissions logged to audit trail. Users tagged with sourceChannel: funnel.',
+          auth: 'Funnel API Key (FUNNEL_API_SECRET)',
+          requestBody: {
+            required: ['email', 'password'],
+            properties: {
+              email: { type: 'string', format: 'email', example: 'user@example.com' },
+              password: { type: 'string', minLength: 6 },
+              displayName: { type: 'string' },
+              chatName: { type: 'string', maxLength: 50, description: 'Name AI uses to address user' },
+              funnelType: { type: 'string', enum: ['waitlist', 'direct'], default: 'direct' },
+              persona: { type: 'string', enum: ['lonely', 'curious', 'privacy'] },
+              entrySource: { type: 'string', enum: ['instagram', 'tiktok', 'reddit', 'search', 'retargeting', 'organic'] },
+              subscriptionStatus: { type: 'string', enum: ['subscribed', 'not_subscribed'], default: 'not_subscribed' }
+            }
+          },
+          response: {
+            '201': {
+              message: 'User created successfully',
+              user: { id: 'string', email: 'string', displayName: 'string' },
+              apiKey: 'string (auto-generated)',
+              accessToken: 'string',
+              refreshToken: 'string'
+            },
+            '400': { error: 'Email already registered' },
+            '403': { error: 'Invalid funnel API secret' }
+          }
+        },
+        { 
+          method: 'POST', 
+          path: '/api/funnel/checkout', 
+          description: 'Create Stripe checkout session for a funnel user.',
+          auth: 'Funnel API Key',
+          requestBody: {
+            required: ['userId', 'priceId'],
+            properties: {
+              userId: { type: 'string (UUID)' },
+              priceId: { type: 'string (Stripe price ID)' },
+              successUrl: { type: 'string' },
+              cancelUrl: { type: 'string' }
+            }
+          },
+          response: { '200': { url: 'string', sessionId: 'string' } }
+        },
+        { 
+          method: 'GET', 
+          path: '/api/funnel/subscription/:userId', 
+          description: 'Get subscription status for a funnel user.',
+          auth: 'Funnel API Key',
+          pathParams: { userId: 'string (UUID)' },
+          response: {
+            '200': {
+              userId: 'string',
+              subscriptionStatus: '"subscribed" | "not_subscribed"',
+              credits: 'integer'
+            }
+          }
+        },
+        { 
+          method: 'POST', 
+          path: '/api/funnel/amplexa/complete', 
+          description: 'Complete Amplexa personality funnel flow with profiling data.',
+          auth: 'Funnel API Key',
+          requestBody: {
+            required: ['userId'],
+            properties: {
+              userId: { type: 'string (UUID)' },
+              funnelName: { type: 'string', example: 'amplexa_v1' },
+              responses: { type: 'object', description: 'Key-value pairs of funnel responses' },
+              primaryNeed: { type: 'string', example: 'companionship' },
+              communicationStyle: { type: 'string', example: 'warm and supportive' },
+              pace: { type: 'string', example: 'gradual' },
+              tags: { type: 'array of strings', example: ['empathetic', 'listener'] }
+            }
+          },
+          response: { '200': { message: 'Amplexa funnel completed', userId: 'string' } }
+        },
+      ]
+    },
+    { 
+      category: 'Admin API',
+      description: 'Administrative endpoints (requires isAdmin=true)',
+      endpoints: [
+        { method: 'GET', path: '/api/admin/users', description: 'List all users with filters. Add ?format=json for JSON response.', auth: 'Admin JWT' },
+        { method: 'GET', path: '/api/admin/users/:id', description: 'Get detailed user info including billing.', auth: 'Admin JWT' },
+        { method: 'DELETE', path: '/api/admin/users/:id', description: 'Delete user and all their data (conversations, messages, feedback).', auth: 'Admin JWT' },
+        { method: 'PUT', path: '/api/admin/users/:id/subscription', description: 'Manually set subscription status (enables manual override flag).', auth: 'Admin JWT',
+          requestBody: { properties: { subscriptionStatus: { type: 'string', enum: ['subscribed', 'not_subscribed'] } } } },
+        { method: 'PUT', path: '/api/admin/users/:id/credits', description: 'Update user credits (set, add, or subtract).', auth: 'Admin JWT',
+          requestBody: { properties: { credits: { type: 'integer' }, operation: { type: 'string', enum: ['set', 'add', 'subtract'], default: 'set' } } } },
+        { method: 'GET', path: '/api/admin/users/:id/billing', description: 'Get user billing info (subscription + credits).', auth: 'Admin JWT' },
+        { method: 'PUT', path: '/api/admin/users/:id/password', description: 'Reset user password.', auth: 'Admin JWT' },
+        { method: 'GET', path: '/api/admin/stats', description: 'Get system statistics (users, conversations, messages, feedback counts).', auth: 'Admin JWT' },
+        { method: 'GET', path: '/api/admin/stats/source-channels', description: 'Get funnel/source channel analytics.', auth: 'Admin JWT' },
+        { method: 'GET', path: '/api/admin/contact-submissions', description: 'View contact audit log with filters.', auth: 'Admin JWT' },
+        { method: 'GET', path: '/api/admin/feedback', description: 'List all user feedback.', auth: 'Admin JWT' },
+        { method: 'GET', path: '/api/admin/companion', description: 'Get full companion config.', auth: 'Admin JWT' },
+        { method: 'PUT', path: '/api/admin/companion', description: 'Update companion config.', auth: 'Admin JWT' },
+        { method: 'POST', path: '/api/admin/test-ollama', description: 'Test Ollama connection with both models.', auth: 'Admin JWT' },
+        { method: 'GET', path: '/api/admin/models', description: 'List available Ollama models.', auth: 'Admin JWT' },
+        { method: 'GET', path: '/api/admin/system-prompts', description: 'List all system prompts with version history.', auth: 'Admin JWT' },
+        { method: 'POST', path: '/api/admin/system-prompts', description: 'Create or update system prompt.', auth: 'Admin JWT' },
+      ]
+    },
+    { 
+      category: 'Webhooks',
+      description: 'External webhook handlers',
+      endpoints: [
+        { method: 'POST', path: '/api/webhooks/stripe', description: 'Stripe event webhook (subscription.created, updated, deleted, invoice.paid).', auth: 'Webhook Secret (stripe-signature header)' },
+        { method: 'POST', path: '/api/webhooks/subscription', description: 'Internal subscription update webhook.', auth: 'WEBHOOK_SECRET header' },
+        { method: 'POST', path: '/api/webhooks/credits', description: 'Internal credits update webhook.', auth: 'WEBHOOK_SECRET header' },
+      ]
+    },
   ];
 
-  const methodColors: Record<string, string> = {
-    GET: '#28a745',
-    POST: '#007bff',
-    PUT: '#ffc107',
-    DELETE: '#dc3545',
-    PATCH: '#17a2b8',
-  };
+  const methodColors: Record<string, string> = { GET: '#28a745', POST: '#007bff', PUT: '#ffc107', DELETE: '#dc3545', PATCH: '#17a2b8' };
 
-  let tableHtml = '';
-  for (const cat of endpoints) {
-    tableHtml += `<h2 style="margin-top: 30px; color: #a78bfa; border-bottom: 1px solid #4c1d95; padding-bottom: 8px;">${cat.category}</h2>`;
-    tableHtml += '<table style="width: 100%; margin-bottom: 20px; border-collapse: collapse;"><thead><tr><th style="text-align: left; padding: 12px; background: #1e1b4b; color: #a78bfa; width: 80px;">Method</th><th style="text-align: left; padding: 12px; background: #1e1b4b; color: #a78bfa;">Endpoint</th><th style="text-align: left; padding: 12px; background: #1e1b4b; color: #a78bfa;">Description</th><th style="text-align: left; padding: 12px; background: #1e1b4b; color: #a78bfa; width: 120px;">Auth</th></tr></thead><tbody>';
+  let endpointsHtml = '';
+  for (const cat of fullEndpoints) {
+    endpointsHtml += `<div class="category" id="${cat.category.toLowerCase().replace(/[^a-z]/g, '-')}">
+      <h2>${cat.category}</h2>
+      <p class="cat-desc">${cat.description}</p>`;
+    
     for (const ep of cat.endpoints) {
       const color = methodColors[ep.method] || '#888';
-      tableHtml += `<tr style="border-bottom: 1px solid #4c1d95;">
-        <td style="padding: 10px;"><span style="background: ${color}; color: white; padding: 2px 8px; border-radius: 3px; font-size: 11px; font-weight: bold;">${ep.method}</span></td>
-        <td style="padding: 10px;"><code style="background: #1e1b4b; padding: 4px 8px; border-radius: 3px; color: #86efac;">${ep.path}</code></td>
-        <td style="padding: 10px; color: #cbd5e1;">${ep.description}</td>
-        <td style="padding: 10px;"><span style="color: #888; font-size: 12px;">${ep.auth}</span></td>
-      </tr>`;
+      const endpointId = `${ep.method}-${ep.path}`.replace(/[^a-zA-Z0-9]/g, '-');
+      
+      let detailsHtml = '';
+      if (ep.pathParams) {
+        detailsHtml += '<div class="section"><h4>Path Parameters</h4><div class="schema">' + 
+          Object.entries(ep.pathParams).map(([k,v]) => `<div class="prop"><span class="key">${k}</span>: <span class="type">${v}</span></div>`).join('') + '</div></div>';
+      }
+      if (ep.requestBody) {
+        const reqProps = ep.requestBody.properties || {};
+        const required = ep.requestBody.required || [];
+        detailsHtml += '<div class="section"><h4>Request Body</h4><div class="schema">';
+        for (const [key, val] of Object.entries(reqProps) as [string, any][]) {
+          const isReq = required.includes(key);
+          const typeStr = val.enum ? val.enum.map((e: string) => `"${e}"`).join(' | ') : (val.type || 'any');
+          detailsHtml += `<div class="prop"><span class="key">${key}${isReq ? ' *' : ''}</span>: <span class="type">${typeStr}</span>${val.example ? ` <span class="example">e.g. ${JSON.stringify(val.example)}</span>` : ''}${val.description ? ` <span class="desc">${val.description}</span>` : ''}</div>`;
+        }
+        detailsHtml += '</div></div>';
+      }
+      if (ep.response) {
+        detailsHtml += '<div class="section"><h4>Response</h4>';
+        for (const [code, schema] of Object.entries(ep.response)) {
+          detailsHtml += `<div class="response-code"><span class="code ${code.startsWith('2') ? 'success' : 'error'}">${code}</span></div><div class="schema"><pre>${JSON.stringify(schema, null, 2)}</pre></div>`;
+        }
+        detailsHtml += '</div>';
+      }
+      
+      endpointsHtml += `
+        <div class="endpoint" onclick="toggleDetails('${endpointId}')">
+          <div class="endpoint-header">
+            <span class="method" style="background:${color}">${ep.method}</span>
+            <code class="path">${ep.path}</code>
+            <span class="auth-badge">${ep.auth}</span>
+            <span class="expand-icon">+</span>
+          </div>
+          <p class="endpoint-desc">${ep.description}</p>
+          <div class="endpoint-details" id="${endpointId}">${detailsHtml}</div>
+        </div>`;
     }
-    tableHtml += '</tbody></table>';
+    endpointsHtml += '</div>';
   }
+
+  const toc = fullEndpoints.map(c => `<a href="#${c.category.toLowerCase().replace(/[^a-z]/g, '-')}">${c.category}</a>`).join('');
 
   const html = `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Anplexa API Endpoints - Public Reference</title>
+  <title>Anplexa API - Complete Interactive Documentation</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: 'Inter', sans-serif; background: #0f0f1a; color: #e2e8f0; min-height: 100vh; }
-    .header {
-      background: linear-gradient(90deg, #6366f1 0%, #8b5cf6 50%, #a855f7 100%);
-      padding: 20px 40px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      color: white;
-    }
-    .header h1 { font-size: 1.5rem; font-weight: 700; }
-    .header nav a { color: white; text-decoration: none; margin-left: 20px; font-weight: 500; opacity: 0.9; }
+    body { font-family: 'Inter', sans-serif; background: #0f0a1a; color: #e2e8f0; line-height: 1.6; }
+    code, pre { font-family: 'Fira Code', monospace; }
+    .header { background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #a855f7 100%); padding: 24px 40px; display: flex; justify-content: space-between; align-items: center; }
+    .header h1 { font-size: 1.5rem; font-weight: 700; color: white; }
+    .header .version { background: rgba(255,255,255,0.2); padding: 4px 12px; border-radius: 12px; font-size: 0.75rem; color: white; margin-left: 12px; }
+    .header nav a { color: white; text-decoration: none; margin-left: 24px; font-weight: 500; opacity: 0.9; }
     .header nav a:hover { opacity: 1; }
-    .container { max-width: 1400px; margin: 0 auto; padding: 40px; }
-    h1.title { color: #f1f5f9; margin-bottom: 10px; font-size: 2rem; }
-    .subtitle { color: #94a3b8; margin-bottom: 30px; }
-    .card { background: #1e1b4b; padding: 25px; border-radius: 12px; margin-bottom: 30px; border: 1px solid #4c1d95; }
-    .card h3 { color: #a78bfa; margin-bottom: 15px; }
-    table { width: 100%; }
-    code { font-family: 'Courier New', monospace; }
-    .btn { 
-      display: inline-block;
-      padding: 10px 20px; 
-      background: #6366f1; 
-      color: white; 
-      border: none; 
-      border-radius: 8px; 
-      cursor: pointer;
-      font-family: inherit;
-      font-size: 14px;
-      text-decoration: none;
-      margin-right: 10px;
-    }
-    .btn:hover { background: #4f46e5; }
-    .btn-secondary { background: #4c1d95; }
+    .layout { display: flex; max-width: 1600px; margin: 0 auto; }
+    .sidebar { width: 260px; background: #1a1025; padding: 24px; position: sticky; top: 0; height: 100vh; overflow-y: auto; border-right: 1px solid #2d1f42; }
+    .sidebar h3 { color: #a78bfa; margin-bottom: 16px; font-size: 0.875rem; text-transform: uppercase; letter-spacing: 1px; }
+    .sidebar a { display: block; color: #94a3b8; text-decoration: none; padding: 8px 12px; border-radius: 6px; margin-bottom: 4px; font-size: 0.875rem; }
+    .sidebar a:hover { background: #2d1f42; color: #e2e8f0; }
+    .main { flex: 1; padding: 40px; min-width: 0; }
+    .intro { background: linear-gradient(135deg, #1e1b4b 0%, #312e81 100%); padding: 32px; border-radius: 16px; margin-bottom: 40px; border: 1px solid #4c1d95; }
+    .intro h1 { font-size: 2rem; margin-bottom: 12px; }
+    .intro p { color: #a5b4fc; margin-bottom: 20px; }
+    .auth-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; margin-top: 24px; }
+    .auth-card { background: rgba(0,0,0,0.3); padding: 16px; border-radius: 10px; border: 1px solid #4c1d95; }
+    .auth-card h4 { color: #86efac; margin-bottom: 8px; }
+    .auth-card code { color: #fbbf24; background: rgba(0,0,0,0.4); padding: 4px 8px; border-radius: 4px; font-size: 0.8rem; }
+    .auth-card p { color: #94a3b8; font-size: 0.85rem; margin-top: 8px; }
+    .buttons { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 24px; }
+    .btn { padding: 10px 20px; border-radius: 8px; font-weight: 500; text-decoration: none; border: none; cursor: pointer; font-size: 0.9rem; }
+    .btn-primary { background: #6366f1; color: white; }
+    .btn-primary:hover { background: #4f46e5; }
+    .btn-secondary { background: #4c1d95; color: white; }
     .btn-secondary:hover { background: #5b21b6; }
-    .footer { margin-top: 60px; padding: 20px 0; border-top: 1px solid #4c1d95; text-align: center; color: #64748b; }
+    .category { margin-bottom: 48px; }
+    .category h2 { color: #a78bfa; font-size: 1.5rem; margin-bottom: 8px; padding-bottom: 12px; border-bottom: 2px solid #4c1d95; }
+    .cat-desc { color: #94a3b8; margin-bottom: 20px; }
+    .endpoint { background: #1a1025; border: 1px solid #2d1f42; border-radius: 12px; margin-bottom: 12px; overflow: hidden; transition: all 0.2s; }
+    .endpoint:hover { border-color: #4c1d95; }
+    .endpoint-header { display: flex; align-items: center; padding: 16px 20px; cursor: pointer; gap: 12px; flex-wrap: wrap; }
+    .method { padding: 4px 10px; border-radius: 4px; font-size: 0.75rem; font-weight: 700; color: white; text-transform: uppercase; }
+    .path { color: #86efac; background: rgba(0,0,0,0.3); padding: 6px 12px; border-radius: 6px; flex: 1; min-width: 200px; }
+    .auth-badge { background: #312e81; color: #a5b4fc; padding: 4px 10px; border-radius: 12px; font-size: 0.75rem; }
+    .expand-icon { color: #6366f1; font-size: 1.2rem; font-weight: bold; margin-left: auto; }
+    .endpoint-desc { padding: 0 20px 16px; color: #94a3b8; font-size: 0.9rem; }
+    .endpoint-details { display: none; padding: 0 20px 20px; border-top: 1px solid #2d1f42; margin-top: 8px; padding-top: 16px; }
+    .endpoint-details.open { display: block; }
+    .section { margin-bottom: 20px; }
+    .section h4 { color: #a78bfa; margin-bottom: 12px; font-size: 0.9rem; text-transform: uppercase; letter-spacing: 0.5px; }
+    .schema { background: rgba(0,0,0,0.4); padding: 16px; border-radius: 8px; }
+    .schema pre { color: #86efac; font-size: 0.85rem; white-space: pre-wrap; word-break: break-word; }
+    .prop { padding: 6px 0; border-bottom: 1px solid #2d1f42; }
+    .prop:last-child { border-bottom: none; }
+    .key { color: #a78bfa; font-weight: 600; }
+    .type { color: #86efac; }
+    .example { color: #fbbf24; font-size: 0.8rem; margin-left: 8px; }
+    .desc { color: #64748b; font-size: 0.8rem; display: block; margin-top: 4px; }
+    .response-code { margin-bottom: 8px; }
+    .code { padding: 3px 8px; border-radius: 4px; font-size: 0.8rem; font-weight: 600; }
+    .code.success { background: #065f46; color: #6ee7b7; }
+    .code.error { background: #7f1d1d; color: #fca5a5; }
+    .footer { text-align: center; padding: 40px; color: #64748b; border-top: 1px solid #2d1f42; margin-top: 60px; }
+    .footer a { color: #a78bfa; }
+    @media (max-width: 900px) { .sidebar { display: none; } .layout { flex-direction: column; } }
   </style>
 </head>
 <body>
   <div class="header">
-    <div style="display: flex; align-items: center; gap: 16px;">
-      <h1>Anplexa API Endpoints</h1>
-      <span style="background: rgba(255,255,255,0.2); padding: 4px 10px; border-radius: 12px; font-size: 0.75rem;">v1.0.0</span>
+    <div style="display:flex;align-items:center;">
+      <h1>Anplexa API</h1>
+      <span class="version">v1.0.0</span>
     </div>
     <nav>
       <a href="/">Home</a>
-      <a href="/docs">Swagger Docs</a>
-      <a href="/docs/openapi.json">OpenAPI JSON</a>
+      <a href="/docs">Swagger UI</a>
+      <a href="/docs/openapi.json" download>OpenAPI JSON</a>
       <a href="/admin">Admin</a>
     </nav>
   </div>
   
-  <div class="container">
-    <h1 class="title">Complete API Endpoints Reference</h1>
-    <p class="subtitle">All available Anplexa API endpoints with authentication requirements</p>
-    
-    <div class="card">
-      <h3>Authentication Methods</h3>
-      <table>
-        <tr><td style="padding: 8px; color: #86efac;"><strong>JWT Bearer Token</strong></td><td style="padding: 8px;"><code style="color: #fbbf24;">Authorization: Bearer &lt;token&gt;</code></td><td style="padding: 8px; color: #94a3b8;">User sessions from login</td></tr>
-        <tr><td style="padding: 8px; color: #86efac;"><strong>API Key</strong></td><td style="padding: 8px;"><code style="color: #fbbf24;">X-API-Key: &lt;key&gt;</code></td><td style="padding: 8px; color: #94a3b8;">Server-to-server integration</td></tr>
-        <tr><td style="padding: 8px; color: #86efac;"><strong>Funnel API Key</strong></td><td style="padding: 8px;"><code style="color: #fbbf24;">Authorization: Bearer &lt;funnel_key&gt;</code></td><td style="padding: 8px; color: #94a3b8;">External funnel integrations</td></tr>
-        <tr><td style="padding: 8px; color: #86efac;"><strong>Admin JWT</strong></td><td style="padding: 8px;"><code style="color: #fbbf24;">Authorization: Bearer &lt;admin_token&gt;</code></td><td style="padding: 8px; color: #94a3b8;">Admin API access (isAdmin=true)</td></tr>
-      </table>
+  <div class="layout">
+    <div class="sidebar">
+      <h3>Navigation</h3>
+      ${toc}
+      <div style="margin-top:24px;padding-top:16px;border-top:1px solid #2d1f42;">
+        <a href="/docs" style="color:#6366f1;">Swagger Docs</a>
+        <a href="/docs/openapi.json" download>Download OpenAPI</a>
+      </div>
     </div>
     
-    <div class="card">
-      <h3>Base URLs</h3>
-      <table>
-        <tr><td style="padding: 8px; color: #86efac;"><strong>Production</strong></td><td style="padding: 8px;"><code style="color: #fbbf24;">https://api.anplexa.com</code></td></tr>
-        <tr><td style="padding: 8px; color: #86efac;"><strong>Development</strong></td><td style="padding: 8px;"><code style="color: #fbbf24;">https://&lt;repl-domain&gt;.replit.dev</code></td></tr>
-      </table>
-    </div>
-    
-    <div style="margin-bottom: 30px;">
-      <button onclick="downloadEndpoints()" class="btn">Download as JSON</button>
-      <a href="/docs/openapi.json" class="btn btn-secondary" download>Download OpenAPI Spec</a>
-      <a href="/docs" class="btn btn-secondary">Interactive Swagger Docs</a>
-    </div>
-    
-    ${tableHtml}
-    
-    <div class="footer">
-      <p>Anplexa API &copy; ${new Date().getFullYear()} | <a href="/docs" style="color: #a78bfa;">Swagger Docs</a> | <a href="/" style="color: #a78bfa;">Home</a></p>
+    <div class="main">
+      <div class="intro">
+        <h1>Complete API Reference</h1>
+        <p>Full interactive documentation for the Anplexa Unrestricted AI Companion API. Click any endpoint to expand request/response details.</p>
+        
+        <div class="auth-cards">
+          <div class="auth-card">
+            <h4>JWT Bearer Token</h4>
+            <code>Authorization: Bearer &lt;token&gt;</code>
+            <p>User sessions from /api/auth/login. 15min access, 7day refresh.</p>
+          </div>
+          <div class="auth-card">
+            <h4>API Key</h4>
+            <code>X-API-Key: &lt;key&gt;</code>
+            <p>Server-to-server. Generate in Settings or via /api/settings/api-key.</p>
+          </div>
+          <div class="auth-card">
+            <h4>Funnel API Key</h4>
+            <code>Authorization: Bearer &lt;FUNNEL_API_SECRET&gt;</code>
+            <p>External funnel integrations. Set via environment variable.</p>
+          </div>
+          <div class="auth-card">
+            <h4>Webhook Secret</h4>
+            <code>stripe-signature / webhook-secret header</code>
+            <p>Signed payloads for webhooks. Verified server-side.</p>
+          </div>
+        </div>
+        
+        <div class="buttons">
+          <button onclick="downloadEndpoints()" class="btn btn-primary">Download as JSON</button>
+          <a href="/docs/openapi.json" class="btn btn-secondary" download>OpenAPI Spec</a>
+          <a href="/docs" class="btn btn-secondary">Swagger UI</a>
+        </div>
+      </div>
+      
+      ${endpointsHtml}
+      
+      <div class="footer">
+        <p>Anplexa API &copy; ${new Date().getFullYear()} | <a href="/docs">Swagger</a> | <a href="/">Home</a> | <a href="/admin">Admin</a></p>
+      </div>
     </div>
   </div>
   
   <script>
+  function toggleDetails(id) {
+    const el = document.getElementById(id);
+    const icon = el.parentElement.querySelector('.expand-icon');
+    el.classList.toggle('open');
+    icon.textContent = el.classList.contains('open') ? '−' : '+';
+  }
   function downloadEndpoints() {
-    const endpoints = ${JSON.stringify(endpoints)};
+    const endpoints = ${JSON.stringify(fullEndpoints)};
     const blob = new Blob([JSON.stringify(endpoints, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'anplexa-api-endpoints.json';
+    a.download = 'anplexa-api-full-documentation.json';
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
