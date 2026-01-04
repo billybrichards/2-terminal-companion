@@ -180,7 +180,7 @@ async function runStartupApiTests(port: number | string): Promise<void> {
   const baseUrl = `http://localhost:${port}`;
   const tests: { name: string; endpoint: string; method: string; expectedStatus: number }[] = [
     { name: 'Health Check', endpoint: '/api/health', method: 'GET', expectedStatus: 200 },
-    { name: 'Health DB Check', endpoint: '/api/health/db', method: 'GET', expectedStatus: 200 },
+    { name: 'Health DB Check', endpoint: '/api/health/database', method: 'GET', expectedStatus: 200 },
     { name: 'Docs Page', endpoint: '/docs', method: 'GET', expectedStatus: 200 },
     { name: 'OpenAPI Spec', endpoint: '/docs/openapi.json', method: 'GET', expectedStatus: 200 },
     { name: 'Auth (no token)', endpoint: '/api/auth/me', method: 'GET', expectedStatus: 401 },
