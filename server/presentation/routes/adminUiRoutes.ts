@@ -203,6 +203,7 @@ function layout(title: string, content: string, showNav: boolean = true): string
       <a href="/admin/api-keys">API Keys</a>
       <a href="/admin/funnel-keys">Funnel Keys</a>
       <a href="/admin/system-prompts">System Prompts</a>
+      <a href="/admin/api-reference">API Reference</a>
       <a href="/admin/logout">Logout</a>
     </nav>
     ` : ''}
@@ -1285,6 +1286,147 @@ adminUiRouter.post('/funnel-keys/:id/delete', async (req: Request, res: Response
     console.error('Delete funnel key error:', error);
     res.status(500).send('Failed to delete key');
   }
+});
+
+adminUiRouter.get('/api-reference', (req: Request, res: Response) => {
+  if (!requireAuth(req, res)) return;
+
+  const endpoints = [
+    { category: 'Authentication', endpoints: [
+      { method: 'POST', path: '/api/auth/register', description: 'Register a new user account', auth: 'None' },
+      { method: 'POST', path: '/api/auth/login', description: 'Login with email/password, returns JWT tokens', auth: 'None' },
+      { method: 'POST', path: '/api/auth/refresh', description: 'Refresh access token using refresh token', auth: 'None' },
+      { method: 'POST', path: '/api/auth/logout', description: 'Logout and invalidate session', auth: 'JWT' },
+      { method: 'GET', path: '/api/auth/me', description: 'Get current user profile and preferences', auth: 'JWT/API Key' },
+      { method: 'GET', path: '/api/auth/credits', description: 'Check remaining daily message credits', auth: 'JWT/API Key' },
+      { method: 'GET', path: '/api/auth/subscription-status', description: 'Get fresh subscription status (no cache)', auth: 'JWT' },
+      { method: 'PUT', path: '/api/auth/chat-name', description: 'Update user\'s preferred chat name', auth: 'JWT/API Key' },
+    ]},
+    { category: 'Chat (AI Companion)', endpoints: [
+      { method: 'POST', path: '/api/chat', description: 'Send message with streaming SSE response', auth: 'JWT/API Key' },
+      { method: 'POST', path: '/api/chat/non-streaming', description: 'Send message, get complete JSON response', auth: 'JWT/API Key' },
+      { method: 'GET', path: '/api/chat/config', description: 'Get chat configuration (models, limits)', auth: 'None' },
+    ]},
+    { category: 'Conversations', endpoints: [
+      { method: 'GET', path: '/api/conversations', description: 'List all user conversations', auth: 'JWT/API Key' },
+      { method: 'POST', path: '/api/conversations', description: 'Create a new conversation', auth: 'JWT/API Key' },
+      { method: 'GET', path: '/api/conversations/:id', description: 'Get conversation with messages', auth: 'JWT/API Key' },
+      { method: 'DELETE', path: '/api/conversations/:id', description: 'Delete a conversation', auth: 'JWT/API Key' },
+    ]},
+    { category: 'User Settings', endpoints: [
+      { method: 'GET', path: '/api/settings', description: 'Get user preferences', auth: 'JWT/API Key' },
+      { method: 'PUT', path: '/api/settings', description: 'Update user preferences', auth: 'JWT/API Key' },
+      { method: 'PUT', path: '/api/settings/personality', description: 'Update personality mode', auth: 'JWT/API Key' },
+      { method: 'PUT', path: '/api/settings/gender', description: 'Update preferred AI gender', auth: 'JWT/API Key' },
+    ]},
+    { category: 'Stripe (Payments)', endpoints: [
+      { method: 'GET', path: '/api/stripe/products', description: 'List available subscription products', auth: 'None' },
+      { method: 'POST', path: '/api/stripe/checkout', description: 'Create Stripe checkout session', auth: 'JWT' },
+      { method: 'POST', path: '/api/stripe/verify-checkout', description: 'Verify checkout and update subscription', auth: 'JWT' },
+      { method: 'POST', path: '/api/stripe/portal', description: 'Create customer portal session', auth: 'JWT' },
+      { method: 'GET', path: '/api/stripe/subscription', description: 'Get user subscription details', auth: 'JWT' },
+      { method: 'POST', path: '/api/stripe/webhook', description: 'Stripe webhook handler', auth: 'Stripe Signature' },
+    ]},
+    { category: 'Public (No Auth)', endpoints: [
+      { method: 'POST', path: '/api/register-subscriber', description: 'Waitlist/landing page signup', auth: 'None' },
+      { method: 'GET', path: '/api/health', description: 'Server health check', auth: 'None' },
+      { method: 'GET', path: '/api/health/database', description: 'Database connection check', auth: 'None' },
+      { method: 'GET', path: '/api/health/ollama', description: 'Ollama LLM connection check', auth: 'None' },
+      { method: 'GET', path: '/api/health/full', description: 'Full system health check', auth: 'None' },
+    ]},
+    { category: 'Funnel Integration', endpoints: [
+      { method: 'POST', path: '/api/funnel/users', description: 'Create user via external funnel', auth: 'Funnel API Key' },
+      { method: 'POST', path: '/api/funnel/checkout', description: 'Create checkout for funnel user', auth: 'Funnel API Key' },
+      { method: 'GET', path: '/api/funnel/subscription/:userId', description: 'Get user subscription status', auth: 'Funnel API Key' },
+      { method: 'POST', path: '/api/funnel/amplexa/complete', description: 'Complete Amplexa funnel flow', auth: 'Funnel API Key' },
+    ]},
+    { category: 'Webhooks', endpoints: [
+      { method: 'POST', path: '/api/webhooks/stripe', description: 'Stripe event webhook', auth: 'Webhook Secret' },
+      { method: 'POST', path: '/api/webhooks/email', description: 'Email event webhook (bounces, opens)', auth: 'Webhook Secret' },
+    ]},
+    { category: 'Admin API', endpoints: [
+      { method: 'GET', path: '/api/admin/users', description: 'List all users with filters', auth: 'Admin JWT' },
+      { method: 'GET', path: '/api/admin/users/:id', description: 'Get user details', auth: 'Admin JWT' },
+      { method: 'PUT', path: '/api/admin/users/:id', description: 'Update user (subscription, credits)', auth: 'Admin JWT' },
+      { method: 'DELETE', path: '/api/admin/users/:id', description: 'Delete user and all data', auth: 'Admin JWT' },
+      { method: 'GET', path: '/api/admin/stats', description: 'Get system statistics', auth: 'Admin JWT' },
+      { method: 'GET', path: '/api/admin/stats/source-channels', description: 'Get funnel/source analytics', auth: 'Admin JWT' },
+      { method: 'GET', path: '/api/admin/contact-submissions', description: 'View contact audit log', auth: 'Admin JWT' },
+      { method: 'GET', path: '/api/admin/api-keys', description: 'List API keys', auth: 'Admin JWT' },
+      { method: 'POST', path: '/api/admin/api-keys', description: 'Generate new API key', auth: 'Admin JWT' },
+      { method: 'DELETE', path: '/api/admin/api-keys/:id', description: 'Revoke API key', auth: 'Admin JWT' },
+      { method: 'GET', path: '/api/admin/system-prompts', description: 'List system prompts', auth: 'Admin JWT' },
+      { method: 'POST', path: '/api/admin/system-prompts', description: 'Create/update system prompt', auth: 'Admin JWT' },
+    ]},
+    { category: 'CRM', endpoints: [
+      { method: 'GET', path: '/admin/crm', description: 'CRM dashboard', auth: 'Admin Session' },
+      { method: 'GET', path: '/admin/crm/sequences', description: 'Email sequences list', auth: 'Admin Session' },
+      { method: 'GET', path: '/admin/crm/queue', description: 'Email queue status', auth: 'Admin Session' },
+      { method: 'GET', path: '/admin/crm/analytics', description: 'Email analytics', auth: 'Admin Session' },
+    ]},
+  ];
+
+  const methodColors: Record<string, string> = {
+    GET: '#28a745',
+    POST: '#007bff',
+    PUT: '#ffc107',
+    DELETE: '#dc3545',
+    PATCH: '#17a2b8',
+  };
+
+  let tableHtml = '';
+  for (const cat of endpoints) {
+    tableHtml += `<h2 style="margin-top: 30px; color: #ff6b35; border-bottom: 1px solid #333; padding-bottom: 8px;">${cat.category}</h2>`;
+    tableHtml += '<table style="width: 100%; margin-bottom: 20px;"><thead><tr><th style="width: 80px;">Method</th><th>Endpoint</th><th>Description</th><th style="width: 120px;">Auth</th></tr></thead><tbody>';
+    for (const ep of cat.endpoints) {
+      const color = methodColors[ep.method] || '#888';
+      tableHtml += `<tr>
+        <td><span style="background: ${color}; color: white; padding: 2px 8px; border-radius: 3px; font-size: 11px; font-weight: bold;">${ep.method}</span></td>
+        <td><code style="background: #2a2a2a; padding: 4px 8px; border-radius: 3px;">${ep.path}</code></td>
+        <td>${ep.description}</td>
+        <td><span style="color: #888; font-size: 12px;">${ep.auth}</span></td>
+      </tr>`;
+    }
+    tableHtml += '</tbody></table>';
+  }
+
+  const html = layout('API Reference', `
+    <h1>API Endpoints Reference</h1>
+    <p style="color: #888; margin-bottom: 20px;">
+      Complete list of all Anplexa API endpoints. For interactive documentation, visit <a href="/docs">/docs</a>.
+    </p>
+    
+    <div class="card" style="margin-bottom: 30px;">
+      <h3 style="color: #ff6b35; margin-bottom: 15px;">Authentication Methods</h3>
+      <table>
+        <tr><td><strong>JWT Bearer Token</strong></td><td><code>Authorization: Bearer &lt;token&gt;</code></td><td>User sessions from login</td></tr>
+        <tr><td><strong>API Key</strong></td><td><code>X-API-Key: &lt;key&gt;</code></td><td>Server-to-server integration</td></tr>
+        <tr><td><strong>Funnel API Key</strong></td><td><code>Authorization: Bearer &lt;funnel_key&gt;</code></td><td>External funnel integrations</td></tr>
+        <tr><td><strong>Admin JWT</strong></td><td><code>Authorization: Bearer &lt;admin_token&gt;</code></td><td>Admin API access (isAdmin=true)</td></tr>
+        <tr><td><strong>Admin Session</strong></td><td>Cookie-based</td><td>Admin UI dashboard access</td></tr>
+      </table>
+    </div>
+    
+    <div class="card" style="margin-bottom: 30px;">
+      <h3 style="color: #ff6b35; margin-bottom: 15px;">Base URLs</h3>
+      <table>
+        <tr><td><strong>Production</strong></td><td><code>https://api.anplexa.com</code></td></tr>
+        <tr><td><strong>Development</strong></td><td><code>https://&lt;repl-domain&gt;.replit.dev</code></td></tr>
+      </table>
+    </div>
+    
+    ${tableHtml}
+    
+    <div class="card" style="margin-top: 30px; background: #1a1a1a; border: 1px solid #333;">
+      <h3 style="color: #888;">Quick Links</h3>
+      <p><a href="/docs">Interactive API Documentation (Swagger)</a></p>
+      <p><a href="/docs/openapi.json">Download OpenAPI Spec (JSON)</a></p>
+      <p><a href="/admin/funnel-keys">Manage Funnel API Keys</a></p>
+      <p><a href="/admin/api-keys">Manage API Keys</a></p>
+    </div>
+  `);
+
+  res.send(html);
 });
 
 function escapeHtml(text: string): string {
