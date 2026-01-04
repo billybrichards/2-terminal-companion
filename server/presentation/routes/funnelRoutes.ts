@@ -4,7 +4,7 @@ import { sql } from 'drizzle-orm';
 import { eq } from 'drizzle-orm';
 import bcrypt from 'bcryptjs';
 import { db } from '../../infrastructure/database/index.js';
-import { users, apiKeys, sessions, funnelApiKeys } from '../../../shared/schema.js';
+import { users, apiKeys, sessions, funnelApiKeys, contactSubmissions } from '../../../shared/schema.js';
 import { jwtAdapter } from '../../infrastructure/auth/JWTAdapter.js';
 import { generateApiKey } from '../../infrastructure/auth/ApiKeyGenerator.js';
 import { stripeService } from '../../infrastructure/stripe/stripeService.js';
@@ -111,9 +111,32 @@ const updateSubscriptionSchema = z.object({
 funnelRouter.post('/users', funnelAuthMiddleware, async (req: Request, res: Response) => {
   try {
     const body = createUserSchema.parse(req.body);
+    const clientIp = req.ip || req.headers['x-forwarded-for']?.toString() || 'unknown';
+    const userAgent = req.headers['user-agent'] || null;
 
     const existingUser = await db.query.users.findFirst({
       where: eq(users.email, body.email),
+    });
+
+    // Log contact submission FIRST (append-only audit log - captures all attempts including duplicates)
+    const submissionId = jwtAdapter.generateId();
+    await db.insert(contactSubmissions).values({
+      id: submissionId,
+      email: body.email,
+      displayName: body.displayName || null,
+      chatName: body.chatName || null,
+      sourceChannel: 'funnel',
+      sourceDetail: body.entrySource || null,
+      funnelType: body.funnelType,
+      persona: body.persona || null,
+      entrySource: body.entrySource || null,
+      ipAddress: clientIp,
+      userAgent,
+      rawPayload: JSON.stringify(req.body),
+      isNewUser: !existingUser,
+      existingUserId: existingUser?.id || null,
+      createdUserId: null, // Will be updated after user creation
+      createdAt: new Date().toISOString(),
     });
 
     if (existingUser) {
@@ -130,6 +153,7 @@ funnelRouter.post('/users', funnelAuthMiddleware, async (req: Request, res: Resp
       displayName: body.displayName || body.email.split('@')[0],
       chatName: body.chatName || null,
       accountSource: 'anplexa', // Funnel users are Anplexa app users, NOT Abionti API users
+      sourceChannel: 'funnel', // Unified source channel tracking
       funnelType: body.funnelType,
       persona: body.persona || null,
       entrySource: body.entrySource || null,
@@ -138,6 +162,11 @@ funnelRouter.post('/users', funnelAuthMiddleware, async (req: Request, res: Resp
       stripeCustomerId: body.stripeCustomerId || null,
       stripeSubscriptionId: body.stripeSubscriptionId || null,
     });
+
+    // Update contact submission with created user ID
+    await db.update(contactSubmissions)
+      .set({ createdUserId: userId })
+      .where(eq(contactSubmissions.id, submissionId));
 
     const apiKeyData = await generateApiKey();
     await db.insert(apiKeys).values({

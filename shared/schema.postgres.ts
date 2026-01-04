@@ -47,6 +47,9 @@ export const users = pgTable('users', {
   amplexaPace: text('amplexa_pace'), // Slow, Flexible, Controlled, Late-night, Thoughtful, Spontaneous
   amplexaTags: text('amplexa_tags'), // JSON array of personality tags
   amplexaTimestamp: text('amplexa_timestamp'), // When funnel data was submitted
+  
+  // Source channel tracking (unified identifier)
+  sourceChannel: text('source_channel'), // 'funnel' | 'waitlist' | 'access_anplexa' | 'frontend' | 'api' | 'auth_register'
 });
 
 // Companion config (single row - admin configured)
@@ -307,6 +310,29 @@ export const funnelApiKeys = pgTable('funnel_api_keys', {
   notes: text('notes'),
 });
 
+// Contact Submissions - Master audit log for ALL contact entries (append-only, keeps duplicates)
+export const contactSubmissions = pgTable('contact_submissions', {
+  id: text('id').primaryKey(),
+  email: text('email').notNull(),
+  displayName: text('display_name'),
+  chatName: text('chat_name'),
+  sourceChannel: text('source_channel').notNull(), // 'funnel' | 'waitlist' | 'access_anplexa' | 'frontend' | 'api' | 'auth_register'
+  sourceDetail: text('source_detail'), // Additional context (e.g., 'instagram', 'tiktok', UTM params)
+  funnelType: text('funnel_type'), // 'waitlist' | 'direct'
+  persona: text('persona'), // 'lonely' | 'curious' | 'privacy'
+  entrySource: text('entry_source'), // 'instagram' | 'tiktok' | 'reddit' | 'search' | 'retargeting' | 'organic' | 'landing'
+  ipAddress: text('ip_address'),
+  userAgent: text('user_agent'),
+  utmSource: text('utm_source'),
+  utmMedium: text('utm_medium'),
+  utmCampaign: text('utm_campaign'),
+  rawPayload: text('raw_payload'), // JSON string of full request body
+  isNewUser: boolean('is_new_user').default(true), // false if user already existed
+  existingUserId: text('existing_user_id'), // If user already existed, their ID
+  createdUserId: text('created_user_id'), // If new user was created, their ID
+  createdAt: text('created_at').default('CURRENT_TIMESTAMP'),
+});
+
 // Types
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
@@ -324,3 +350,5 @@ export type SystemPrompt = typeof systemPrompts.$inferSelect;
 export type EmailQueue = typeof emailQueue.$inferSelect;
 export type EmailLog = typeof emailLogs.$inferSelect;
 export type FunnelApiKey = typeof funnelApiKeys.$inferSelect;
+export type ContactSubmission = typeof contactSubmissions.$inferSelect;
+export type NewContactSubmission = typeof contactSubmissions.$inferInsert;

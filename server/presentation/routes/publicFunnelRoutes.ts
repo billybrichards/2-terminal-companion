@@ -4,7 +4,7 @@ import { eq } from 'drizzle-orm';
 import { v4 as uuidv4 } from 'uuid';
 import bcrypt from 'bcryptjs';
 import { db } from '../../infrastructure/database/index.js';
-import { users } from '../../../shared/schema.js';
+import { users, contactSubmissions } from '../../../shared/schema.js';
 import { emailScheduler } from '../../infrastructure/email/emailScheduler.js';
 
 export const publicFunnelRouter = Router();
@@ -45,6 +45,7 @@ const registerSubscriberSchema = z.object({
 publicFunnelRouter.post('/register-subscriber', async (req: Request, res: Response) => {
   try {
     const clientIp = req.ip || req.headers['x-forwarded-for']?.toString() || 'unknown';
+    const userAgent = req.headers['user-agent'] || null;
     
     if (!checkRateLimit(clientIp)) {
       return res.status(429).json({ error: 'Too many requests. Please try again later.' });
@@ -54,6 +55,33 @@ publicFunnelRouter.post('/register-subscriber', async (req: Request, res: Respon
 
     const existingUser = await db.query.users.findFirst({
       where: eq(users.email, body.email.toLowerCase()),
+    });
+
+    // Determine source channel based on entry source or default to waitlist
+    const sourceChannel = body.entrySource === 'landing' ? 'access_anplexa' : 'waitlist';
+
+    // Log contact submission FIRST (append-only audit log - captures all attempts including duplicates)
+    const submissionId = uuidv4();
+    await db.insert(contactSubmissions).values({
+      id: submissionId,
+      email: body.email.toLowerCase(),
+      displayName: body.displayName || null,
+      chatName: body.chatName || null,
+      sourceChannel,
+      sourceDetail: body.entrySource || 'landing',
+      funnelType: body.funnelType,
+      persona: body.persona || null,
+      entrySource: body.entrySource || 'landing',
+      ipAddress: clientIp,
+      userAgent,
+      utmSource: body.utm_source || null,
+      utmMedium: body.utm_medium || null,
+      utmCampaign: body.utm_campaign || null,
+      rawPayload: JSON.stringify(req.body),
+      isNewUser: !existingUser,
+      existingUserId: existingUser?.id || null,
+      createdUserId: null,
+      createdAt: new Date().toISOString(),
     });
 
     if (existingUser) {
@@ -81,6 +109,7 @@ publicFunnelRouter.post('/register-subscriber', async (req: Request, res: Respon
       displayName: body.displayName || null,
       chatName: body.chatName || null,
       accountSource: 'anplexa',
+      sourceChannel, // Unified source channel tracking
       funnelType: body.funnelType,
       persona: body.persona || null,
       entrySource: body.entrySource || 'landing',
@@ -90,6 +119,11 @@ publicFunnelRouter.post('/register-subscriber', async (req: Request, res: Respon
       createdAt: now,
       updatedAt: now,
     });
+
+    // Update contact submission with created user ID
+    await db.update(contactSubmissions)
+      .set({ createdUserId: userId })
+      .where(eq(contactSubmissions.id, submissionId));
 
     try {
       if (body.funnelType === 'waitlist') {

@@ -16,7 +16,7 @@ The project is built with Node.js and Express, utilizing a clean architecture wi
 - **Design Theme:** Dark background (`#0a0a0a`) with an orange accent (`#ff6b35`), designed to be responsive and mobile-friendly.
 
 **Technical Implementations:**
-- **Database:** PostgreSQL with Drizzle ORM (falls back to SQLite). Key tables include `users`, `api_keys`, `funnel_api_keys`, `api_usage`, `conversations`, `messages`, `system_prompts`, `companion_config`, `email_queue`, and `email_logs`.
+- **Database:** PostgreSQL with Drizzle ORM (falls back to SQLite). Key tables include `users`, `api_keys`, `funnel_api_keys`, `api_usage`, `conversations`, `messages`, `system_prompts`, `companion_config`, `email_queue`, `email_logs`, and `contact_submissions`.
 - **Authentication:** JWT for user sessions and API Keys for API access. Funnel API keys are also supported for external integrations.
 - **AI Integration:** Connects to Ollama for LLM inference, using a customizable "Anplexa" identity system prompt. Supports streaming (SSE) and non-streaming chat.
 - **Conversation Management:** Stores and retrieves user conversations and messages.
@@ -28,6 +28,9 @@ The project is built with Node.js and Express, utilizing a clean architecture wi
     - System prompt management with version control.
     - Comprehensive CRM system with email retention sequences, scheduling, tracking, and funnel analytics.
     - Management of funnel API keys.
+    - **Contact Submissions Log:** Append-only audit log of ALL contact submissions (including duplicates) at `/api/admin/contact-submissions` with filtering by sourceChannel, email, and date range.
+    - **User Source Tracking:** `sourceChannel` field on users identifies acquisition source (funnel, waitlist, access_anplexa, auth_register, frontend, api).
+    - **Funnel Analytics:** `/api/admin/stats/source-channels` provides user counts by source channel and submission metrics.
 - **Security:** Implements CORS, Content Security Policy (Helmet), rate limiting on authentication and API routes, HMAC-signed admin session tokens, and encrypted secrets.
 
 **Feature Specifications:**

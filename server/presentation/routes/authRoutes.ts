@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import crypto from 'crypto';
 import { db } from '../../infrastructure/database/index.js';
-import { users, sessions, userPreferences, passwordResetTokens, magicLinkTokens } from '../../../shared/schema.js';
+import { users, sessions, userPreferences, passwordResetTokens, magicLinkTokens, contactSubmissions } from '../../../shared/schema.js';
 import { jwtAdapter } from '../../infrastructure/auth/JWTAdapter.js';
 import { authMiddleware } from '../middleware/authMiddleware.js';
 import { authRateLimiter, registrationRateLimiter } from '../middleware/rateLimitMiddleware.js';
@@ -65,10 +65,29 @@ const magicLinkVerifySchema = z.object({
 authRouter.post('/register', registrationRateLimiter, async (req, res) => {
   try {
     const body = registerSchema.parse(req.body);
+    const clientIp = req.ip || req.headers['x-forwarded-for']?.toString() || 'unknown';
+    const userAgent = req.headers['user-agent'] || null;
 
     // Check if user exists
     const existingUser = await db.query.users.findFirst({
       where: eq(users.email, body.email),
+    });
+
+    // Log contact submission FIRST (append-only audit log - captures all attempts including duplicates)
+    const submissionId = jwtAdapter.generateId();
+    await db.insert(contactSubmissions).values({
+      id: submissionId,
+      email: body.email,
+      displayName: body.displayName || null,
+      sourceChannel: 'auth_register',
+      sourceDetail: 'api',
+      ipAddress: clientIp,
+      userAgent,
+      rawPayload: JSON.stringify({ email: body.email, displayName: body.displayName }), // Don't log password
+      isNewUser: !existingUser,
+      existingUserId: existingUser?.id || null,
+      createdUserId: null,
+      createdAt: new Date().toISOString(),
     });
 
     if (existingUser) {
@@ -90,7 +109,13 @@ authRouter.post('/register', registrationRateLimiter, async (req, res) => {
       displayName: body.displayName || body.email.split('@')[0],
       isAdmin,
       accountSource: 'abionti_api', // Users registering via API routes are Abionti API users
+      sourceChannel: 'auth_register', // Unified source channel tracking
     });
+
+    // Update contact submission with created user ID
+    await db.update(contactSubmissions)
+      .set({ createdUserId: userId })
+      .where(eq(contactSubmissions.id, submissionId));
 
     // Create default preferences
     await db.insert(userPreferences).values({

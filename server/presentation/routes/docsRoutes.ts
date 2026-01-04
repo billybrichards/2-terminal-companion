@@ -549,6 +549,90 @@ const apiDocs = {
           }
         }
       }
+    },
+    '/api/funnel/users': {
+      post: {
+        tags: ['Funnel'],
+        summary: 'Create a user via funnel',
+        description: 'Create a new user account through the funnel integration. All submissions are logged to an audit trail for analytics. Users created via this endpoint are tagged with `sourceChannel: funnel`.',
+        security: [{ funnelAuth: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['email', 'password'],
+                properties: {
+                  email: { type: 'string', format: 'email', example: 'user@example.com' },
+                  password: { type: 'string', minLength: 6, example: 'securepassword123' },
+                  displayName: { type: 'string', example: 'John Doe' },
+                  chatName: { type: 'string', maxLength: 50, example: 'John', description: 'Name the AI will use to address the user' },
+                  funnelType: { type: 'string', enum: ['waitlist', 'direct'], default: 'direct', description: 'waitlist = waiting for access, direct = immediate access' },
+                  persona: { type: 'string', enum: ['lonely', 'curious', 'privacy'], description: 'User persona for CRM segmentation' },
+                  entrySource: { type: 'string', enum: ['instagram', 'tiktok', 'reddit', 'search', 'retargeting', 'organic'], description: 'Traffic source for analytics' },
+                  subscriptionStatus: { type: 'string', enum: ['subscribed', 'not_subscribed'], default: 'not_subscribed' }
+                }
+              }
+            }
+          }
+        },
+        responses: {
+          '201': {
+            description: 'User created successfully',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    message: { type: 'string', example: 'User created successfully' },
+                    user: { type: 'object', properties: { id: { type: 'string' }, email: { type: 'string' }, displayName: { type: 'string' } } },
+                    apiKey: { type: 'string', description: 'Auto-generated API key for the user' },
+                    accessToken: { type: 'string' },
+                    refreshToken: { type: 'string' }
+                  }
+                }
+              }
+            }
+          },
+          '400': { description: 'Email already registered or validation error' },
+          '403': { description: 'Invalid funnel API secret' }
+        }
+      }
+    },
+    '/api/register-subscriber': {
+      post: {
+        tags: ['Public'],
+        summary: 'Register for waitlist/landing page',
+        description: 'Public endpoint for landing page signups. All submissions are logged to an audit trail including duplicates. Users created via this endpoint are tagged with `sourceChannel: waitlist` or `sourceChannel: access_anplexa` based on entry source.',
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['email'],
+                properties: {
+                  email: { type: 'string', format: 'email', example: 'user@example.com' },
+                  displayName: { type: 'string', maxLength: 100, example: 'John Doe' },
+                  chatName: { type: 'string', maxLength: 50, example: 'John' },
+                  funnelType: { type: 'string', enum: ['waitlist', 'direct'], default: 'direct' },
+                  persona: { type: 'string', enum: ['lonely', 'curious', 'privacy'] },
+                  entrySource: { type: 'string', enum: ['instagram', 'tiktok', 'reddit', 'search', 'retargeting', 'organic', 'landing'] },
+                  utm_source: { type: 'string', description: 'UTM source parameter' },
+                  utm_medium: { type: 'string', description: 'UTM medium parameter' },
+                  utm_campaign: { type: 'string', description: 'UTM campaign parameter' }
+                }
+              }
+            }
+          }
+        },
+        responses: {
+          '201': { description: 'Successfully registered', content: { 'application/json': { schema: { type: 'object', properties: { message: { type: 'string' }, status: { type: 'string', enum: ['success'] }, leadId: { type: 'string' } } } } } },
+          '200': { description: 'Already on list', content: { 'application/json': { schema: { type: 'object', properties: { message: { type: 'string' }, status: { type: 'string', enum: ['existing_lead', 'existing_subscriber'] } } } } } },
+          '429': { description: 'Rate limited' }
+        }
+      }
     }
   },
   components: {
@@ -567,6 +651,28 @@ const apiDocs = {
         type: 'http',
         scheme: 'bearer',
         description: 'Funnel API key'
+      }
+    },
+    schemas: {
+      SourceChannel: {
+        type: 'string',
+        enum: ['funnel', 'waitlist', 'access_anplexa', 'frontend', 'api', 'auth_register'],
+        description: 'Indicates how the user was acquired. Used for analytics and segmentation.'
+      },
+      ContactSubmission: {
+        type: 'object',
+        description: 'Audit log entry for all contact submissions (including duplicates)',
+        properties: {
+          id: { type: 'string' },
+          email: { type: 'string' },
+          displayName: { type: 'string', nullable: true },
+          sourceChannel: { $ref: '#/components/schemas/SourceChannel' },
+          sourceDetail: { type: 'string', nullable: true, description: 'Additional context (e.g., instagram, tiktok)' },
+          funnelType: { type: 'string', enum: ['waitlist', 'direct'], nullable: true },
+          entrySource: { type: 'string', nullable: true },
+          isNewUser: { type: 'boolean', description: 'False if email already existed in system' },
+          createdAt: { type: 'string', format: 'date-time' }
+        }
       }
     }
   }

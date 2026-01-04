@@ -30,6 +30,9 @@ export const users = sqliteTable('users', {
   amplexaPace: text('amplexa_pace'), // Slow, Flexible, Controlled, Late-night, Thoughtful, Spontaneous
   amplexaTags: text('amplexa_tags'), // JSON array of personality tags
   amplexaTimestamp: text('amplexa_timestamp'), // When funnel data was submitted
+  
+  // Source channel tracking (unified identifier)
+  sourceChannel: text('source_channel'), // 'funnel' | 'waitlist' | 'access_anplexa' | 'frontend' | 'api' | 'auth_register'
 });
 
 // Companion config (single row - admin configured)
@@ -253,6 +256,29 @@ export const systemPrompts = sqliteTable('system_prompts', {
   notes: text('notes'), // Optional notes about this version
 });
 
+// Contact Submissions - Master audit log for ALL contact entries (append-only, keeps duplicates)
+export const contactSubmissions = sqliteTable('contact_submissions', {
+  id: text('id').primaryKey(),
+  email: text('email').notNull(),
+  displayName: text('display_name'),
+  chatName: text('chat_name'),
+  sourceChannel: text('source_channel').notNull(),
+  sourceDetail: text('source_detail'),
+  funnelType: text('funnel_type'),
+  persona: text('persona'),
+  entrySource: text('entry_source'),
+  ipAddress: text('ip_address'),
+  userAgent: text('user_agent'),
+  utmSource: text('utm_source'),
+  utmMedium: text('utm_medium'),
+  utmCampaign: text('utm_campaign'),
+  rawPayload: text('raw_payload'),
+  isNewUser: integer('is_new_user', { mode: 'boolean' }).default(true),
+  existingUserId: text('existing_user_id'),
+  createdUserId: text('created_user_id'),
+  createdAt: text('created_at').default('CURRENT_TIMESTAMP'),
+});
+
 // Types
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
@@ -266,3 +292,4 @@ export type ApiUsage = typeof apiUsage.$inferSelect;
 export type ApiUsageDaily = typeof apiUsageDaily.$inferSelect;
 export type PasswordResetToken = typeof passwordResetTokens.$inferSelect;
 export type SystemPrompt = typeof systemPrompts.$inferSelect;
+export type ContactSubmission = typeof contactSubmissions.$inferSelect;

@@ -3,11 +3,11 @@ import { z } from 'zod';
 import { v4 as uuidv4 } from 'uuid';
 import crypto from 'crypto';
 import { db } from '../../infrastructure/database/index.js';
-import { companionConfig, users, userFeedback, messages, conversations, systemPrompts } from '../../../shared/schema.js';
+import { companionConfig, users, userFeedback, messages, conversations, systemPrompts, contactSubmissions } from '../../../shared/schema.js';
 import { authMiddleware, adminMiddleware } from '../middleware/authMiddleware.js';
 import { getOllamaGateway } from '../../infrastructure/adapters/OllamaGateway.js';
 import { jwtAdapter } from '../../infrastructure/auth/JWTAdapter.js';
-import { eq, desc, count } from 'drizzle-orm';
+import { eq, desc, count, like, and, gte, lte, sql } from 'drizzle-orm';
 import { ANPLEXA_DEFAULT_PROMPT } from '../../config/anplexaPrompt.js';
 
 export const adminRouter = Router();
@@ -225,8 +225,24 @@ adminRouter.get('/users', async (req, res) => {
       isAdmin: user.isAdmin,
       subscriptionStatus: (user as any).subscriptionStatus || 'not_subscribed',
       credits: (user as any).credits || 0,
+      sourceChannel: (user as any).sourceChannel || 'unknown',
+      accountSource: (user as any).accountSource || 'unknown',
       createdAt: user.createdAt,
     }));
+
+    const sourceChannelBadge = (channel: string) => {
+      const badges: Record<string, { class: string; label: string }> = {
+        'funnel': { class: 'bg-primary', label: 'Funnel' },
+        'waitlist': { class: 'bg-info', label: 'Waitlist' },
+        'access_anplexa': { class: 'bg-success', label: 'Access' },
+        'auth_register': { class: 'bg-warning text-dark', label: 'Register' },
+        'frontend': { class: 'bg-secondary', label: 'Frontend' },
+        'api': { class: 'bg-dark', label: 'API' },
+        'unknown': { class: 'bg-secondary', label: '-' },
+      };
+      const badge = badges[channel] || badges['unknown'];
+      return `<span class="badge ${badge.class}">${badge.label}</span>`;
+    };
 
     if (req.query.format === 'json') {
       return res.json({ users: safeUsers });
@@ -273,6 +289,7 @@ adminRouter.get('/users', async (req, res) => {
             <thead>
               <tr>
                 <th>Name/Email</th>
+                <th>Source</th>
                 <th>Status</th>
                 <th>Credits</th>
                 <th>Actions</th>
@@ -285,6 +302,7 @@ adminRouter.get('/users', async (req, res) => {
                     <strong>${u.displayName || 'No Name'}</strong><br>
                     <small class="text-muted">${u.email}</small>
                   </td>
+                  <td>${sourceChannelBadge(u.sourceChannel)}</td>
                   <td>
                     <span class="badge ${u.subscriptionStatus === 'subscribed' ? 'badge-sub' : 'bg-secondary'}">
                       ${u.subscriptionStatus}
@@ -984,5 +1002,224 @@ adminRouter.delete('/system-prompts/:id', async (req, res) => {
   } catch (error) {
     console.error('Delete system prompt error:', error);
     res.status(500).json({ error: 'Failed to delete system prompt' });
+  }
+});
+
+// ============================================
+// CONTACT SUBMISSIONS (Audit Log)
+// ============================================
+
+// GET /api/admin/contact-submissions - List all contact submissions with filtering
+adminRouter.get('/contact-submissions', async (req, res) => {
+  try {
+    const { 
+      sourceChannel, 
+      email, 
+      startDate, 
+      endDate, 
+      limit = '50', 
+      offset = '0',
+      format 
+    } = req.query;
+
+    const pageLimit = Math.min(parseInt(limit as string) || 50, 200);
+    const pageOffset = parseInt(offset as string) || 0;
+
+    // Build query with filters
+    let allSubmissions = await db.select().from(contactSubmissions).orderBy(desc(contactSubmissions.createdAt));
+
+    // Apply filters in JS (simple approach for now)
+    let filtered = allSubmissions;
+    if (sourceChannel && sourceChannel !== 'all') {
+      filtered = filtered.filter((s: any) => s.sourceChannel === sourceChannel);
+    }
+    if (email) {
+      filtered = filtered.filter((s: any) => s.email.toLowerCase().includes((email as string).toLowerCase()));
+    }
+    if (startDate) {
+      filtered = filtered.filter((s: any) => s.createdAt >= startDate);
+    }
+    if (endDate) {
+      filtered = filtered.filter((s: any) => s.createdAt <= endDate);
+    }
+
+    const total = filtered.length;
+    const paginated = filtered.slice(pageOffset, pageOffset + pageLimit);
+
+    if (format === 'json') {
+      return res.json({ 
+        submissions: paginated, 
+        total,
+        limit: pageLimit,
+        offset: pageOffset,
+      });
+    }
+
+    // HTML UI for contact submissions
+    const sourceChannelBadgeClass = (channel: string) => {
+      const classes: Record<string, string> = {
+        'funnel': 'bg-primary',
+        'waitlist': 'bg-info',
+        'access_anplexa': 'bg-success',
+        'auth_register': 'bg-warning',
+        'frontend': 'bg-secondary',
+        'api': 'bg-dark',
+      };
+      return classes[channel] || 'bg-secondary';
+    };
+
+    const html = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin - Contact Submissions Log</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    body { background-color: #0a0a0a; color: #e0e1dd; font-family: 'Inter', sans-serif; }
+    .card { background-color: #1a1a1a; border: 1px solid #333; color: #e0e1dd; }
+    .table { color: #e0e1dd; }
+    .btn-primary { background-color: #ff6b35; border: none; }
+    .btn-primary:hover { background-color: #e55a2b; }
+    .form-control, .form-select { background-color: #1a1a1a; border-color: #333; color: #e0e1dd; }
+    .form-control:focus, .form-select:focus { background-color: #1a1a1a; border-color: #ff6b35; color: #e0e1dd; }
+    .badge { font-size: 0.75rem; }
+  </style>
+</head>
+<body class="p-4">
+  <div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+      <h1>Contact Submissions Log</h1>
+      <a href="/admin/stats" class="btn btn-outline-light btn-sm">Back to Dashboard</a>
+    </div>
+    
+    <div class="card mb-4">
+      <div class="card-body">
+        <form method="GET" class="row g-3">
+          <div class="col-md-3">
+            <label class="form-label">Source Channel</label>
+            <select name="sourceChannel" class="form-select">
+              <option value="all" ${!sourceChannel || sourceChannel === 'all' ? 'selected' : ''}>All Sources</option>
+              <option value="funnel" ${sourceChannel === 'funnel' ? 'selected' : ''}>Funnel</option>
+              <option value="waitlist" ${sourceChannel === 'waitlist' ? 'selected' : ''}>Waitlist</option>
+              <option value="access_anplexa" ${sourceChannel === 'access_anplexa' ? 'selected' : ''}>Access Anplexa</option>
+              <option value="auth_register" ${sourceChannel === 'auth_register' ? 'selected' : ''}>Auth Register</option>
+            </select>
+          </div>
+          <div class="col-md-3">
+            <label class="form-label">Email Search</label>
+            <input type="text" name="email" class="form-control" placeholder="Search email..." value="${email || ''}">
+          </div>
+          <div class="col-md-2">
+            <label class="form-label">Start Date</label>
+            <input type="date" name="startDate" class="form-control" value="${startDate || ''}">
+          </div>
+          <div class="col-md-2">
+            <label class="form-label">End Date</label>
+            <input type="date" name="endDate" class="form-control" value="${endDate || ''}">
+          </div>
+          <div class="col-md-2 d-flex align-items-end">
+            <button type="submit" class="btn btn-primary w-100">Filter</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div class="mb-3">
+      <small class="text-muted">Showing ${paginated.length} of ${total} submissions</small>
+    </div>
+
+    <div class="card shadow">
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-dark table-hover mb-0">
+            <thead>
+              <tr>
+                <th>Email</th>
+                <th>Source</th>
+                <th>Entry Source</th>
+                <th>New User?</th>
+                <th>IP Address</th>
+                <th>Submitted</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${paginated.map((s: any) => `
+                <tr>
+                  <td>
+                    <strong>${s.email}</strong>
+                    ${s.displayName ? `<br><small class="text-muted">${s.displayName}</small>` : ''}
+                  </td>
+                  <td>
+                    <span class="badge ${sourceChannelBadgeClass(s.sourceChannel)}">${s.sourceChannel}</span>
+                  </td>
+                  <td>${s.entrySource || s.sourceDetail || '-'}</td>
+                  <td>
+                    <span class="badge ${s.isNewUser ? 'bg-success' : 'bg-warning'}">${s.isNewUser ? 'Yes' : 'Duplicate'}</span>
+                  </td>
+                  <td><small>${s.ipAddress || '-'}</small></td>
+                  <td><small>${new Date(s.createdAt).toLocaleString()}</small></td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    ${total > pageLimit ? `
+    <nav class="mt-4">
+      <ul class="pagination justify-content-center">
+        ${pageOffset > 0 ? `<li class="page-item"><a class="page-link" href="?offset=${pageOffset - pageLimit}&limit=${pageLimit}&sourceChannel=${sourceChannel || 'all'}&email=${email || ''}">Previous</a></li>` : ''}
+        ${pageOffset + pageLimit < total ? `<li class="page-item"><a class="page-link" href="?offset=${pageOffset + pageLimit}&limit=${pageLimit}&sourceChannel=${sourceChannel || 'all'}&email=${email || ''}">Next</a></li>` : ''}
+      </ul>
+    </nav>
+    ` : ''}
+  </div>
+</body>
+</html>`;
+
+    res.send(html);
+  } catch (error) {
+    console.error('Get contact submissions error:', error);
+    res.status(500).json({ error: 'Failed to get contact submissions' });
+  }
+});
+
+// GET /api/admin/stats/source-channels - Get user counts by source channel
+adminRouter.get('/stats/source-channels', async (req, res) => {
+  try {
+    // Get counts by source channel
+    const allUsers = await db.select().from(users);
+    
+    const channelCounts: Record<string, number> = {};
+    allUsers.forEach((u: any) => {
+      const channel = u.sourceChannel || 'unknown';
+      channelCounts[channel] = (channelCounts[channel] || 0) + 1;
+    });
+
+    // Get today's and last 7 days submission counts
+    const now = new Date();
+    const today = now.toISOString().split('T')[0];
+    const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+
+    const allSubmissions = await db.select().from(contactSubmissions);
+    
+    const todaySubmissions = allSubmissions.filter((s: any) => s.createdAt?.startsWith(today)).length;
+    const weekSubmissions = allSubmissions.filter((s: any) => s.createdAt >= weekAgo).length;
+    const totalSubmissions = allSubmissions.length;
+
+    res.json({
+      usersByChannel: channelCounts,
+      submissions: {
+        today: todaySubmissions,
+        last7Days: weekSubmissions,
+        total: totalSubmissions,
+      },
+    });
+  } catch (error) {
+    console.error('Get source channel stats error:', error);
+    res.status(500).json({ error: 'Failed to get source channel stats' });
   }
 });
