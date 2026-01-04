@@ -300,6 +300,7 @@ chatRouter.post('/', optionalAuthMiddleware, async (req, res) => {
             tomorrow.setUTCHours(0, 0, 0, 0);
             
             return res.status(403).json({
+              errorCode: 'CREDIT_LIMIT_REACHED',
               error: 'Credits exhausted',
               message: 'All used up for today! Subscribe for unlimited messages, or come back tomorrow for 5 more free messages.',
               credits: 0,
@@ -514,6 +515,7 @@ chatRouter.post('/non-streaming', optionalAuthMiddleware, async (req, res) => {
             tomorrow.setUTCHours(0, 0, 0, 0);
             
             return res.status(403).json({
+              errorCode: 'CREDIT_LIMIT_REACHED',
               error: 'Credits exhausted',
               message: 'All used up for today! Subscribe for unlimited messages, or come back tomorrow for 5 more free messages.',
               credits: 0,

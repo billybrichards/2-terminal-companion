@@ -19,6 +19,7 @@ export const users = sqliteTable('users', {
   stripeCustomerId: text('stripe_customer_id'),
   stripeSubscriptionId: text('stripe_subscription_id'),
   accountSource: text('account_source').default('frontend'), // 'frontend' | 'api'
+  lastCreditRefresh: text('last_credit_refresh'), // YYYY-MM-DD
   
   // Amplexa Funnel Profile (optional, not mandatory)
   amplexaFunnel: text('amplexa_funnel'), // A-F (Quietly Lonely, Curious/Fantasy-Open, Privacy-First, Late Night Thinker, Emotional Explorer, Creative Seeker)
