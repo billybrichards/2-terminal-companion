@@ -353,7 +353,8 @@ const { accessToken, refreshToken } = await response.json();
                         chatName: { type: 'string', example: 'Alex', nullable: true },
                         personalityMode: { type: 'string', enum: ['nurturing', 'playful', 'dominant', 'filthy_sexy', 'intimate_companion', 'intellectual_muse'], example: 'nurturing' },
                         preferredGender: { type: 'string', enum: ['male', 'female', 'non-binary', 'custom'], example: 'female' },
-                        customGender: { type: 'string', nullable: true, example: null }
+                        customGender: { type: 'string', nullable: true, example: null },
+                        subscriptionStatus: { type: 'string', example: 'not_subscribed' }
                       }
                     },
                     preferences: {
@@ -365,6 +366,73 @@ const { accessToken, refreshToken } = await response.json();
                         preferredStyle: { type: 'string', example: 'thoughtful' }
                       }
                     }
+                  }
+                }
+              }
+            }
+          },
+          '401': { description: 'Not authenticated' }
+        }
+      }
+    },
+    '/api/auth/credits': {
+      get: {
+        tags: ['Authentication'],
+        summary: 'Check remaining daily credits',
+        description: `Retrieve the user's remaining daily message credits.
+        
+**Free Tier:** 5 credits per day (refreshed at midnight UTC).
+**Subscribed Tier:** Unlimited credits.
+
+**Example (curl):**
+\`\`\`bash
+curl -X GET "https://api.anplexa.com/api/auth/credits" \\
+  -H "Authorization: Bearer your-jwt-token"
+\`\`\`
+`,
+        security: [{ bearerAuth: [] }, { apiKey: [] }],
+        responses: {
+          '200': {
+            description: 'Credit status',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    credits: { type: 'integer', example: 4, nullable: true, description: 'Remaining credits (null if unlimited)' },
+                    maxCredits: { type: 'integer', example: 5, nullable: true, description: 'Daily max credits (null if unlimited)' },
+                    unlimited: { type: 'boolean', example: false },
+                    resetsAt: { type: 'string', format: 'date-time', example: '2026-01-05T00:00:00.000Z', nullable: true }
+                  }
+                }
+              }
+            }
+          },
+          '401': { description: 'Not authenticated' }
+        }
+      }
+    },
+    '/api/auth/subscription-status': {
+      get: {
+        tags: ['Authentication'],
+        summary: 'Get fresh subscription status',
+        description: 'Bypasses cache to get the absolute latest subscription status and override state from the database.',
+        security: [{ bearerAuth: [] }, { apiKey: [] }],
+        responses: {
+          '200': {
+            description: 'Subscription status details',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    subscriptionStatus: { type: 'string', example: 'subscribed' },
+                    isSubscribed: { type: 'boolean', example: true },
+                    manualOverride: { type: 'boolean', example: false },
+                    credits: { type: 'integer', example: 5 },
+                    hasStripeCustomer: { type: 'boolean', example: true },
+                    hasActiveSubscription: { type: 'boolean', example: true },
+                    timestamp: { type: 'string', format: 'date-time', example: '2026-01-04T12:00:00.000Z' }
                   }
                 }
               }
