@@ -9,7 +9,7 @@ import { eq, desc, count, and } from 'drizzle-orm';
 import { ANPLEXA_DEFAULT_PROMPT, buildSystemPromptWithName } from '../../config/anplexaPrompt.js';
 import { PersonalityMode, buildPersonalityOverlay, isValidPersonalityMode, DEFAULT_PERSONALITY_MODE } from '../../config/personalityProfiles.js';
 
-const FREE_MESSAGE_LIMIT = 3;
+const FREE_MESSAGE_LIMIT = 10;
 
 /**
  * Get the active system prompt from the database, with user's name injected

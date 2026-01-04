@@ -280,7 +280,7 @@ export const emailTemplates = {
     html: wrapEmail(`
       <h1>Welcome, ${displayName}.</h1>
       <p>You now have access to your private AI companion.</p>
-      <p>Your free tier includes <strong>3 messages</strong> to see if it feels right.</p>
+      <p>Your free tier includes <strong>10 messages</strong> to see if it feels right.</p>
       <div class="highlight">
         <p>Everything stays between you and your companion. No tracking. No judgment.</p>
       </div>
