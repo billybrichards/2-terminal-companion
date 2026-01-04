@@ -1588,12 +1588,12 @@ docsRouter.get('/1384/endpoints-public', (req, res) => {
       }
       
       endpointsHtml += `
-        <div class="endpoint" onclick="toggleDetails('${endpointId}')">
-          <div class="endpoint-header">
+        <div class="endpoint">
+          <div class="endpoint-header" onclick="toggleDetails('${endpointId}')">
             <span class="method" style="background:${color}">${ep.method}</span>
             <code class="path">${ep.path}</code>
             <span class="auth-badge">${ep.auth}</span>
-            <span class="expand-icon">+</span>
+            <span class="expand-icon" id="icon-${endpointId}">+</span>
           </div>
           <p class="endpoint-desc">${ep.description}</p>
           <div class="endpoint-details" id="${endpointId}">${detailsHtml}</div>
@@ -1604,7 +1604,7 @@ docsRouter.get('/1384/endpoints-public', (req, res) => {
 
   const toc = fullEndpoints.map(c => `<a href="#${c.category.toLowerCase().replace(/[^a-z]/g, '-')}">${c.category}</a>`).join('');
 
-  const html = `<!DOCTYPE html>
+  const html = \`<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -1690,7 +1690,7 @@ docsRouter.get('/1384/endpoints-public', (req, res) => {
   <div class="layout">
     <div class="sidebar">
       <h3>Navigation</h3>
-      ${toc}
+      \${toc}
       <div style="margin-top:24px;padding-top:16px;border-top:1px solid #2d1f42;">
         <a href="/docs" style="color:#6366f1;">Swagger Docs</a>
         <a href="/docs/openapi.json" download>Download OpenAPI</a>
@@ -1732,10 +1732,10 @@ docsRouter.get('/1384/endpoints-public', (req, res) => {
         </div>
       </div>
       
-      ${endpointsHtml}
+      \${endpointsHtml}
       
       <div class="footer">
-        <p>Anplexa API &copy; ${new Date().getFullYear()} | <a href="/docs">Swagger</a> | <a href="/">Home</a> | <a href="/admin">Admin</a></p>
+        <p>Anplexa API &copy; \${new Date().getFullYear()} | <a href="/docs">Swagger</a> | <a href="/">Home</a> | <a href="/admin">Admin</a></p>
       </div>
     </div>
   </div>
@@ -1743,12 +1743,27 @@ docsRouter.get('/1384/endpoints-public', (req, res) => {
   <script>
   function toggleDetails(id) {
     const el = document.getElementById(id);
-    const icon = el.parentElement.querySelector('.expand-icon');
-    el.classList.toggle('open');
-    icon.textContent = el.classList.contains('open') ? '−' : '+';
+    const icon = document.getElementById('icon-' + id);
+    const isOpen = el.classList.contains('open');
+    
+    // Close all others
+    document.querySelectorAll('.endpoint-details').forEach(detail => {
+      detail.classList.remove('open');
+      const otherId = detail.id;
+      const otherIcon = document.getElementById('icon-' + otherId);
+      if (otherIcon) otherIcon.textContent = '+';
+    });
+    
+    if (!isOpen) {
+      el.classList.add('open');
+      icon.textContent = '−';
+    } else {
+      el.classList.remove('open');
+      icon.textContent = '+';
+    }
   }
   function downloadEndpoints() {
-    const endpoints = ${JSON.stringify(fullEndpoints)};
+    const endpoints = \${JSON.stringify(fullEndpoints)};
     const blob = new Blob([JSON.stringify(endpoints, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -1761,7 +1776,11 @@ docsRouter.get('/1384/endpoints-public', (req, res) => {
   }
   </script>
 </body>
-</html>`;
+</html>\`;
+
+  res.setHeader('Content-Type', 'text/html');
+  res.send(html);
+});
 
   res.setHeader('Content-Type', 'text/html');
   res.send(html);
