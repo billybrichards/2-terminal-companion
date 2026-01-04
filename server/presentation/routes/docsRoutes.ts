@@ -1604,7 +1604,7 @@ docsRouter.get('/1384/endpoints-public', (req, res) => {
 
   const toc = fullEndpoints.map(c => `<a href="#${c.category.toLowerCase().replace(/[^a-z]/g, '-')}">${c.category}</a>`).join('');
 
-  const html = \`<!DOCTYPE html>
+  const html = `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -1690,7 +1690,7 @@ docsRouter.get('/1384/endpoints-public', (req, res) => {
   <div class="layout">
     <div class="sidebar">
       <h3>Navigation</h3>
-      \${toc}
+      ${toc}
       <div style="margin-top:24px;padding-top:16px;border-top:1px solid #2d1f42;">
         <a href="/docs" style="color:#6366f1;">Swagger Docs</a>
         <a href="/docs/openapi.json" download>Download OpenAPI</a>
@@ -1732,10 +1732,10 @@ docsRouter.get('/1384/endpoints-public', (req, res) => {
         </div>
       </div>
       
-      \${endpointsHtml}
+      ${endpointsHtml}
       
       <div class="footer">
-        <p>Anplexa API &copy; \${new Date().getFullYear()} | <a href="/docs">Swagger</a> | <a href="/">Home</a> | <a href="/admin">Admin</a></p>
+        <p>Anplexa API &copy; ${new Date().getFullYear()} | <a href="/docs">Swagger</a> | <a href="/">Home</a> | <a href="/admin">Admin</a></p>
       </div>
     </div>
   </div>
@@ -1763,7 +1763,7 @@ docsRouter.get('/1384/endpoints-public', (req, res) => {
     }
   }
   function downloadEndpoints() {
-    const endpoints = \${JSON.stringify(fullEndpoints)};
+    const endpoints = ${JSON.stringify(fullEndpoints)};
     const blob = new Blob([JSON.stringify(endpoints, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -1776,11 +1776,7 @@ docsRouter.get('/1384/endpoints-public', (req, res) => {
   }
   </script>
 </body>
-</html>\`;
-
-  res.setHeader('Content-Type', 'text/html');
-  res.send(html);
-});
+</html>`;
 
   res.setHeader('Content-Type', 'text/html');
   res.send(html);
