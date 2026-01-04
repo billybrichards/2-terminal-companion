@@ -783,6 +783,224 @@ docsRouter.get('/openapi.json', (req, res) => {
   res.json(apiDocs);
 });
 
+docsRouter.get('/1384/endpoints-public', (req, res) => {
+  const endpoints = [
+    { category: 'Authentication', endpoints: [
+      { method: 'POST', path: '/api/auth/register', description: 'Register a new user account', auth: 'None' },
+      { method: 'POST', path: '/api/auth/login', description: 'Login with email/password, returns JWT tokens', auth: 'None' },
+      { method: 'POST', path: '/api/auth/refresh', description: 'Refresh access token using refresh token', auth: 'None' },
+      { method: 'POST', path: '/api/auth/logout', description: 'Logout and invalidate session', auth: 'JWT' },
+      { method: 'GET', path: '/api/auth/me', description: 'Get current user profile and preferences', auth: 'JWT/API Key' },
+      { method: 'GET', path: '/api/auth/credits', description: 'Check remaining daily message credits', auth: 'JWT/API Key' },
+      { method: 'GET', path: '/api/auth/subscription-status', description: 'Get fresh subscription status (no cache)', auth: 'JWT' },
+      { method: 'PUT', path: '/api/auth/chat-name', description: 'Update user preferred chat name', auth: 'JWT/API Key' },
+    ]},
+    { category: 'Chat (AI Companion)', endpoints: [
+      { method: 'POST', path: '/api/chat', description: 'Send message with streaming SSE response', auth: 'JWT/API Key' },
+      { method: 'POST', path: '/api/chat/non-streaming', description: 'Send message, get complete JSON response', auth: 'JWT/API Key' },
+      { method: 'GET', path: '/api/chat/config', description: 'Get chat configuration (models, limits)', auth: 'None' },
+    ]},
+    { category: 'Conversations', endpoints: [
+      { method: 'GET', path: '/api/conversations', description: 'List all user conversations', auth: 'JWT/API Key' },
+      { method: 'POST', path: '/api/conversations', description: 'Create a new conversation', auth: 'JWT/API Key' },
+      { method: 'GET', path: '/api/conversations/:id', description: 'Get conversation with messages', auth: 'JWT/API Key' },
+      { method: 'DELETE', path: '/api/conversations/:id', description: 'Delete a conversation', auth: 'JWT/API Key' },
+    ]},
+    { category: 'User Settings', endpoints: [
+      { method: 'GET', path: '/api/settings', description: 'Get user preferences', auth: 'JWT/API Key' },
+      { method: 'PUT', path: '/api/settings', description: 'Update user preferences', auth: 'JWT/API Key' },
+      { method: 'PUT', path: '/api/settings/personality', description: 'Update personality mode', auth: 'JWT/API Key' },
+      { method: 'PUT', path: '/api/settings/gender', description: 'Update preferred AI gender', auth: 'JWT/API Key' },
+    ]},
+    { category: 'Stripe (Payments)', endpoints: [
+      { method: 'GET', path: '/api/stripe/products', description: 'List available subscription products', auth: 'None' },
+      { method: 'POST', path: '/api/stripe/checkout', description: 'Create Stripe checkout session', auth: 'JWT' },
+      { method: 'POST', path: '/api/stripe/verify-checkout', description: 'Verify checkout and update subscription', auth: 'JWT' },
+      { method: 'POST', path: '/api/stripe/portal', description: 'Create customer portal session', auth: 'JWT' },
+      { method: 'GET', path: '/api/stripe/subscription', description: 'Get user subscription details', auth: 'JWT' },
+      { method: 'POST', path: '/api/stripe/webhook', description: 'Stripe webhook handler', auth: 'Stripe Signature' },
+    ]},
+    { category: 'Public (No Auth)', endpoints: [
+      { method: 'POST', path: '/api/register-subscriber', description: 'Waitlist/landing page signup', auth: 'None' },
+      { method: 'GET', path: '/api/health', description: 'Server health check', auth: 'None' },
+      { method: 'GET', path: '/api/health/database', description: 'Database connection check', auth: 'None' },
+      { method: 'GET', path: '/api/health/ollama', description: 'Ollama LLM connection check', auth: 'None' },
+      { method: 'GET', path: '/api/health/full', description: 'Full system health check', auth: 'None' },
+    ]},
+    { category: 'Funnel Integration', endpoints: [
+      { method: 'POST', path: '/api/funnel/users', description: 'Create user via external funnel', auth: 'Funnel API Key' },
+      { method: 'POST', path: '/api/funnel/checkout', description: 'Create checkout for funnel user', auth: 'Funnel API Key' },
+      { method: 'GET', path: '/api/funnel/subscription/:userId', description: 'Get user subscription status', auth: 'Funnel API Key' },
+      { method: 'POST', path: '/api/funnel/amplexa/complete', description: 'Complete Amplexa funnel flow', auth: 'Funnel API Key' },
+    ]},
+    { category: 'Webhooks', endpoints: [
+      { method: 'POST', path: '/api/webhooks/stripe', description: 'Stripe event webhook', auth: 'Webhook Secret' },
+      { method: 'POST', path: '/api/webhooks/email', description: 'Email event webhook (bounces, opens)', auth: 'Webhook Secret' },
+    ]},
+    { category: 'Admin API', endpoints: [
+      { method: 'GET', path: '/api/admin/users', description: 'List all users with filters', auth: 'Admin JWT' },
+      { method: 'GET', path: '/api/admin/users/:id', description: 'Get user details', auth: 'Admin JWT' },
+      { method: 'PUT', path: '/api/admin/users/:id', description: 'Update user (subscription, credits)', auth: 'Admin JWT' },
+      { method: 'DELETE', path: '/api/admin/users/:id', description: 'Delete user and all data', auth: 'Admin JWT' },
+      { method: 'GET', path: '/api/admin/stats', description: 'Get system statistics', auth: 'Admin JWT' },
+      { method: 'GET', path: '/api/admin/stats/source-channels', description: 'Get funnel/source analytics', auth: 'Admin JWT' },
+      { method: 'GET', path: '/api/admin/contact-submissions', description: 'View contact audit log', auth: 'Admin JWT' },
+      { method: 'GET', path: '/api/admin/api-keys', description: 'List API keys', auth: 'Admin JWT' },
+      { method: 'POST', path: '/api/admin/api-keys', description: 'Generate new API key', auth: 'Admin JWT' },
+      { method: 'DELETE', path: '/api/admin/api-keys/:id', description: 'Revoke API key', auth: 'Admin JWT' },
+      { method: 'GET', path: '/api/admin/system-prompts', description: 'List system prompts', auth: 'Admin JWT' },
+      { method: 'POST', path: '/api/admin/system-prompts', description: 'Create/update system prompt', auth: 'Admin JWT' },
+    ]},
+    { category: 'CRM', endpoints: [
+      { method: 'GET', path: '/admin/crm', description: 'CRM dashboard', auth: 'Admin Session' },
+      { method: 'GET', path: '/admin/crm/sequences', description: 'Email sequences list', auth: 'Admin Session' },
+      { method: 'GET', path: '/admin/crm/queue', description: 'Email queue status', auth: 'Admin Session' },
+      { method: 'GET', path: '/admin/crm/analytics', description: 'Email analytics', auth: 'Admin Session' },
+    ]},
+  ];
+
+  const methodColors: Record<string, string> = {
+    GET: '#28a745',
+    POST: '#007bff',
+    PUT: '#ffc107',
+    DELETE: '#dc3545',
+    PATCH: '#17a2b8',
+  };
+
+  let tableHtml = '';
+  for (const cat of endpoints) {
+    tableHtml += `<h2 style="margin-top: 30px; color: #a78bfa; border-bottom: 1px solid #4c1d95; padding-bottom: 8px;">${cat.category}</h2>`;
+    tableHtml += '<table style="width: 100%; margin-bottom: 20px; border-collapse: collapse;"><thead><tr><th style="text-align: left; padding: 12px; background: #1e1b4b; color: #a78bfa; width: 80px;">Method</th><th style="text-align: left; padding: 12px; background: #1e1b4b; color: #a78bfa;">Endpoint</th><th style="text-align: left; padding: 12px; background: #1e1b4b; color: #a78bfa;">Description</th><th style="text-align: left; padding: 12px; background: #1e1b4b; color: #a78bfa; width: 120px;">Auth</th></tr></thead><tbody>';
+    for (const ep of cat.endpoints) {
+      const color = methodColors[ep.method] || '#888';
+      tableHtml += `<tr style="border-bottom: 1px solid #4c1d95;">
+        <td style="padding: 10px;"><span style="background: ${color}; color: white; padding: 2px 8px; border-radius: 3px; font-size: 11px; font-weight: bold;">${ep.method}</span></td>
+        <td style="padding: 10px;"><code style="background: #1e1b4b; padding: 4px 8px; border-radius: 3px; color: #86efac;">${ep.path}</code></td>
+        <td style="padding: 10px; color: #cbd5e1;">${ep.description}</td>
+        <td style="padding: 10px;"><span style="color: #888; font-size: 12px;">${ep.auth}</span></td>
+      </tr>`;
+    }
+    tableHtml += '</tbody></table>';
+  }
+
+  const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Anplexa API Endpoints - Public Reference</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Inter', sans-serif; background: #0f0f1a; color: #e2e8f0; min-height: 100vh; }
+    .header {
+      background: linear-gradient(90deg, #6366f1 0%, #8b5cf6 50%, #a855f7 100%);
+      padding: 20px 40px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      color: white;
+    }
+    .header h1 { font-size: 1.5rem; font-weight: 700; }
+    .header nav a { color: white; text-decoration: none; margin-left: 20px; font-weight: 500; opacity: 0.9; }
+    .header nav a:hover { opacity: 1; }
+    .container { max-width: 1400px; margin: 0 auto; padding: 40px; }
+    h1.title { color: #f1f5f9; margin-bottom: 10px; font-size: 2rem; }
+    .subtitle { color: #94a3b8; margin-bottom: 30px; }
+    .card { background: #1e1b4b; padding: 25px; border-radius: 12px; margin-bottom: 30px; border: 1px solid #4c1d95; }
+    .card h3 { color: #a78bfa; margin-bottom: 15px; }
+    table { width: 100%; }
+    code { font-family: 'Courier New', monospace; }
+    .btn { 
+      display: inline-block;
+      padding: 10px 20px; 
+      background: #6366f1; 
+      color: white; 
+      border: none; 
+      border-radius: 8px; 
+      cursor: pointer;
+      font-family: inherit;
+      font-size: 14px;
+      text-decoration: none;
+      margin-right: 10px;
+    }
+    .btn:hover { background: #4f46e5; }
+    .btn-secondary { background: #4c1d95; }
+    .btn-secondary:hover { background: #5b21b6; }
+    .footer { margin-top: 60px; padding: 20px 0; border-top: 1px solid #4c1d95; text-align: center; color: #64748b; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div style="display: flex; align-items: center; gap: 16px;">
+      <h1>Anplexa API Endpoints</h1>
+      <span style="background: rgba(255,255,255,0.2); padding: 4px 10px; border-radius: 12px; font-size: 0.75rem;">v1.0.0</span>
+    </div>
+    <nav>
+      <a href="/">Home</a>
+      <a href="/docs">Swagger Docs</a>
+      <a href="/docs/openapi.json">OpenAPI JSON</a>
+      <a href="/admin">Admin</a>
+    </nav>
+  </div>
+  
+  <div class="container">
+    <h1 class="title">Complete API Endpoints Reference</h1>
+    <p class="subtitle">All available Anplexa API endpoints with authentication requirements</p>
+    
+    <div class="card">
+      <h3>Authentication Methods</h3>
+      <table>
+        <tr><td style="padding: 8px; color: #86efac;"><strong>JWT Bearer Token</strong></td><td style="padding: 8px;"><code style="color: #fbbf24;">Authorization: Bearer &lt;token&gt;</code></td><td style="padding: 8px; color: #94a3b8;">User sessions from login</td></tr>
+        <tr><td style="padding: 8px; color: #86efac;"><strong>API Key</strong></td><td style="padding: 8px;"><code style="color: #fbbf24;">X-API-Key: &lt;key&gt;</code></td><td style="padding: 8px; color: #94a3b8;">Server-to-server integration</td></tr>
+        <tr><td style="padding: 8px; color: #86efac;"><strong>Funnel API Key</strong></td><td style="padding: 8px;"><code style="color: #fbbf24;">Authorization: Bearer &lt;funnel_key&gt;</code></td><td style="padding: 8px; color: #94a3b8;">External funnel integrations</td></tr>
+        <tr><td style="padding: 8px; color: #86efac;"><strong>Admin JWT</strong></td><td style="padding: 8px;"><code style="color: #fbbf24;">Authorization: Bearer &lt;admin_token&gt;</code></td><td style="padding: 8px; color: #94a3b8;">Admin API access (isAdmin=true)</td></tr>
+      </table>
+    </div>
+    
+    <div class="card">
+      <h3>Base URLs</h3>
+      <table>
+        <tr><td style="padding: 8px; color: #86efac;"><strong>Production</strong></td><td style="padding: 8px;"><code style="color: #fbbf24;">https://api.anplexa.com</code></td></tr>
+        <tr><td style="padding: 8px; color: #86efac;"><strong>Development</strong></td><td style="padding: 8px;"><code style="color: #fbbf24;">https://&lt;repl-domain&gt;.replit.dev</code></td></tr>
+      </table>
+    </div>
+    
+    <div style="margin-bottom: 30px;">
+      <button onclick="downloadEndpoints()" class="btn">Download as JSON</button>
+      <a href="/docs/openapi.json" class="btn btn-secondary" download>Download OpenAPI Spec</a>
+      <a href="/docs" class="btn btn-secondary">Interactive Swagger Docs</a>
+    </div>
+    
+    ${tableHtml}
+    
+    <div class="footer">
+      <p>Anplexa API &copy; ${new Date().getFullYear()} | <a href="/docs" style="color: #a78bfa;">Swagger Docs</a> | <a href="/" style="color: #a78bfa;">Home</a></p>
+    </div>
+  </div>
+  
+  <script>
+  function downloadEndpoints() {
+    const endpoints = ${JSON.stringify(endpoints)};
+    const blob = new Blob([JSON.stringify(endpoints, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'anplexa-api-endpoints.json';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+  </script>
+</body>
+</html>`;
+
+  res.setHeader('Content-Type', 'text/html');
+  res.send(html);
+});
+
 docsRouter.get('/export', (req, res) => {
   const html = `<!DOCTYPE html>
 <html lang="en">

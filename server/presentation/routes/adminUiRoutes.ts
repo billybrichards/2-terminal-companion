@@ -1421,9 +1421,30 @@ adminUiRouter.get('/api-reference', (req: Request, res: Response) => {
       <h3 style="color: #888;">Quick Links</h3>
       <p><a href="/docs">Interactive API Documentation (Swagger)</a></p>
       <p><a href="/docs/openapi.json">Download OpenAPI Spec (JSON)</a></p>
+      <p><a href="/docs/1384/endpoints-public">Public Endpoints Reference (No Login)</a></p>
       <p><a href="/admin/funnel-keys">Manage Funnel API Keys</a></p>
       <p><a href="/admin/api-keys">Manage API Keys</a></p>
     </div>
+    
+    <div class="card" style="margin-top: 20px;">
+      <h3 style="color: #ff6b35; margin-bottom: 15px;">Download</h3>
+      <button onclick="downloadEndpoints()" class="btn">Download Endpoints as JSON</button>
+    </div>
+    
+    <script>
+    function downloadEndpoints() {
+      const endpoints = ${JSON.stringify(endpoints)};
+      const blob = new Blob([JSON.stringify(endpoints, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'anplexa-api-endpoints.json';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+    </script>
   `);
 
   res.send(html);
