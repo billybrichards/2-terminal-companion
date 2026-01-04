@@ -480,6 +480,58 @@ authRouter.get('/me', authMiddleware, async (req, res) => {
   }
 });
 
+// GET /api/auth/credits - Check remaining daily credits
+const DAILY_FREE_CREDITS = 5;
+
+authRouter.get('/credits', authMiddleware, async (req, res) => {
+  try {
+    const user = await db.query.users.findFirst({
+      where: eq(users.id, req.user!.sub),
+    });
+
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Subscribed users have unlimited credits
+    if ((user as any).subscriptionStatus === 'subscribed') {
+      return res.json({
+        credits: null, // null = unlimited
+        maxCredits: null,
+        unlimited: true,
+        resetsAt: null,
+      });
+    }
+
+    // Check if we need to refresh credits for a new day
+    const today = new Date().toISOString().split('T')[0];
+    const lastRefresh = (user as any).lastCreditRefresh;
+    let currentCredits = (user as any).credits ?? DAILY_FREE_CREDITS;
+
+    if (!lastRefresh || lastRefresh < today) {
+      currentCredits = DAILY_FREE_CREDITS;
+      await db.update(users)
+        .set({ credits: DAILY_FREE_CREDITS, lastCreditRefresh: today })
+        .where(eq(users.id, req.user!.sub));
+    }
+
+    // Calculate next reset time (midnight UTC tomorrow)
+    const tomorrow = new Date();
+    tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
+    tomorrow.setUTCHours(0, 0, 0, 0);
+
+    res.json({
+      credits: currentCredits,
+      maxCredits: DAILY_FREE_CREDITS,
+      unlimited: false,
+      resetsAt: tomorrow.toISOString(),
+    });
+  } catch (error) {
+    console.error('Get credits error:', error);
+    res.status(500).json({ error: 'Failed to get credits' });
+  }
+});
+
 // GET /api/auth/subscription-status - Fresh subscription status check with no caching
 authRouter.get('/subscription-status', authMiddleware, async (req, res) => {
   try {

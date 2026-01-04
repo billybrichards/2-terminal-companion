@@ -9,7 +9,7 @@ import { eq, desc, count, and } from 'drizzle-orm';
 import { ANPLEXA_DEFAULT_PROMPT, buildSystemPromptWithName } from '../../config/anplexaPrompt.js';
 import { PersonalityMode, buildPersonalityOverlay, isValidPersonalityMode, DEFAULT_PERSONALITY_MODE } from '../../config/personalityProfiles.js';
 
-const FREE_MESSAGE_LIMIT = 10;
+const DAILY_FREE_CREDITS = 5; // Free users get 5 credits per day, capped at 5
 
 /**
  * Get the active system prompt from the database, with user's name injected
@@ -272,47 +272,40 @@ chatRouter.post('/', optionalAuthMiddleware, async (req, res) => {
       }
     }
 
-    // Check message limit for free users (resets weekly) - skip for newChat ice-breakers
+    // Check daily credit limit for free users - skip for newChat ice-breakers
     if (userId && user && !isNewChat) {
       if ((user as any).subscriptionStatus !== 'subscribed') {
-        // Calculate start of current week (Monday)
-        const now = new Date();
-        const dayOfWeek = now.getDay();
-        const diffToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
-        const weekStart = new Date(now);
-        weekStart.setDate(now.getDate() - diffToMonday);
-        weekStart.setHours(0, 0, 0, 0);
+        // Get today's date string (UTC) for comparison
+        const today = new Date().toISOString().split('T')[0]; // e.g., "2024-01-15"
+        const lastRefresh = (user as any).lastCreditRefresh;
+        let currentCredits = (user as any).credits ?? DAILY_FREE_CREDITS;
         
-        // Calculate next week reset date
-        const nextReset = new Date(weekStart);
-        nextReset.setDate(weekStart.getDate() + 7);
-
-        // Count user's messages from this week only
-        const userConversations = await db.query.conversations.findMany({
-          where: eq(conversations.userId, userId),
-        });
-        
-        let totalMessages = 0;
-        for (const conv of userConversations) {
-          const convMessages = await db.query.messages.findMany({
-            where: and(
-              eq(messages.conversationId, conv.id),
-              eq(messages.role, 'user')
-            ),
-          });
-          // Count only messages from this week
-          totalMessages += convMessages.filter((m: any) => 
-            new Date(m.createdAt) >= weekStart
-          ).length;
+        // Check if we need to refresh credits (new day or never refreshed)
+        if (!lastRefresh || lastRefresh < today) {
+          // Reset credits to daily amount (capped at 5 for free users)
+          currentCredits = DAILY_FREE_CREDITS;
+          await db.update(users)
+            .set({ 
+              credits: DAILY_FREE_CREDITS,
+              lastCreditRefresh: today 
+            })
+            .where(eq(users.id, userId));
+          console.log(`[Credits] User ${userId} credits refreshed to ${DAILY_FREE_CREDITS} for ${today}`);
         }
-
-        if (totalMessages >= FREE_MESSAGE_LIMIT) {
+        
+        // Check if user has credits remaining
+        if (currentCredits <= 0) {
+          // Calculate next reset time (midnight UTC tomorrow)
+          const tomorrow = new Date();
+          tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
+          tomorrow.setUTCHours(0, 0, 0, 0);
+          
           return res.status(403).json({
-            error: 'Message limit reached',
-            message: 'All used up, please subscribe for unlimited messages and audio. Your limit will reset next week.',
-            limit: FREE_MESSAGE_LIMIT,
-            used: totalMessages,
-            resetsAt: nextReset.toISOString(),
+            error: 'Credits exhausted',
+            message: 'All used up for today! Subscribe for unlimited messages, or come back tomorrow for 5 more free messages.',
+            credits: 0,
+            maxCredits: DAILY_FREE_CREDITS,
+            resetsAt: tomorrow.toISOString(),
           });
         }
       }
@@ -452,6 +445,15 @@ chatRouter.post('/', optionalAuthMiddleware, async (req, res) => {
           .where(eq(conversations.id, conversationId));
       }
 
+      // Decrement credits for free users after successful message
+      if (userId && user && (user as any).subscriptionStatus !== 'subscribed' && !isNewChat) {
+        const newCredits = Math.max(0, ((user as any).credits ?? DAILY_FREE_CREDITS) - 1);
+        await db.update(users)
+          .set({ credits: newCredits })
+          .where(eq(users.id, userId));
+        console.log(`[Credits] User ${userId} credits decremented to ${newCredits}`);
+      }
+
       // Send done event
       res.write(`data: ${JSON.stringify({
         type: 'done',
@@ -493,6 +495,36 @@ chatRouter.post('/non-streaming', optionalAuthMiddleware, async (req, res) => {
       user = await db.query.users.findFirst({
         where: eq(users.id, userId),
       });
+    }
+
+    // Check daily credit limit for free users - skip for newChat ice-breakers
+    if (userId && user && !isNewChat) {
+      if ((user as any).subscriptionStatus !== 'subscribed') {
+        const today = new Date().toISOString().split('T')[0];
+        const lastRefresh = (user as any).lastCreditRefresh;
+        let currentCredits = (user as any).credits ?? DAILY_FREE_CREDITS;
+        
+        if (!lastRefresh || lastRefresh < today) {
+          currentCredits = DAILY_FREE_CREDITS;
+          await db.update(users)
+            .set({ credits: DAILY_FREE_CREDITS, lastCreditRefresh: today })
+            .where(eq(users.id, userId));
+        }
+        
+        if (currentCredits <= 0) {
+          const tomorrow = new Date();
+          tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
+          tomorrow.setUTCHours(0, 0, 0, 0);
+          
+          return res.status(403).json({
+            error: 'Credits exhausted',
+            message: 'All used up for today! Subscribe for unlimited messages, or come back tomorrow for 5 more free messages.',
+            credits: 0,
+            maxCredits: DAILY_FREE_CREDITS,
+            resetsAt: tomorrow.toISOString(),
+          });
+        }
+      }
     }
 
     // Get companion config
@@ -552,6 +584,14 @@ chatRouter.post('/non-streaming', optionalAuthMiddleware, async (req, res) => {
       temperature: config.temperature || 0.8,
       maxTokens,
     });
+
+    // Decrement credits for free users after successful message
+    if (userId && user && (user as any).subscriptionStatus !== 'subscribed' && !isNewChat) {
+      const newCredits = Math.max(0, ((user as any).credits ?? DAILY_FREE_CREDITS) - 1);
+      await db.update(users)
+        .set({ credits: newCredits })
+        .where(eq(users.id, userId));
+    }
 
     res.json({
       response,
