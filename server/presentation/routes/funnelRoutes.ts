@@ -10,6 +10,7 @@ import { generateApiKey } from '../../infrastructure/auth/ApiKeyGenerator.js';
 import { stripeService } from '../../infrastructure/stripe/stripeService.js';
 import { emailService } from '../../infrastructure/email/resendService.js';
 import { emailScheduler } from '../../infrastructure/email/emailScheduler.js';
+import { generateExchangeToken } from './authRoutes.js';
 
 export const funnelRouter = Router();
 
@@ -199,6 +200,9 @@ funnelRouter.post('/users', funnelAuthMiddleware, async (req: Request, res: Resp
       }
     }
 
+    // Generate exchange code for secure redirect (avoids JWT in URL)
+    const exchangeCode = await generateExchangeToken(userId, body.email, 'funnel');
+
     res.status(201).json({
       message: 'User created successfully',
       user: {
@@ -207,8 +211,12 @@ funnelRouter.post('/users', funnelAuthMiddleware, async (req: Request, res: Resp
         displayName: body.displayName || body.email.split('@')[0],
       },
       apiKey: apiKeyData.key,
+      // JWT tokens for server-side use
       accessToken: tokens.accessToken,
       refreshToken: tokens.refreshToken,
+      // Exchange code for secure redirect to frontend (5 min expiry)
+      // Use this instead of passing JWT in URL query params
+      exchangeCode,
     });
   } catch (error) {
     if (error instanceof z.ZodError) {

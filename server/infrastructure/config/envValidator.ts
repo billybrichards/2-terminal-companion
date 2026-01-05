@@ -22,6 +22,12 @@ export interface EnvConfig {
   jwtAccessExpires: string;
   jwtRefreshExpires: string;
 
+  // Stripe
+  stripeSecretKey?: string;
+  stripeWebhookSecret?: string;
+  stripePriceMonthly?: string;
+  stripePriceYearly?: string;
+
   // Optional
   frontendUrl?: string;
   adminEmail?: string;
@@ -73,6 +79,51 @@ export function validateEnv(): ValidationResult {
     warnings.push('JWT_SECRET is using default dev value - change in production!');
   }
 
+  // Stripe validation - auto-select test/live keys based on NODE_ENV
+  const nodeEnv = process.env.NODE_ENV || 'development';
+  const isProduction = nodeEnv === 'production';
+
+  // Select appropriate Stripe keys based on environment
+  const stripeSecretKey = isProduction
+    ? (process.env.STRIPE_LIVE_SECRET_KEY || process.env.STRIPE_SECRET_KEY)
+    : (process.env.STRIPE_TEST_SECRET_KEY || process.env.STRIPE_SECRET_KEY);
+
+  const stripePublishableKey = isProduction
+    ? (process.env.STRIPE_LIVE_PUBLISHABLE_KEY || process.env.STRIPE_PUBLISHABLE_KEY)
+    : (process.env.STRIPE_TEST_PUBLISHABLE_KEY || process.env.STRIPE_PUBLISHABLE_KEY);
+
+  const stripeWebhookSecret = isProduction
+    ? (process.env.STRIPE_LIVE_WEBHOOK_SECRET || process.env.STRIPE_WEBHOOK_SECRET)
+    : (process.env.STRIPE_TEST_WEBHOOK_SECRET || process.env.STRIPE_WEBHOOK_SECRET);
+
+  const stripePriceMonthly = process.env.STRIPE_PRICE_MONTHLY;
+  const stripePriceYearly = process.env.STRIPE_PRICE_YEARLY;
+
+  if (!stripeSecretKey) {
+    warnings.push('Stripe keys not set - payment features disabled');
+  } else {
+    // Validate key format matches environment
+    const isTestKey = stripeSecretKey.includes('_test_');
+    if (isProduction && isTestKey) {
+      warnings.push('⚠️  Using TEST Stripe keys in PRODUCTION environment!');
+    }
+    if (!isProduction && !isTestKey) {
+      warnings.push('⚠️  Using LIVE Stripe keys in DEVELOPMENT - real charges will occur!');
+    }
+    if (!stripeSecretKey.startsWith('sk_')) {
+      errors.push('STRIPE_SECRET_KEY must start with sk_ (live) or sk_test_ (test)');
+    }
+  }
+  if (!stripeWebhookSecret) {
+    warnings.push('STRIPE_WEBHOOK_SECRET not set - webhook verification disabled');
+  }
+  if (stripeSecretKey && !stripePriceMonthly) {
+    warnings.push('STRIPE_PRICE_MONTHLY not set - using hardcoded default');
+  }
+  if (stripeSecretKey && !stripePriceYearly) {
+    warnings.push('STRIPE_PRICE_YEARLY not set - using hardcoded default');
+  }
+
   const config: EnvConfig = {
     port: parseInt(process.env.PORT || '5000', 10),
     nodeEnv: process.env.NODE_ENV || 'development',
@@ -84,6 +135,10 @@ export function validateEnv(): ValidationResult {
     jwtSecret: jwtSecret || '',
     jwtAccessExpires: process.env.JWT_ACCESS_EXPIRES || '15m',
     jwtRefreshExpires: process.env.JWT_REFRESH_EXPIRES || '7d',
+    stripeSecretKey,
+    stripeWebhookSecret,
+    stripePriceMonthly,
+    stripePriceYearly,
     frontendUrl: process.env.FRONTEND_URL,
     adminEmail: process.env.ADMIN_EMAIL,
     replitDomains: process.env.REPLIT_DOMAINS,
@@ -142,6 +197,18 @@ export function logEnvConfig(): void {
   console.log(`│   JWT_SECRET:        ${maskSecret(config.jwtSecret).padEnd(40)}│`);
   console.log(`│   ACCESS_EXPIRES:    ${config.jwtAccessExpires.padEnd(40)}│`);
   console.log(`│   REFRESH_EXPIRES:   ${config.jwtRefreshExpires.padEnd(40)}│`);
+
+  // Stripe config
+  console.log('├──────────────────────────────────────────────────────────────┤');
+  console.log('│ STRIPE                                                       │');
+  const stripeStatus = config.stripeSecretKey
+    ? (config.stripeSecretKey.includes('_test_') ? '✓ Test Mode' : '✓ Live Mode')
+    : '✗ Disabled';
+  console.log(`│   STATUS:            ${stripeStatus.padEnd(40)}│`);
+  console.log(`│   SECRET_KEY:        ${maskSecret(config.stripeSecretKey).padEnd(40)}│`);
+  console.log(`│   WEBHOOK_SECRET:    ${maskSecret(config.stripeWebhookSecret).padEnd(40)}│`);
+  console.log(`│   PRICE_MONTHLY:     ${(config.stripePriceMonthly || '(default)').padEnd(40)}│`);
+  console.log(`│   PRICE_YEARLY:      ${(config.stripePriceYearly || '(default)').padEnd(40)}│`);
 
   // Optional config
   console.log('├──────────────────────────────────────────────────────────────┤');

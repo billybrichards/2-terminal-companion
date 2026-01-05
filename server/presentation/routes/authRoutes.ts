@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import crypto from 'crypto';
 import { db } from '../../infrastructure/database/index.js';
-import { users, sessions, userPreferences, passwordResetTokens, magicLinkTokens, contactSubmissions } from '../../../shared/schema.js';
+import { users, sessions, userPreferences, passwordResetTokens, magicLinkTokens, contactSubmissions, exchangeTokens } from '../../../shared/schema.js';
 import { jwtAdapter } from '../../infrastructure/auth/JWTAdapter.js';
 import { authMiddleware } from '../middleware/authMiddleware.js';
 import { authRateLimiter, registrationRateLimiter } from '../middleware/rateLimitMiddleware.js';
@@ -31,6 +31,7 @@ authRouter.get('/refresh', postOnlyHandler('/api/auth/refresh'));
 authRouter.get('/logout', postOnlyHandler('/api/auth/logout'));
 authRouter.get('/magic-link', postOnlyHandler('/api/auth/magic-link'));
 authRouter.get('/magic-link/verify', postOnlyHandler('/api/auth/magic-link/verify'));
+authRouter.get('/exchange-token', postOnlyHandler('/api/auth/exchange-token'));
 
 // Validation schemas
 const registerSchema = z.object({
@@ -856,3 +857,128 @@ authRouter.post('/magic-link/verify', authRateLimiter, async (req, res) => {
     res.status(500).json({ error: 'Magic link verification failed' });
   }
 });
+
+// =============================================================================
+// Exchange Token - Secure redirect authentication for Funnel-Forge
+// =============================================================================
+// Exchange tokens are short-lived (5 min) codes that can be exchanged for JWT tokens
+// Used to avoid passing JWTs in URL query parameters
+
+const exchangeTokenSchema = z.object({
+  email: z.string().email(),
+  code: z.string().min(16),
+});
+
+// POST /api/auth/exchange-token - Exchange a one-time code for JWT tokens
+authRouter.post('/exchange-token', authRateLimiter, async (req, res) => {
+  try {
+    const body = exchangeTokenSchema.parse(req.body);
+
+    // Find all non-expired, unused exchange tokens for this email
+    const now = new Date().toISOString();
+    const tokens = await db.select()
+      .from(exchangeTokens)
+      .where(
+        and(
+          eq(exchangeTokens.email, body.email),
+          isNull(exchangeTokens.usedAt),
+          gt(exchangeTokens.expiresAt, now)
+        )
+      );
+
+    // Find matching token by verifying hash
+    let validToken = null;
+    for (const token of tokens) {
+      const isMatch = await jwtAdapter.verifyPassword(body.code, token.codeHash);
+      if (isMatch) {
+        validToken = token;
+        break;
+      }
+    }
+
+    if (!validToken) {
+      return res.status(400).json({ error: 'Invalid or expired exchange code' });
+    }
+
+    // Atomically mark token as used to prevent race conditions
+    const updateResult = await db.update(exchangeTokens)
+      .set({ usedAt: new Date().toISOString() })
+      .where(
+        and(
+          eq(exchangeTokens.id, validToken.id),
+          isNull(exchangeTokens.usedAt)
+        )
+      );
+
+    // Check if another request already used this token
+    if (!updateResult || (updateResult as any).rowCount === 0) {
+      return res.status(400).json({ error: 'Exchange code already used' });
+    }
+
+    // Find the user
+    const user = await db.query.users.findFirst({
+      where: eq(users.id, validToken.userId),
+    });
+
+    if (!user) {
+      return res.status(400).json({ error: 'User not found' });
+    }
+
+    // Generate JWT tokens
+    const jwtTokens = jwtAdapter.generateTokenPair(user.id, user.email, user.isAdmin || false);
+
+    // Store refresh token
+    await db.insert(sessions).values({
+      id: jwtAdapter.generateId(),
+      userId: user.id,
+      refreshToken: jwtTokens.refreshToken,
+      expiresAt: jwtAdapter.getRefreshExpiryDate().toISOString(),
+    });
+
+    console.log(`[Exchange Token] Successfully exchanged code for user ${user.email} (source: ${validToken.source})`);
+
+    res.json({
+      message: 'Exchange successful',
+      user: {
+        id: user.id,
+        email: user.email,
+        displayName: user.displayName,
+        isAdmin: user.isAdmin,
+        subscriptionStatus: (user as any).subscriptionStatus || 'not_subscribed',
+      },
+      ...jwtTokens,
+    });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({ error: 'Validation error', details: error.errors });
+    }
+    console.error('Exchange token error:', error);
+    res.status(500).json({ error: 'Exchange token verification failed' });
+  }
+});
+
+// Helper function to generate exchange token (called from funnel routes)
+export async function generateExchangeToken(userId: string, email: string, source: string = 'funnel'): Promise<string> {
+  // Generate a secure random code
+  const code = crypto.randomBytes(24).toString('hex'); // 48 character code
+
+  // Hash the code before storing
+  const codeHash = await jwtAdapter.hashPassword(code);
+
+  // Set expiry to 5 minutes from now
+  const expiresAt = new Date(Date.now() + 5 * 60 * 1000).toISOString();
+
+  // Store the token
+  await db.insert(exchangeTokens).values({
+    id: jwtAdapter.generateId(),
+    userId,
+    email,
+    codeHash,
+    expiresAt,
+    source,
+  });
+
+  console.log(`[Exchange Token] Generated exchange code for ${email} (source: ${source}, expires: ${expiresAt})`);
+
+  return code;
+}

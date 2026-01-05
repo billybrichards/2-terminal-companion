@@ -7,7 +7,8 @@ import { authMiddleware, optionalAuthMiddleware } from '../middleware/authMiddle
 import { jwtAdapter } from '../../infrastructure/auth/JWTAdapter.js';
 import { eq, desc, count, and, sql } from 'drizzle-orm';
 import { ANPLEXA_DEFAULT_PROMPT, buildSystemPromptWithName } from '../../config/anplexaPrompt.js';
-import { PersonalityMode, buildPersonalityOverlay, isValidPersonalityMode, DEFAULT_PERSONALITY_MODE } from '../../config/personalityProfiles.js';
+import { PersonalityMode, buildPersonalityOverlay, isValidPersonalityMode, DEFAULT_PERSONALITY_MODE, getPersonalityModelConfig } from '../../config/personalityProfiles.js';
+import { getModelPreset } from '../../infrastructure/adapters/OllamaGateway.js';
 
 const DAILY_FREE_CREDITS = 5; // Free users get 5 credits per day, capped at 5
 
@@ -403,13 +404,32 @@ chatRouter.post('/', optionalAuthMiddleware, async (req, res) => {
       });
     }
 
-    // Select model based on length
+    // Determine personality mode for model selection
+    const effectivePersonalityMode: PersonalityMode =
+      (body.personalityMode && isValidPersonalityMode(body.personalityMode))
+        ? body.personalityMode
+        : (user?.personalityMode && isValidPersonalityMode(user.personalityMode))
+          ? user.personalityMode
+          : DEFAULT_PERSONALITY_MODE;
+
+    // Get personality-specific model configuration
+    const personalityModelConfig = getPersonalityModelConfig(effectivePersonalityMode);
+
+    // Select model: personality override > length-based selection > default
     const ollama = getOllamaGateway();
-    const model = ollama.selectModel(
+    const baseModel = ollama.selectModel(
       length as 'brief' | 'moderate' | 'detailed',
       config.useLongFormForDetailed ?? true
     );
+    const model = personalityModelConfig.model || baseModel;
     const maxTokens = getTokenLimit(config, length as 'brief' | 'moderate' | 'detailed');
+
+    // Get optimized model preset and apply personality temperature override
+    const modelPreset = getModelPreset(model, {
+      temperature: personalityModelConfig.temperature ?? config.temperature ?? 0.85,
+    });
+
+    console.log(`[Chat] Using model: ${model}, personality: ${effectivePersonalityMode}, temp: ${modelPreset.temperature}`);
 
     // Set up SSE response
     res.setHeader('Content-Type', 'text/event-stream');
@@ -423,8 +443,7 @@ chatRouter.post('/', optionalAuthMiddleware, async (req, res) => {
       for await (const chunk of ollama.generateStream({
         model,
         messages: chatMessages,
-        temperature: config.temperature || 0.8,
-        maxTokens,
+        options: modelPreset,
       })) {
         fullResponse += chunk;
         res.write(`data: ${JSON.stringify({ type: 'text', content: chunk })}\n\n`);
@@ -570,19 +589,37 @@ chatRouter.post('/non-streaming', optionalAuthMiddleware, async (req, res) => {
       { role: 'user', content: actualMessage },
     ];
 
+    // Determine personality mode for model selection
+    const effectivePersonalityMode: PersonalityMode =
+      (body.personalityMode && isValidPersonalityMode(body.personalityMode))
+        ? body.personalityMode
+        : (user?.personalityMode && isValidPersonalityMode(user.personalityMode))
+          ? user.personalityMode
+          : DEFAULT_PERSONALITY_MODE;
+
+    // Get personality-specific model configuration
+    const personalityModelConfig = getPersonalityModelConfig(effectivePersonalityMode);
+
     // Select model and generate response
     const ollama = getOllamaGateway();
-    const model = ollama.selectModel(
+    const baseModel = ollama.selectModel(
       length as 'brief' | 'moderate' | 'detailed',
       config.useLongFormForDetailed ?? true
     );
+    const model = personalityModelConfig.model || baseModel;
     const maxTokens = getTokenLimit(config, length as 'brief' | 'moderate' | 'detailed');
+
+    // Get optimized model preset and apply personality temperature override
+    const modelPreset = getModelPreset(model, {
+      temperature: personalityModelConfig.temperature ?? config.temperature ?? 0.85,
+    });
+
+    console.log(`[Chat Non-Streaming] Using model: ${model}, personality: ${effectivePersonalityMode}, temp: ${modelPreset.temperature}`);
 
     const response = await ollama.generate({
       model,
       messages: chatMessages,
-      temperature: config.temperature || 0.8,
-      maxTokens,
+      options: modelPreset,
     });
 
     res.json({

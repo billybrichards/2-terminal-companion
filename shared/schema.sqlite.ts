@@ -153,6 +153,19 @@ export const magicLinkTokens = sqliteTable('magic_link_tokens', {
   createdAt: text('created_at').default('CURRENT_TIMESTAMP'),
 });
 
+// Exchange tokens (short-lived codes for secure redirect auth)
+// Used by Funnel-Forge to pass auth without JWT in URL
+export const exchangeTokens = sqliteTable('exchange_tokens', {
+  id: text('id').primaryKey(),
+  userId: text('user_id').references(() => users.id).notNull(),
+  email: text('email').notNull(),
+  codeHash: text('code_hash').notNull(), // bcrypt hash of the exchange code
+  expiresAt: text('expires_at').notNull(), // Short expiry (5 minutes)
+  usedAt: text('used_at'), // When the code was exchanged for tokens
+  source: text('source').default('funnel'), // 'funnel' | 'other' - tracks origin
+  createdAt: text('created_at').default('CURRENT_TIMESTAMP'),
+});
+
 // User preferences (overrides companion defaults)
 export const userPreferences = sqliteTable('user_preferences', {
   id: text('id').primaryKey(),
@@ -293,3 +306,4 @@ export type ApiUsageDaily = typeof apiUsageDaily.$inferSelect;
 export type PasswordResetToken = typeof passwordResetTokens.$inferSelect;
 export type SystemPrompt = typeof systemPrompts.$inferSelect;
 export type ContactSubmission = typeof contactSubmissions.$inferSelect;
+export type ExchangeToken = typeof exchangeTokens.$inferSelect;

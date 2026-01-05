@@ -1,8 +1,11 @@
 /**
  * OllamaGateway - Handles communication with Ollama API
  *
- * Uses Mistral Instruct format for Dark Planet models:
- * [INST] user message [/INST] assistant response
+ * Supports multiple model architectures with optimized sampling parameters:
+ * - Violet-Lotus (Mistral Nemo 12B): EQ 80/100, emotional roleplay
+ * - MythoMax (Llama 2 13B merge): Creative/explicit roleplay
+ * - Dolphin-Mixtral (MOE 8x7B): Extended context longform
+ * - Dark Planet (Llama 3.1 8B): General chat
  */
 
 export interface ChatMessage {
@@ -17,12 +20,155 @@ export interface OllamaConfig {
   longFormModel: string;
 }
 
+/**
+ * Complete Ollama sampling options
+ * Based on DavidAU's model performance research for Class 2-4 models
+ */
+export interface OllamaOptions {
+  // Core Sampling
+  temperature?: number;       // 0.0 - 2.0, controls randomness
+  top_k?: number;             // 1 - 100, limits vocabulary to top K tokens
+  top_p?: number;             // 0.0 - 1.0, nucleus sampling threshold
+  min_p?: number;             // 0.0 - 1.0, probability floor for tokens
+
+  // Repetition Control
+  repeat_penalty?: number;    // 0.0 - 2.0, penalizes repeated tokens
+  repeat_last_n?: number;     // -1 to num_ctx, tokens to check for repetition
+  presence_penalty?: number;  // 0.0 - 1.0, penalizes tokens that have appeared
+  frequency_penalty?: number; // 0.0 - 1.0, penalizes tokens by frequency
+
+  // Mirostat (Dynamic Temperature)
+  mirostat?: 0 | 1 | 2;       // 0=disabled, 1=v1, 2=v2 (recommended)
+  mirostat_tau?: number;      // Target entropy (perplexity), default 7.0
+  mirostat_eta?: number;      // Learning rate, default 0.2
+
+  // Context & Output
+  num_ctx?: number;           // Context window size
+  num_predict?: number;       // Max tokens to generate
+
+  // Optional Advanced
+  tfs_z?: number;             // Tail free sampling (1.0 = disabled)
+  typical_p?: number;         // Locally typical sampling (1.0 = disabled)
+  seed?: number;              // For reproducibility
+  stop?: string[];            // Stop sequences
+}
+
+/**
+ * Optimized model presets based on model architecture and use case
+ * Class 2: Larger models (Dolphin-Mixtral) - lighter repetition control
+ * Class 3: Standard models (Violet-Lotus, Dark Planet) - balanced settings
+ * Class 4: Creative models (MythoMax) - more aggressive repetition control
+ */
+export const MODEL_PRESETS: Record<string, OllamaOptions> = {
+  'violet-lotus:latest': {
+    // Primary model - Highest EQ (80/100), emotional roleplay
+    temperature: 0.85,
+    top_k: 40,
+    top_p: 0.95,
+    min_p: 0.05,
+    repeat_penalty: 1.08,
+    repeat_last_n: 64,
+    presence_penalty: 0.1,
+    frequency_penalty: 0.15,
+    mirostat: 2,
+    mirostat_tau: 7.0,
+    mirostat_eta: 0.2,
+    num_ctx: 8192,
+    num_predict: 512,
+  },
+  'mythomax:latest': {
+    // Gold standard roleplay - MythoLogic + Huginn merge
+    temperature: 0.9,
+    top_k: 40,
+    top_p: 0.95,
+    min_p: 0.05,
+    repeat_penalty: 1.12,
+    repeat_last_n: 64,
+    presence_penalty: 0.15,
+    frequency_penalty: 0.25,
+    mirostat: 2,
+    mirostat_tau: 6.5,
+    mirostat_eta: 0.15,
+    num_ctx: 4096,
+    num_predict: 400,
+  },
+  'dolphin-mixtral:latest': {
+    // Longform model - 26GB MOE for extended narratives
+    temperature: 1.0,
+    top_k: 40,
+    top_p: 0.95,
+    min_p: 0.05,
+    repeat_penalty: 1.05,
+    repeat_last_n: 128,
+    presence_penalty: 0.1,
+    frequency_penalty: 0.1,
+    num_ctx: 16384,
+    num_predict: 2000,
+  },
+  'darkplanet-general:latest': {
+    // Fallback general model - Llama 3.1 8B
+    temperature: 0.85,
+    top_k: 40,
+    top_p: 0.95,
+    min_p: 0.05,
+    repeat_penalty: 1.08,
+    repeat_last_n: 64,
+    presence_penalty: 0.1,
+    frequency_penalty: 0.15,
+    mirostat: 2,
+    mirostat_tau: 7.0,
+    mirostat_eta: 0.2,
+    num_ctx: 8192,
+    num_predict: 512,
+  },
+  'dark-champion:latest': {
+    // MOE 18.4B - Unrestricted creative
+    temperature: 0.9,
+    top_k: 40,
+    top_p: 0.95,
+    min_p: 0.05,
+    repeat_penalty: 1.1,
+    repeat_last_n: 64,
+    presence_penalty: 0.12,
+    frequency_penalty: 0.2,
+    mirostat: 2,
+    mirostat_tau: 7.0,
+    mirostat_eta: 0.2,
+    num_ctx: 8192,
+    num_predict: 600,
+  },
+};
+
+// Default options for unknown models
+const DEFAULT_OPTIONS: OllamaOptions = {
+  temperature: 0.85,
+  top_k: 40,
+  top_p: 0.95,
+  min_p: 0.05,
+  repeat_penalty: 1.08,
+  repeat_last_n: 64,
+  presence_penalty: 0.1,
+  frequency_penalty: 0.15,
+  num_ctx: 8192,
+  num_predict: 512,
+};
+
 export interface GenerateOptions {
   model: string;
   messages: ChatMessage[];
+  options?: Partial<OllamaOptions>;
+  stream?: boolean;
+  // Legacy support
   temperature?: number;
   maxTokens?: number;
-  stream?: boolean;
+}
+
+/**
+ * Get optimized preset for a model, with optional overrides
+ */
+export function getModelPreset(model: string, overrides?: Partial<OllamaOptions>): OllamaOptions {
+  const preset = MODEL_PRESETS[model] || DEFAULT_OPTIONS;
+  return { ...preset, ...overrides };
 }
 
 export class OllamaGateway {
@@ -65,12 +211,48 @@ export class OllamaGateway {
   }
 
   /**
+   * Build Ollama options object from preset and overrides
+   */
+  private buildOllamaOptions(model: string, genOptions: GenerateOptions): Record<string, unknown> {
+    // Start with model preset
+    const preset = getModelPreset(model);
+
+    // Apply explicit options from GenerateOptions
+    const opts = genOptions.options || {};
+
+    // Legacy support: temperature and maxTokens at top level
+    const temperature = genOptions.temperature ?? opts.temperature ?? preset.temperature;
+    const numPredict = genOptions.maxTokens ?? opts.num_predict ?? preset.num_predict;
+
+    return {
+      temperature,
+      num_predict: numPredict,
+      top_k: opts.top_k ?? preset.top_k,
+      top_p: opts.top_p ?? preset.top_p,
+      min_p: opts.min_p ?? preset.min_p,
+      repeat_penalty: opts.repeat_penalty ?? preset.repeat_penalty,
+      repeat_last_n: opts.repeat_last_n ?? preset.repeat_last_n,
+      presence_penalty: opts.presence_penalty ?? preset.presence_penalty,
+      frequency_penalty: opts.frequency_penalty ?? preset.frequency_penalty,
+      mirostat: opts.mirostat ?? preset.mirostat,
+      mirostat_tau: opts.mirostat_tau ?? preset.mirostat_tau,
+      mirostat_eta: opts.mirostat_eta ?? preset.mirostat_eta,
+      num_ctx: opts.num_ctx ?? preset.num_ctx,
+      ...(opts.tfs_z !== undefined && { tfs_z: opts.tfs_z }),
+      ...(opts.typical_p !== undefined && { typical_p: opts.typical_p }),
+      ...(opts.seed !== undefined && { seed: opts.seed }),
+      ...(opts.stop && { stop: opts.stop }),
+    };
+  }
+
+  /**
    * Generate a non-streaming response
    */
   async generate(options: GenerateOptions): Promise<string> {
-    const { model, messages, temperature = 0.8, maxTokens = 1000 } = options;
+    const { model, messages } = options;
 
     const prompt = this.buildLlama3Prompt(messages);
+    const ollamaOptions = this.buildOllamaOptions(model, options);
 
     const response = await fetch(`${this.config.baseUrl}/api/generate`, {
       method: 'POST',
@@ -82,10 +264,7 @@ export class OllamaGateway {
         model,
         prompt,
         stream: false,
-        options: {
-          temperature,
-          num_predict: maxTokens,
-        },
+        options: ollamaOptions,
       }),
     });
 
@@ -103,7 +282,8 @@ export class OllamaGateway {
    * Returns an async generator that yields text chunks
    */
   async *generateStream(options: GenerateOptions): AsyncGenerator<string, void, unknown> {
-    const { model, messages, temperature = 0.8, maxTokens = 1000 } = options;
+    const { model, messages } = options;
+    const ollamaOptions = this.buildOllamaOptions(model, options);
 
     // Use the chat endpoint for better streaming support
     const response = await fetch(`${this.config.baseUrl}/api/chat`, {
@@ -119,10 +299,7 @@ export class OllamaGateway {
           content: m.content,
         })),
         stream: true,
-        options: {
-          temperature,
-          num_predict: maxTokens,
-        },
+        options: ollamaOptions,
       }),
     });
 

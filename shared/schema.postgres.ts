@@ -170,6 +170,19 @@ export const magicLinkTokens = pgTable('magic_link_tokens', {
   createdAt: text('created_at').default('CURRENT_TIMESTAMP'),
 });
 
+// Exchange tokens (short-lived codes for secure redirect auth)
+// Used by Funnel-Forge to pass auth without JWT in URL
+export const exchangeTokens = pgTable('exchange_tokens', {
+  id: text('id').primaryKey(),
+  userId: text('user_id').references(() => users.id).notNull(),
+  email: text('email').notNull(),
+  codeHash: text('code_hash').notNull(), // bcrypt hash of the exchange code
+  expiresAt: text('expires_at').notNull(), // Short expiry (5 minutes)
+  usedAt: text('used_at'), // When the code was exchanged for tokens
+  source: text('source').default('funnel'), // 'funnel' | 'other' - tracks origin
+  createdAt: text('created_at').default('CURRENT_TIMESTAMP'),
+});
+
 // User preferences (overrides companion defaults)
 export const userPreferences = pgTable('user_preferences', {
   id: text('id').primaryKey(),
@@ -352,3 +365,4 @@ export type EmailLog = typeof emailLogs.$inferSelect;
 export type FunnelApiKey = typeof funnelApiKeys.$inferSelect;
 export type ContactSubmission = typeof contactSubmissions.$inferSelect;
 export type NewContactSubmission = typeof contactSubmissions.$inferInsert;
+export type ExchangeToken = typeof exchangeTokens.$inferSelect;
