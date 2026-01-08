@@ -18,7 +18,7 @@ export type { SessionProps } from './entities/Session.js';
 // Value Objects
 export { Email } from './value-objects/Email.js';
 export { Password } from './value-objects/Password.js';
-export { Credits } from './value-objects/Credits.js';
+export { Credits, DEFAULT_DAILY_CREDITS } from './value-objects/Credits.js';
 export { Token } from './value-objects/Token.js';
 
 // Repository Interfaces
@@ -32,6 +32,6 @@ export { CreditService } from './services/CreditService.js';
 
 // Errors
 export { DomainError } from './errors/DomainError.js';
-export { AuthenticationError } from './errors/AuthenticationError.js';
-export { ValidationError } from './errors/ValidationError.js';
-export { InsufficientCreditsError } from './errors/InsufficientCreditsError.js';
+export { AuthenticationError, AuthenticationErrorCode } from './errors/AuthenticationError.js';
+export { ValidationError, ValidationErrorCode } from './errors/ValidationError.js';
+export { InsufficientCreditsError, CreditErrorCode } from './errors/InsufficientCreditsError.js';
