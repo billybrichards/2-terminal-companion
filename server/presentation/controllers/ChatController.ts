@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { z } from 'zod';
-import { SendMessage, GetConversationHistory } from '../../application/use-cases/chat/index.js';
+import { SendMessage, SendMessageOutput, GetConversationHistory } from '../../application/use-cases/chat/index.js';
 import { ValidationError } from '../../domain/errors/ValidationError.js';
 import { InsufficientCreditsError } from '../../domain/errors/InsufficientCreditsError.js';
 
@@ -63,18 +63,19 @@ export class ChatController {
         storeLocally: body.storeLocally,
       });
 
-      let result;
+      let output: SendMessageOutput | undefined;
       for await (const chunk of generator) {
         if (chunk.type === 'text') {
-          res.write(`data: ${JSON.stringify({ type: 'text', content: chunk.content })}\n\n`);
+          // Map internal 'text' type to contract 'token' type for SSE
+          res.write(`data: ${JSON.stringify({ type: 'token', content: chunk.content })}\n\n`);
         } else if (chunk.type === 'error') {
           res.write(`data: ${JSON.stringify({ type: 'error', error: chunk.content })}\n\n`);
         }
       }
 
-      // Get the final result
-      result = await generator.next();
-      const output = result.value;
+      // Get the final result - generator returns SendMessageOutput after completion
+      const result = await generator.next();
+      output = result.value as SendMessageOutput | undefined;
 
       // Send done event
       res.write(`data: ${JSON.stringify({

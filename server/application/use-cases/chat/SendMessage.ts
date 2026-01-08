@@ -84,9 +84,6 @@ export class SendMessage {
         id: this.generateId(),
         userId: input.userId,
         title,
-        messages: [],
-        createdAt: new Date(),
-        updatedAt: new Date(),
       });
 
       await this.conversationRepository.save(conversation);
@@ -96,9 +93,9 @@ export class SendMessage {
     }
 
     // 4. Build messages for AI
-    const history = conversation?.recentMessages(10) || [];
+    const recentMessages = conversation?.messages.slice(-10) || [];
     const aiMessages: AIMessage[] = [
-      ...history.map(m => ({
+      ...recentMessages.map((m: Message) => ({
         role: m.role as 'user' | 'assistant' | 'system',
         content: m.content,
       })),
@@ -114,7 +111,6 @@ export class SendMessage {
         conversationId,
         role: 'user',
         content: input.message,
-        createdAt: new Date(),
       });
       conversation = conversation.addMessage(userMessage);
       await this.conversationRepository.save(conversation);
@@ -140,7 +136,6 @@ export class SendMessage {
         conversationId,
         role: 'assistant',
         content: fullResponse,
-        createdAt: new Date(),
       });
       conversation = conversation.addMessage(assistantMessage);
       await this.conversationRepository.save(conversation);

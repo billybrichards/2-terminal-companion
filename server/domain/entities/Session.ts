@@ -79,4 +79,15 @@ export class Session {
   validateRefreshToken(token: string): boolean {
     return this.props.refreshToken.value === token && this.isValid();
   }
+
+  /**
+   * Creates a new Session with an updated refresh token.
+   * Session is immutable - returns a new instance.
+   */
+  updateRefreshToken(newToken: string, expiresAt: Date): Session {
+    return new Session({
+      ...this.props,
+      refreshToken: Token.create(newToken, expiresAt),
+    });
+  }
 }

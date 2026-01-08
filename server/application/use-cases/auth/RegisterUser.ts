@@ -105,7 +105,6 @@ export class RegisterUser {
       userId: user.id,
       refreshToken: tokens.refreshToken,
       expiresAt: this.tokenService.getRefreshExpiryDate(),
-      createdAt: new Date(),
     });
 
     await this.sessionRepository.save(session);

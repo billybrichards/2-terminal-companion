@@ -16,6 +16,7 @@ export enum CreditErrorCode {
 export class InsufficientCreditsError extends DomainError {
   public readonly currentCredits: number;
   public readonly requiredCredits: number;
+  public readonly maxCredits?: number;
   public readonly resetsAt?: Date;
 
   constructor(
@@ -23,11 +24,13 @@ export class InsufficientCreditsError extends DomainError {
     code: CreditErrorCode,
     currentCredits: number,
     requiredCredits: number,
-    resetsAt?: Date
+    resetsAt?: Date,
+    maxCredits?: number
   ) {
     super(message, code);
     this.currentCredits = currentCredits;
     this.requiredCredits = requiredCredits;
+    this.maxCredits = maxCredits;
     this.resetsAt = resetsAt;
   }
 
@@ -36,6 +39,7 @@ export class InsufficientCreditsError extends DomainError {
       ...super.toJSON(),
       currentCredits: this.currentCredits,
       requiredCredits: this.requiredCredits,
+      maxCredits: this.maxCredits,
       resetsAt: this.resetsAt?.toISOString(),
     };
   }
@@ -49,7 +53,8 @@ export class InsufficientCreditsError extends DomainError {
       CreditErrorCode.CREDIT_LIMIT_REACHED,
       currentCredits,
       1,
-      resetsAt
+      resetsAt,
+      maxCredits
     );
   }
 

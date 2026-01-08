@@ -76,6 +76,13 @@ export class ValidationError extends DomainError {
     );
   }
 
+  /**
+   * Alias for requiredField - for backward compatibility
+   */
+  static required(field: string): ValidationError {
+    return ValidationError.requiredField(field);
+  }
+
   static invalidLength(field: string, min?: number, max?: number): ValidationError {
     let message = `Invalid length for ${field}`;
     if (min !== undefined && max !== undefined) {
@@ -109,6 +116,14 @@ export class ValidationError extends DomainError {
       ValidationErrorCode.INVALID_FORMAT,
       field,
       { expected }
+    );
+  }
+
+  static invalidValue(field: string, reason?: string): ValidationError {
+    return new ValidationError(
+      reason || `Invalid value for ${field}`,
+      ValidationErrorCode.INVALID_VALUE,
+      field
     );
   }
 }

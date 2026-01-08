@@ -86,7 +86,7 @@ export class GetConversationHistory {
     return {
       conversations: paginatedConversations.map(c => ({
         id: c.id,
-        title: c.title,
+        title: c.title || 'Untitled',
         lastMessage: c.messages.length > 0
           ? c.messages[c.messages.length - 1].content.substring(0, 100)
           : undefined,
